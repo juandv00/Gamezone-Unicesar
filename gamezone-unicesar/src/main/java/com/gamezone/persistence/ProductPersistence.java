@@ -12,7 +12,7 @@ import java.util.List;
  * Handles saving and loading Product data to and from a file,
  * so that inventory information persists between application runs.
  */
-public class ProductRepository {
+public class ProductPersistence {
 
     private static final String FILE_PATH = "data/products.txt";
     private static final String DELIMITER = ";";
