@@ -1,7 +1,8 @@
 package com.gamezone.service;
 
 import com.gamezone.model.Product;
-import com.gamezone.persistence.ProductRepository;
+import com.gamezone.persistence.ProductPersistence;
+import java.util.ArrayList;
 
 import java.util.List;
 
@@ -12,7 +13,7 @@ import java.util.List;
  */
 public class ProductService {
 
-    private final ProductRepository productRepository;
+    private final ProductPersistence productPersistence;
     private List<Product> products;
 
     /**
@@ -20,8 +21,8 @@ public class ProductService {
      * from the repository.
      */
     public ProductService() {
-        this.productRepository = new ProductRepository();
-        this.products = productRepository.load();
+        this.productPersistence = new ProductPersistence();
+        this.products = productPersistence.load();
     }
 
     /**
@@ -31,7 +32,7 @@ public class ProductService {
      */
     public void registerProduct(Product product) {
         products.add(product);
-        productRepository.save(products);
+        productPersistence.save(products);
     }
 
     /**
@@ -40,7 +41,7 @@ public class ProductService {
      * @return the list of registered products
      */
     public List<Product> listAll() {
-        return products;
+        return new ArrayList<>(products);
     }
 
     /**
@@ -76,7 +77,7 @@ public class ProductService {
             return false;
         }
         product.setStock(product.getStock() - amount);
-        productRepository.save(products);
+        productPersistence.save(products);
         return true;
     }
 
