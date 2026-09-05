@@ -62,4 +62,10 @@ public class VideoGame extends Product {
                 ", Price: $" + getPrice() +
                 ", Stock: " + getStock();
     }
+
+    @Override
+    public String toString() {
+        return "VideoGame{" + getDescription() + "}";
+    }
+
 }
