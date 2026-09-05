@@ -66,4 +66,11 @@ public abstract class Product {
      * @return a descriptive string of the product
      */
     public abstract String getDescription();
+
+    @Override
+    public String toString() {
+        return "Product{id='" + id + "', title='" + title +
+                "', price=" + price + ", stock=" + stock + "}";
+    }
+
 }
