@@ -21,6 +21,12 @@ public abstract class Product {
      * @param stock initial quantity available in inventory
      */
     public Product(String id, String title, double price, int stock) {
+        if (price < 0) {
+            throw new IllegalArgumentException("Price cannot be negative");
+        }
+        if (stock < 0) {
+            throw new IllegalArgumentException("Stock cannot be negative");
+        }
         this.id = id;
         this.title = title;
         this.price = price;
