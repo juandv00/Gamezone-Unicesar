@@ -1,5 +1,5 @@
 package com.gamezone.model;
-
+import java.util.Objects;
 /**
  * Represents a generic product sold at GameZone Unicesar.
  * This class defines the attributes and behavior common to all products,
@@ -77,6 +77,19 @@ public abstract class Product {
     public String toString() {
         return "Product{id='" + id + "', title='" + title +
                 "', price=" + price + ", stock=" + stock + "}";
+    }
+
+    @Override
+    public boolean equals(Object o) {
+        if (this == o) return true;
+        if (!(o instanceof Product)) return false;
+        Product product = (Product) o;
+        return Objects.equals(id, product.id);
+    }
+
+    @Override
+    public int hashCode() {
+        return Objects.hash(id);
     }
 
 }
