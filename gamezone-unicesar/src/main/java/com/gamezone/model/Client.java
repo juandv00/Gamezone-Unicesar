@@ -1,13 +1,42 @@
-/*
- * Click nbfs://nbhost/SystemFileSystem/Templates/Licenses/license-default.txt to change this license
- * Click nbfs://nbhost/SystemFileSystem/Templates/Classes/Class.java to edit this template
- */
+
 package com.gamezone.model;
 
-/**
- *
- * @author Ednilson Contreras
- */
-public class Client {
+
+public class Client extends Person {
+    private String email;
+    private String pruchase_history;
+
+    public Client() {
+    }
+
+    public Client( String id, String name, int phone, String email, String pruchase_history) {
+        super(id, name, phone);
+        this.email = email;
+        this.pruchase_history = pruchase_history;
+    }
+
+    public String getEmail() {
+        return email;
+    }
+
+    public void setEmail(String email) {
+        this.email = email;
+    }
+
+    public String getPruchase_history() {
+        return pruchase_history;
+    }
+
+    public void setPruchase_history(String pruchase_history) {
+        this.pruchase_history = pruchase_history;
+    }
+    
+    
+
+   
+    
+
+   
+    
     
 }
