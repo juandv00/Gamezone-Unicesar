@@ -39,6 +39,11 @@ public abstract class Person {
     public void setPhone(int phone) {
         this.phone = phone;
     }
+
+    @Override
+    public String toString() {
+        return "Person{" + "id=" + id + ", name=" + name + ", phone=" + phone + '}';
+    }
     
     
 }

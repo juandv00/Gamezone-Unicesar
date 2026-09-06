@@ -30,6 +30,11 @@ public class Client extends Person {
     public void setPruchase_history(String pruchase_history) {
         this.pruchase_history = pruchase_history;
     }
+
+    @Override
+    public String toString() {
+        return "Client{" + "email=" + email + ", pruchase_history=" + pruchase_history + '}';
+    }
     
     
 

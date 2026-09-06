@@ -30,6 +30,11 @@ public class Seller extends Person {
     public void setWork_shift(int work_shift) {
         this.work_shift = work_shift;
     }
+
+    @Override
+    public String toString() {
+        return "Seller{" + "employee_code=" + employee_code + ", work_shift=" + work_shift + '}';
+    }
     
     
 }
