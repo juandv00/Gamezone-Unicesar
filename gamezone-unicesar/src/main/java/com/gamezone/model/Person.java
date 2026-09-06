@@ -1,8 +1,7 @@
-
 package com.gamezone.model;
 
-
 public abstract class Person {
+
     private String id;
     private String name;
     private int phone;
@@ -44,6 +43,5 @@ public abstract class Person {
     public String toString() {
         return "Person{" + "id=" + id + ", name=" + name + ", phone=" + phone + '}';
     }
-    
-    
+
 }

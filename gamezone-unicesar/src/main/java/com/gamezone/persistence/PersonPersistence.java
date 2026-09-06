@@ -17,11 +17,12 @@ public class PersonPersistence {
 
                 if (p != null && p.getClass() == Client.class) {
                     Client c = (Client) p;
-                    bw.write("CLIENT:" + "\t" + c.getEmail() + "\t" + c.getPruchase_history());
+                    bw.write("CLIENT:" + "\t" + c.getId() + "\t" + c.getName() + "\t" + c.getPhone() + c.getEmail());
                     bw.newLine();
                 } else if (p != null && p.getClass() == Seller.class) {
                     Seller s = (Seller) p;
-                    bw.write("SELLER:" + "\t" + s.getEmployee_code() + "\t" + s.getWork_shift());
+                    bw.write("SELLER:" + "\t" + s.getId() + "\t" + s.getName() + "\t" + s.getPhone()
+                            + s.getEmployeeCode() + "\t" + s.getShift());
                     bw.newLine();
                 }
             }
@@ -29,6 +30,21 @@ public class PersonPersistence {
         } catch (IOException e) {
             System.out.println("Error saving Person" + e.getMessage());
         }
+
+    }
+
+    public List<Person> load() {
+        List<Person> people = new ArrayList<>();
+        File file = new File(FILE_PATH);
+        if (!file.exists()) {
+            return people;
+        }
+
+        try (BufferedReader rd = new BufferedReader(new FileReader(file))) {
+
+        } catch (IOException b) {
+        }
+        return null;
 
     }
 }
