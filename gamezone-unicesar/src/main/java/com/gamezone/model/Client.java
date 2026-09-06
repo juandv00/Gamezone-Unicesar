@@ -16,7 +16,7 @@ public class Client extends Person {
      * @param phone contact phone number of the client
      * @param email email address of the client
      */
-    public Client(String email, String id, String name, String phone) {
+    public Client(String id, String name, String phone,String email) {
         super(id, name, phone);
         this.email = email;
     }

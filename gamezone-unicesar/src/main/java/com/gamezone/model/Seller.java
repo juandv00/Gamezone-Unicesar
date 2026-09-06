@@ -19,7 +19,7 @@ public class Seller extends Person {
      * @param employeeCode unique employee code assigned to the seller
      * @param shift work shift assigned to the seller (e.g. "Morning")
      */
-    public Seller(String employeeCode, String shift, String id, String name, String phone) {
+    public Seller( String id, String name, String phone,String employeeCode, String shift) {
         super(id, name, phone);
         this.employeeCode = employeeCode;
         this.shift = shift;
