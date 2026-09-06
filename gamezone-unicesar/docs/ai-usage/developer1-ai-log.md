@@ -12,7 +12,24 @@ I used Claude for support throughout the development of my module. These are the
 
 What I DIDN'T do: I didn't ask them to generate the class diagram, I didn't ask them for the answers to the analysis, and I didn't copy code without understanding what it did—in each class, I can explain why it's written that way.
 
+## Session 2
 
+**Legitimate Uses:**
+
+- Code examples and explanations were requested for: overriding `toString()`
+
+in the product hierarchy, adding validation to the constructor for negative prices/stocks,
+
+and implementing `equals()`/`hashCode()` based on the product ID.
+
+- Help was requested to understand and correct a bug when committing
+  a code change (`equals`/`hashCode`) using a leftover commit message from
+  a previous commit, and how to safely correct a commit message
+  before submitting it (without using `force-push`, which is prohibited).
+
+**My Own Decisions:**
+- Decided which additional improvements to add (`toString`, validation,
+  `equals`/`hashCode`).
 
 
 
