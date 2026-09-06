@@ -1,6 +1,7 @@
 package com.gamezone.model;
 
 import java.time.LocalDate;
+import java.util.ArrayList;
 import java.util.List;
 
 /**
@@ -59,7 +60,7 @@ public class Sale {
     }
 
     public List<Product> getProducts() {
-        return products;
+        return new ArrayList<>(products);
     }
 
     /**
@@ -74,5 +75,11 @@ public class Sale {
             total += product.getPrice();
         }
         return total;
+    }
+
+    @Override
+    public String toString() {
+        return "Sale{date=" + date + ", client=" + client.getName() +
+                ", seller=" + seller.getName() + ", total=$" + calculateTotal() + "}";
     }
 }
