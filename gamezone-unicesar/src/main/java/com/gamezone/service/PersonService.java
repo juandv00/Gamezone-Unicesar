@@ -15,15 +15,15 @@ import java.util.List;
 public class PersonService {
 
     private List<Person> people;
-    private PersonPersistence personpersistence;
+    private PersonPersistence personPersistence;
 
     /**
      * Creates a new PersonService, loading the currently stored people from the
      * repository.
      */
     public PersonService() {
-        this.personpersistence = new PersonPersistence();
-        this.people = personpersistence.load();
+        this.personPersistence = new PersonPersistence();
+        this.people = personPersistence.load();
     }
 
     /**
@@ -34,7 +34,7 @@ public class PersonService {
      * @param phone the client's contact phone number
      * @param email the client's email address
      */
-    public void RegisterClient(String id, String name, String phone, String email) {
+    public void registerClient(String id, String name, String phone, String email) {
         if (id == null || id.trim().isEmpty()) {
             throw new IllegalArgumentException("Client id cannot be empty.");
         }
@@ -50,7 +50,7 @@ public class PersonService {
 
         Client c = new Client(id, name, phone, email);
         people.add(c);
-        personpersistence.save(people);
+        personPersistence.save(people);
     }
 
     /**
@@ -62,26 +62,26 @@ public class PersonService {
      * @param employeeCode the seller's employee code
      * @param shift the seller's assigned work shift
      */
-    public void regissterseller(String id, String name, String phone, String employeeCode, String shift) {
+    public void registerSeller(String id, String name, String phone, String employeeCode, String shift) {
         if (id == null || id.trim().isEmpty()) {
-            throw new IllegalArgumentException("Client id cannot be empty.");
+            throw new IllegalArgumentException("Seller id cannot be empty.");
         }
         if (name == null || name.trim().isEmpty()) {
-            throw new IllegalArgumentException("Client name cannot be empty.");
+            throw new IllegalArgumentException("Seller name cannot be empty.");
         }
         if (phone == null || phone.trim().isEmpty()) {
-            throw new IllegalArgumentException("Client phone cannot be empty.");
+            throw new IllegalArgumentException("Seller phone cannot be empty.");
         }
         if (employeeCode == null || employeeCode.trim().isEmpty()) {
-            throw new IllegalArgumentException("Client name cannot be empty.");
+            throw new IllegalArgumentException("Employee code cannot be empty.");
         }
         if (shift == null || shift.trim().isEmpty()) {
-            throw new IllegalArgumentException("Client phone cannot be empty.");
+            throw new IllegalArgumentException("Shift cannot be empty.");
         }
 
         Seller s = new Seller(id, name, phone, employeeCode, shift);
         people.add(s);
-        personpersistence.save(people);
+        personPersistence.save(people);
     }
 
     /**
@@ -90,13 +90,13 @@ public class PersonService {
      * @return the list of registered clients
      */
     public List<Client> listClient() {
-        List<Client> Customers = new ArrayList<>();
-        for (Client c : Customers) {
-            if (c instanceof Client) {
-                Customers.add((Client) c);
+        List<Client> customers = new ArrayList<>();
+        for (Person person : people) {
+            if (person instanceof Client c) {
+                customers.add(c);
             }
         }
-        return Customers;
+        return customers;
     }
 
     /**
@@ -106,20 +106,21 @@ public class PersonService {
      */
     public List<Seller> listSeller() {
         List<Seller> traders = new ArrayList<>();
-        for (Seller s : traders) {
-            if (s instanceof Seller) {
-                traders.add((Seller) s);
+        for (Person person : people) {
+            if (person instanceof Seller s) {
+                traders.add(s);
             }
         }
         return traders;
     }
-      /**
+
+    /**
      * Finds a person by their unique identification number.
      *
      * @param id the identification number to search for
      * @return the matching person, or null if not found
      */
-      public Person findById(String id) {
+    public Person findById(String id) {
         for (Person person : people) {
             if (person.getId().equals(id)) {
                 return person;
