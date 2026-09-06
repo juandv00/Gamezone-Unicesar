@@ -1,13 +1,22 @@
 package com.gamezone.model;
 
+/**
+ * Represents a client of GameZone Unicesar. A client is a specific type of
+ * Person who purchases products, identified additionally by an email address.
+ */
 public class Client extends Person {
 
     private String email;
 
-    public Client() {
-    }
-
-    public Client(String id, String name, int phone, String email) {
+    /**
+     * Creates a new Client with the given common and particular attributes.
+     *
+     * @param id unique identification number of the client
+     * @param name full name of the client
+     * @param phone contact phone number of the client
+     * @param email email address of the client
+     */
+    public Client(String email, String id, String name, String phone) {
         super(id, name, phone);
         this.email = email;
     }
@@ -24,5 +33,4 @@ public class Client extends Person {
     public String toString() {
         return super.toString() + "Client{" + "email=" + email + '}';
     }
-
 }
