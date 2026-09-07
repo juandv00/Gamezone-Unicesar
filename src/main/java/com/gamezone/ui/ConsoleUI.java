@@ -59,6 +59,7 @@ public class ConsoleUI {
             }
         }
         System.out.println("Thank you for using GameZone Unicesar!");
+        scanner.close();
     }
 
     /**
