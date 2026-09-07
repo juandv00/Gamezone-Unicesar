@@ -23,8 +23,12 @@ public class Sale {
      * @param client   the client who made the purchase
      * @param seller   the seller who attended the sale
      * @param products the list of products included in the sale
+     * @throws IllegalArgumentException if products is null
      */
     public Sale(Client client, Seller seller, List<Product> products) {
+        if (products == null) {
+            throw new IllegalArgumentException("Products list cannot be null.");
+        }
         this.date = LocalDate.now();
         this.client = client;
         this.seller = seller;
@@ -39,8 +43,12 @@ public class Sale {
      * @param seller   the seller who attended the sale
      * @param products the list of products included in the sale
      * @param date     the original date of the sale
+     * @throws IllegalArgumentException if products is null
      */
     public Sale(Client client, Seller seller, List<Product> products, LocalDate date) {
+        if (products == null) {
+            throw new IllegalArgumentException("Products list cannot be null.");
+        }
         this.date = date;
         this.client = client;
         this.seller = seller;
