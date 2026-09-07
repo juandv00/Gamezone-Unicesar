@@ -118,13 +118,8 @@ public class ConsoleUI {
      * Prompts the user for the data of a new video game and registers it.
      */
     private void registerVideoGame() {
-        System.out.print("Product id: ");
-        String id = scanner.nextLine().trim();
-        System.out.print("Title: ");
-        String title = scanner.nextLine().trim();
-        Double price = readPrice();
-        Integer stock = readStock();
-        if (price == null || stock == null) {
+        CommonProductData data = readCommonProductData();
+        if (data == null) {
             return;
         }
         System.out.print("Platform: ");
@@ -135,7 +130,7 @@ public class ConsoleUI {
         String ageRating = scanner.nextLine().trim();
 
         try {
-            VideoGame videoGame = new VideoGame(id, title, price, stock, platform, genre, ageRating);
+            VideoGame videoGame = new VideoGame(data.id(), data.title(), data.price(), data.stock(), platform, genre, ageRating);
             productService.registerProduct(videoGame);
             System.out.println("Video game registered successfully.");
         } catch (IllegalArgumentException e) {
@@ -147,13 +142,8 @@ public class ConsoleUI {
      * Prompts the user for the data of a new console and registers it.
      */
     private void registerConsole() {
-        System.out.print("Product id: ");
-        String id = scanner.nextLine().trim();
-        System.out.print("Title: ");
-        String title = scanner.nextLine().trim();
-        Double price = readPrice();
-        Integer stock = readStock();
-        if (price == null || stock == null) {
+        CommonProductData data = readCommonProductData();
+        if (data == null) {
             return;
         }
         System.out.print("Brand: ");
@@ -164,12 +154,38 @@ public class ConsoleUI {
         String generation = scanner.nextLine().trim();
 
         try {
-            Console console = new Console(id, title, price, stock, brand, model, generation);
+            Console console = new Console(data.id(), data.title(), data.price(), data.stock(), brand, model, generation);
             productService.registerProduct(console);
             System.out.println("Console registered successfully.");
         } catch (IllegalArgumentException e) {
             System.out.println("Could not register console: " + e.getMessage());
         }
+    }
+
+    /**
+     * Reads the attributes shared by every product type (id, title, price,
+     * and stock), used when registering either a video game or a console.
+     *
+     * @return the common product data, or null if price or stock was invalid
+     */
+    private CommonProductData readCommonProductData() {
+        System.out.print("Product id: ");
+        String id = scanner.nextLine().trim();
+        System.out.print("Title: ");
+        String title = scanner.nextLine().trim();
+        Double price = readPrice();
+        Integer stock = readStock();
+        if (price == null || stock == null) {
+            return null;
+        }
+        return new CommonProductData(id, title, price, stock);
+    }
+
+    /**
+     * Simple holder for the attributes shared by every product type,
+     * used only while collecting input in the console UI.
+     */
+    private record CommonProductData(String id, String title, double price, int stock) {
     }
 
     /**
