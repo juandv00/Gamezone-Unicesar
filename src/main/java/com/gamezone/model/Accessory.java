@@ -2,6 +2,16 @@ package com.gamezone.model;
 
 import java.util.Objects;
 
+/**
+ * Represents a generic accessory sold at GameZone Unicesar.
+ * This class defines the attributes and behavior common to all accessories,
+ * and must be extended by specific accessory types (e.g. Controller, Cable, Memory).
+ * <p>
+ * Accessory forms an independent hierarchy from {@link Product}: although both
+ * share common attributes (id, title, price, stock), accessories have their own
+ * particular characteristics and compatibility rules that do not apply to
+ * video games or consoles. See docs/accessory-analysis.md for the full rationale.
+ */
 public abstract class Accessory {
 
     private String id;
@@ -9,6 +19,14 @@ public abstract class Accessory {
     private double price;
     private int stock;
 
+    /**
+     * Creates a new Accessory with the given common attributes.
+     *
+     * @param id    unique identifier of the accessory
+     * @param title display title of the accessory
+     * @param price unit price of the accessory
+     * @param stock initial quantity available in inventory
+     */
     public Accessory(String id, String title, double price, int stock) {
         if (price < 0) {
             throw new IllegalArgumentException("Price cannot be negative");
@@ -54,9 +72,20 @@ public abstract class Accessory {
         this.stock = stock;
     }
 
-
+    /**
+     * Returns the type name of this accessory (e.g. "Controller", "Cable", "Memory"),
+     * used for filtering and reporting operations.
+     *
+     * @return the accessory type name
+     */
     public abstract String getType();
 
+    /**
+     * Returns a full description of the accessory, combining common
+     * attributes with the particular characteristics of each subclass.
+     *
+     * @return a descriptive string of the accessory
+     */
     public abstract String getDescription();
 
     @Override
@@ -69,8 +98,8 @@ public abstract class Accessory {
     public boolean equals(Object o) {
         if (this == o) return true;
         if (!(o instanceof Accessory)) return false;
-        Accessory accesory = (Accessory) o;
-        return Objects.equals(id, accesory.id);
+        Accessory accessory = (Accessory) o;
+        return Objects.equals(id, accessory.id);
     }
 
     @Override
