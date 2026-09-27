@@ -8,7 +8,9 @@ import com.gamezone.model.Sale;
 import com.gamezone.model.Seller;
 import java.io.*;
 import java.time.LocalDate;
+import java.time.format.DateTimeParseException;
 import java.util.ArrayList;
+import java.util.Arrays;
 import java.util.List;
 
 /**
@@ -20,11 +22,12 @@ import java.util.List;
  * reconstructing a Sale from stored data.
  *
  * <p>Each sale is stored as one line with the format
- * {@code date;clientId;sellerId;productIds[;accessoryIds[;promotionName;discountAmount]]},
+ * {@code [saleId;]date;clientId;sellerId;productIds[;accessoryIds[;promotionName;discountAmount]]},
  * where ids are separated by commas. The accessory field is only written
  * when the sale includes accessories or a promotion, and the promotion
- * fields only when a discount was applied, so lines stored before these
- * features existed are still read correctly.</p>
+ * fields only when a discount was applied. Lines stored before sales had
+ * an id start directly with the date, so all older lines are still read
+ * correctly; those sales receive an id from the service layer.</p>
  */
 public class SalePersistence {
 
@@ -128,8 +131,11 @@ public class SalePersistence {
             }
         }
 
-        StringBuilder line = new StringBuilder()
-                .append(sale.getDate()).append(DELIMITER)
+        StringBuilder line = new StringBuilder();
+        if (sale.getId() != null) {
+            line.append(sale.getId()).append(DELIMITER);
+        }
+        line.append(sale.getDate()).append(DELIMITER)
                 .append(sale.getClient().getId()).append(DELIMITER)
                 .append(sale.getSeller().getId()).append(DELIMITER)
                 .append(productIds);
@@ -156,8 +162,9 @@ public class SalePersistence {
     /**
      * Parses a single delimited line of text back into a Sale instance,
      * resolving the client, seller, products and accessories by matching
-     * ids against the given lists, and restoring the promotion discount
-     * applied to the sale, if any.
+     * ids against the given lists, and restoring the sale id and the
+     * promotion discount applied to the sale, if any. A line whose first
+     * field is not a date is considered to start with the sale id.
      *
      * @param line        the text line to parse
      * @param people      the list of people to search for the client and seller
@@ -169,7 +176,12 @@ public class SalePersistence {
      */
     private Sale fromLine(String line, List<Person> people, List<Product> products,
                           List<Accessory> accessories) {
+        String saleId = null;
         String[] parts = line.split(DELIMITER);
+        if (parts.length > 0 && !isDate(parts[0])) {
+            saleId = parts[0];
+            parts = Arrays.copyOfRange(parts, 1, parts.length);
+        }
         if (parts.length < 4) {
             return null;
         }
@@ -218,6 +230,9 @@ public class SalePersistence {
         }
 
         Sale sale = new Sale(client, seller, saleProducts, saleAccessories, date);
+        if (saleId != null && !saleId.isBlank()) {
+            sale.setId(saleId);
+        }
         if (parts.length > 6) {
             try {
                 sale.setDiscountAmount(Double.parseDouble(parts[6]));
@@ -227,5 +242,20 @@ public class SalePersistence {
             }
         }
         return sale;
+    }
+
+    /**
+     * Checks whether the given text is a date in ISO format (YYYY-MM-DD).
+     *
+     * @param text the text to check
+     * @return true if the text is a valid date
+     */
+    private boolean isDate(String text) {
+        try {
+            LocalDate.parse(text);
+            return true;
+        } catch (DateTimeParseException e) {
+            return false;
+        }
     }
 }

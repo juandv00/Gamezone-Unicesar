@@ -22,6 +22,8 @@ import java.util.Map;
  */
 public class SaleService {
 
+    private static final String SALE_ID_PREFIX = "SALE-";
+
     private final SalePersistence salePersistence;
     private final ProductService productService;
     private final AccessoryService accessoryService;
@@ -71,6 +73,7 @@ public class SaleService {
         this.salePersistence = salePersistence;
         this.promotionService = promotionService;
         this.sales = salePersistence.load();
+        assignMissingIds();
     }
 
     /**
@@ -102,6 +105,7 @@ public class SaleService {
         }
 
         Sale sale = new Sale(client, seller, products);
+        sale.setId(nextSaleId());
         applyBestPromotion(sale);
         sales.add(sale);
         salePersistence.save(sales);
@@ -162,6 +166,7 @@ public class SaleService {
         }
 
         Sale sale = new Sale(client, seller, saleProducts, saleAccessories);
+        sale.setId(nextSaleId());
         applyBestPromotion(sale);
         sales.add(sale);
         salePersistence.save(sales);
@@ -175,6 +180,21 @@ public class SaleService {
      */
     public List<Sale> listAll() {
         return new ArrayList<>(sales);
+    }
+
+    /**
+     * Finds a registered sale by its identifier.
+     *
+     * @param saleId the id of the sale to search for
+     * @return the sale with the given id, or null if none exists
+     */
+    public Sale findById(String saleId) {
+        for (Sale sale : sales) {
+            if (sale.getId() != null && sale.getId().equalsIgnoreCase(saleId)) {
+                return sale;
+            }
+        }
+        return null;
     }
 
     /**
@@ -245,5 +265,44 @@ public class SaleService {
         double discount = Math.min(bestPromotion.calculateDiscount(sale), sale.calculateTotal());
         sale.setAppliedPromotionName(bestPromotion.getName());
         sale.setDiscountAmount(discount);
+    }
+
+    /**
+     * Generates the next available sale id, with the format SALE-n, where n
+     * is one more than the highest number already in use.
+     *
+     * @return the next sale id
+     */
+    private String nextSaleId() {
+        int highest = 0;
+        for (Sale sale : sales) {
+            String id = sale.getId();
+            if (id != null && id.startsWith(SALE_ID_PREFIX)) {
+                try {
+                    highest = Math.max(highest, Integer.parseInt(id.substring(SALE_ID_PREFIX.length())));
+                } catch (NumberFormatException e) {
+                    // Ids with another format do not affect the numbering.
+                }
+            }
+        }
+        return SALE_ID_PREFIX + (highest + 1);
+    }
+
+    /**
+     * Assigns an id to every loaded sale that does not have one (sales stored
+     * before sales had ids) and persists the change, so their ids stay the
+     * same in future executions.
+     */
+    private void assignMissingIds() {
+        boolean assigned = false;
+        for (Sale sale : sales) {
+            if (sale.getId() == null) {
+                sale.setId(nextSaleId());
+                assigned = true;
+            }
+        }
+        if (assigned) {
+            salePersistence.save(sales);
+        }
     }
 }
