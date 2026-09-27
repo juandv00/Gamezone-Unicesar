@@ -55,6 +55,17 @@ public abstract class Warranty {
     public abstract double getAdditionalCost();
 
 
+    /**
+     * Determines whether this warranty is still active on the given date.
+     *
+     * @param date the date to check
+     * @return true if date is within the [startDate, endDate] range
+     */
+    public boolean isActive(LocalDate date) {
+        return !date.isBefore(startDate) && !date.isAfter(endDate);
+    }
+
+
     public String getId() {
         return id;
     }
@@ -74,7 +85,6 @@ public abstract class Warranty {
     public LocalDate getEndDate() {
         return endDate;
     }
-
 
 
 }
