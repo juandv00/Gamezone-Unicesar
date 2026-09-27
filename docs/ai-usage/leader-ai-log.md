@@ -328,3 +328,78 @@ before approving them, and handling the review of a shared branch.
   ("Deletion of directory ... failed"), because the synchronization locks
   them. The branch was deleted anyway; only an empty log folder
   remained.
+
+## 15. Exam Requirement 4: integrating the warranty module
+
+**What I asked:** Requested help integrating the warranty module into the
+system. Developer 1 implemented the model (`Warranty`, `BasicWarranty`,
+`ExtendedWarranty`) and Developer 2 the persistence and service
+(`WarrantyRepository` and `WarrantyService`). My part covered the
+warranty cost in `Sale` and `SalePersistence`, the warranty assignment
+in `SaleService.registerSale`, the extended warranty question and the
+warranty submenu in `ConsoleUI`, `Main`, `README.md`, and the
+documentation (`warranty-analysis.md` and `warranty-class-diagram.md`).
+Every class was checked against the real repository and compiled before
+committing.
+
+**What I learned and applied:**
+- Detecting a circular dependency in the specification before writing
+  code: `SaleService` would depend on `WarrantyService`, which depends on
+  `WarrantyRepository`, and the specification suggested resolving sales
+  in the repository through `SaleService`. None of the three objects
+  could be created first in `Main`. The repository resolves sales through
+  `SalePersistence` instead, which also respects the direction of the
+  layers (persistence does not depend on services).
+- Resolving an ambiguity with a team decision: following the
+  specification literally, a console with an extended warranty would
+  also get a basic one, so `findWarrantyByProduct` could not return a
+  single warranty. We decided that the extended warranty replaces the
+  basic one, and documented it.
+- Preparing the model before the team: the warranty cost needed a place
+  in the sale, so I added `warrantyCost` to `Sale` (included in
+  `calculateFinalTotal()` and in the receipt) and to `SalePersistence`
+  before my teammates started, without depending on their classes.
+- Keeping the business rules consistent across modules: the promotion is
+  calculated on the subtotal, so extended warranties are not discounted,
+  and the monthly balance includes their income automatically because it
+  already used `calculateFinalTotal()`.
+- Extending a method without duplicating it: the existing
+  `registerSale` with accessories now calls the new overload that
+  receives `productIdsWithExtendedWarranty`, and the version with only
+  products also assigns basic warranties.
+- Validating before changing state: the requested extended warranties
+  are checked against the consoles of the sale before any stock is
+  reduced, so an invalid request leaves the inventory untouched.
+- Handling case-insensitive input in the interface: the warranty lookup
+  compares ids exactly, so `ConsoleUI` first finds the sale with
+  `SaleService.findById` (case-insensitive) and passes its exact id.
+
+## 16. Code review during Requirement 4
+
+**What I asked:** Requested help reviewing my teammates' Pull Requests
+for Requirement 4 before approving them.
+
+**What I learned:**
+- Clear agreements reduce corrections: this time I sent the exact method
+  signatures, the business decisions, and the reason to use
+  `SalePersistence` before the team started. Both Pull Requests matched
+  the agreed design and were approved without requested changes, unlike
+  in Requirement 3.
+- Testing edge cases of dates: a basic warranty that starts on 2026-08-31
+  ends on 2027-02-28, because `plusMonths` adjusts to the last day of the
+  month. `isActive` was checked on the end date (true) and the day after
+  (false).
+- Testing the whole flow after integrating: a sale with two consoles
+  with extended warranty, one console with basic warranty, and a video
+  game produced three warranties, a warranty cost of 2 × 10% of the
+  console price, a promotion calculated only on the subtotal, and a
+  monthly balance that included the warranty income. The warranties were
+  reloaded correctly after restarting the application.
+- Reviewing design risks, not only results: the constructor of
+  `Warranty` calls an overridable method (`getDurationInMonths()`); it is
+  safe because both subclasses return constants, and this is documented
+  in the analysis.
+- Commit history matters for the evaluation: Developer 1 split his work
+  into seven atomic commits, while Developer 2 used two. Commits that are
+  already pushed cannot be split without `push --force`, which is not
+  allowed, so the team should plan small commits from the start.
