@@ -6,8 +6,8 @@ workshop (Universidad Popular del Cesar).
 
 The system manages products (video games and consoles), accessories
 (controllers, cables, and memories), people (clients and sellers),
-sales, and promotional discounts, with data persisted to local files
-between executions.
+sales, promotional discounts, and product returns, with a monthly
+balance report and data persisted to local files between executions.
 
 ## Requirements
 
@@ -21,7 +21,7 @@ com.gamezone
 ├── model        # Domain classes (Person, Client, Seller, Product, VideoGame,
 │                #   Console, Accessory, Controller, Cable, Memory, Sale,
 │                #   Promotion, PercentageDiscount, CategoryDiscount,
-│                #   BulkPurchaseDiscount)
+│                #   BulkPurchaseDiscount, Return)
 ├── persistence  # File-based read/write for each module
 ├── service      # Business rules and validations
 ├── ui           # Console-based user interface (ConsoleUI)
@@ -32,8 +32,9 @@ Additional folders:
 - `data/` — files where the application's data is persisted:
   - `persons.txt` — clients and sellers (includes 3 pre-loaded sellers
     required for the first run).
-  - `products.txt`, `accessories.txt`, `sales.txt` — created
-    automatically when the first item of each kind is registered.
+  - `products.txt`, `accessories.txt`, `sales.txt`, `returns.csv` —
+    created automatically when the first item of each kind is
+    registered.
   - `promotions.csv` — promotions (includes 3 pre-loaded promotions, one
     of each type).
 - `docs/` — analysis documents, UML diagrams (Mermaid), and each team
@@ -65,7 +66,7 @@ startup is automatically saved back to disk after each operation.
 
 ## Functional operations
 
-The main menu is organized into five modules:
+The main menu is organized into six modules:
 
 **1. Product management**
 1. Register a new video game
@@ -79,8 +80,9 @@ The main menu is organized into five modules:
 
 **3. Sale management**
 1. Register a new sale (client + seller + one or more products, plus
-   optional accessories). The best active promotion is applied
-   automatically and the receipt is printed.
+   optional accessories). The sale receives an id (`SALE-1`,
+   `SALE-2`, ...), the best active promotion is applied automatically,
+   and the receipt is printed.
 2. View full sales history
 3. View purchase history for a specific client
 4. View sales history for a specific seller
@@ -102,6 +104,15 @@ The main menu is organized into five modules:
 3. Register a new bulk purchase promotion
 4. List all promotions
 5. List the promotions active today
+
+**6. Return management**
+1. Register a new return (sale id, products to return, and reason). The
+   refund is calculated automatically and the return receipt is printed.
+2. List all returns
+3. List returns by client
+4. List returns by sale
+5. View the monthly balance (total sales, total returns, and net
+   balance for a given month and year)
 
 ## Business rules
 
@@ -135,6 +146,24 @@ The main menu is organized into five modules:
 - The receipt shows each item, the subtotal, the discount applied (with
   the promotion name), and the final total.
 
+**Returns**
+- A return refers to an existing sale by its id and can include only
+  some of its products (partial returns are allowed).
+- A return can only be registered within the 30 calendar days that
+  follow the sale date (the 30th day included).
+- Every returned product must belong to the original sale, and each unit
+  sold can only be returned once, even across several returns of the
+  same sale.
+- The refund is the sum of the list prices of the returned products,
+  and their stock is increased automatically.
+- Only products can be returned; accessories are not part of the return
+  module.
+
+**Monthly balance**
+- For a given month and year, the report shows the total sales (final
+  totals, after promotion discounts), the total refunded by the returns
+  registered in that month, and the net balance (sales minus returns).
+
 ## Team
 
 See [TEAM.md](TEAM.md) for roles, module distribution, and committed
@@ -146,8 +175,11 @@ See the [docs/](docs) folder for:
 - `analysis.md` — design analysis of the base system and the accessory
   module.
 - `promotion-analysis.md` — design analysis of the promotion module.
+- `return-analysis.md` — design analysis of the return module.
 - `hierarchy-diagram.md`, `class-diagram.md`, `layers-diagram.md` — the
   base system's UML diagrams, written in Mermaid.
 - `promotion-class-diagram.md` — the updated class diagram with the
   promotion module, written in Mermaid.
+- `return-class-diagram.md` — the updated class diagram with the return
+  module, written in Mermaid.
 - `ai-usage/` — each team member's AI usage log.
