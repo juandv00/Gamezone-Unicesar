@@ -97,36 +97,41 @@ public class PromotionRepository {
     /**
      * Reconstructs a single Promotion from its delimited text representation,
      * using the discriminator column to determine which concrete subtype to
-     * instantiate.
+     * instantiate. Malformed lines (missing fields, invalid numbers or dates)
+     * are skipped with a warning instead of stopping the whole load.
      *
      * @param line the delimited line read from the file
      * @return the reconstructed Promotion, or null if the line is malformed or
      * its type is not recognized
      */
     private Promotion fromLine(String line) {
-        String[] parts = line.split(DELIMITER);
-        if (parts.length < 5) {
+        if (line.isBlank()) {
             return null;
         }
-        String type = parts[0];
-        String id = parts[1];
-        String name = parts[2];
-        LocalDate startDate = LocalDate.parse(parts[3]);
-        LocalDate endDate = LocalDate.parse(parts[4]);
+        String[] parts = line.split(DELIMITER);
+        try {
+            String type = parts[0];
+            String id = parts[1];
+            String name = parts[2];
+            LocalDate startDate = LocalDate.parse(parts[3]);
+            LocalDate endDate = LocalDate.parse(parts[4]);
 
-        if (type.equals("PERCENTAGE")) {
-            double percentage = Double.parseDouble(parts[5]);
-            return new PercentageDiscount(id, name, startDate, endDate, percentage);
+            if (type.equals("PERCENTAGE")) {
+                double percentage = Double.parseDouble(parts[5]);
+                return new PercentageDiscount(id, name, startDate, endDate, percentage);
 
-        } else if (type.equals("CATEGORY")) {
-            double percentage = Double.parseDouble(parts[5]);
-            String targetCategory = parts[6];
-            return new CategoryDiscount(id, name, startDate, endDate, percentage, targetCategory);
+            } else if (type.equals("CATEGORY")) {
+                double percentage = Double.parseDouble(parts[5]);
+                String targetCategory = parts[6];
+                return new CategoryDiscount(id, name, startDate, endDate, percentage, targetCategory);
 
-        } else if (type.equals("BULK")) {
-            int minimumQuantity = Integer.parseInt(parts[5]);
-            double percentage = Double.parseDouble(parts[6]);
-            return new BulkPurchaseDiscount(id, name, startDate, endDate, minimumQuantity, percentage);
+            } else if (type.equals("BULK")) {
+                int minimumQuantity = Integer.parseInt(parts[5]);
+                double percentage = Double.parseDouble(parts[6]);
+                return new BulkPurchaseDiscount(id, name, startDate, endDate, minimumQuantity, percentage);
+            }
+        } catch (RuntimeException e) {
+            System.out.println("Skipping malformed promotion line: " + line);
         }
         return null;
     }
