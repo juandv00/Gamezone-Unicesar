@@ -22,10 +22,12 @@ import java.util.List;
  * reconstructing a Sale from stored data.
  *
  * <p>Each sale is stored as one line with the format
- * {@code [saleId;]date;clientId;sellerId;productIds[;accessoryIds[;promotionName;discountAmount]]},
- * where ids are separated by commas. The accessory field is only written
- * when the sale includes accessories or a promotion, and the promotion
- * fields only when a discount was applied. Lines stored before sales had
+ * {@code [saleId;]date;clientId;sellerId;productIds[;accessoryIds[;promotionName;discountAmount[;warrantyCost]]]},
+ * where ids are separated by commas. Optional fields are only written when
+ * they (or a later field) have a value: a sale without accessories,
+ * discount or warranty cost is stored without them, and a sale with a
+ * warranty cost but no discount stores an empty promotion name and a
+ * discount of 0. Lines stored before sales had
  * an id start directly with the date, so all older lines are still read
  * correctly; those sales receive an id from the service layer.</p>
  */
@@ -141,7 +143,8 @@ public class SalePersistence {
                 .append(productIds);
 
         List<Accessory> accessories = sale.getAccessories();
-        if (!accessories.isEmpty() || sale.hasDiscount()) {
+        boolean hasWarrantyCost = sale.getWarrantyCost() > 0;
+        if (!accessories.isEmpty() || sale.hasDiscount() || hasWarrantyCost) {
             line.append(DELIMITER);
             for (int i = 0; i < accessories.size(); i++) {
                 line.append(accessories.get(i).getId());
@@ -155,6 +158,12 @@ public class SalePersistence {
             String promotionName = sale.getAppliedPromotionName().replace(DELIMITER, ",");
             line.append(DELIMITER).append(promotionName)
                     .append(DELIMITER).append(sale.getDiscountAmount());
+        } else if (hasWarrantyCost) {
+            line.append(DELIMITER).append(DELIMITER).append(0.0);
+        }
+
+        if (hasWarrantyCost) {
+            line.append(DELIMITER).append(sale.getWarrantyCost());
         }
         return line.toString();
     }
@@ -162,8 +171,9 @@ public class SalePersistence {
     /**
      * Parses a single delimited line of text back into a Sale instance,
      * resolving the client, seller, products and accessories by matching
-     * ids against the given lists, and restoring the sale id and the
-     * promotion discount applied to the sale, if any. A line whose first
+     * ids against the given lists, and restoring the sale id, the
+     * promotion discount applied to the sale and the cost of its extended
+     * warranties, if any. A line whose first
      * field is not a date is considered to start with the sale id.
      *
      * @param line        the text line to parse
@@ -233,12 +243,19 @@ public class SalePersistence {
         if (saleId != null && !saleId.isBlank()) {
             sale.setId(saleId);
         }
-        if (parts.length > 6) {
+        if (parts.length > 6 && !parts[5].isBlank()) {
             try {
                 sale.setDiscountAmount(Double.parseDouble(parts[6]));
                 sale.setAppliedPromotionName(parts[5]);
             } catch (IllegalArgumentException e) {
                 System.out.println("Invalid discount stored for a sale; it was ignored.");
+            }
+        }
+        if (parts.length > 7) {
+            try {
+                sale.setWarrantyCost(Double.parseDouble(parts[7]));
+            } catch (IllegalArgumentException e) {
+                System.out.println("Invalid warranty cost stored for a sale; it was ignored.");
             }
         }
         return sale;

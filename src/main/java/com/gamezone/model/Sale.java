@@ -23,6 +23,7 @@ public class Sale {
     private List<Accessory> accessories;
     private String appliedPromotionName;
     private double discountAmount;
+    private double warrantyCost;
 
     /**
      * Creates a new Sale with the current date, the given client, seller,
@@ -202,13 +203,39 @@ public class Sale {
     }
 
     /**
+     * Returns the additional cost, in pesos, of the extended warranties
+     * purchased with this sale.
+     *
+     * @return the total cost of the extended warranties, or 0 if none
+     */
+    public double getWarrantyCost() {
+        return warrantyCost;
+    }
+
+    /**
+     * Sets the additional cost, in pesos, of the extended warranties
+     * purchased with this sale. This cost is added to the final total and is
+     * not affected by promotion discounts.
+     *
+     * @param warrantyCost the total cost of the extended warranties
+     * @throws IllegalArgumentException if warrantyCost is negative
+     */
+    public void setWarrantyCost(double warrantyCost) {
+        if (warrantyCost < 0) {
+            throw new IllegalArgumentException("Warranty cost cannot be negative.");
+        }
+        this.warrantyCost = warrantyCost;
+    }
+
+    /**
      * Calculates the final total of the sale: the subtotal minus the
-     * promotion discount applied to it.
+     * promotion discount applied to it, plus the cost of the extended
+     * warranties purchased with it.
      *
      * @return the final amount to be paid for the sale
      */
     public double calculateFinalTotal() {
-        return calculateTotal() - discountAmount;
+        return calculateTotal() - discountAmount + warrantyCost;
     }
 
     /**
@@ -235,7 +262,8 @@ public class Sale {
     /**
      * Generates a text receipt for the sale, listing every product and
      * accessory with its price, followed by the subtotal, the discount
-     * applied (with the name of the promotion) and the final total.
+     * applied (with the name of the promotion), the cost of the extended
+     * warranties (if any) and the final total.
      *
      * @return the receipt of the sale as multi-line text
      */
@@ -264,6 +292,9 @@ public class Sale {
         } else {
             receipt.append("Discount: none\n");
         }
+        if (warrantyCost > 0) {
+            receipt.append("Extended warranties: +").append(formatAmount(warrantyCost)).append("\n");
+        }
         receipt.append("Total: ").append(formatAmount(calculateFinalTotal())).append("\n");
         receipt.append("=======================================");
         return receipt.toString();
@@ -278,9 +309,10 @@ public class Sale {
         String discount = hasDiscount()
                 ? ", discount=$" + discountAmount + " (" + appliedPromotionName + ")"
                 : "";
+        String warranty = warrantyCost > 0 ? ", warranties=$" + warrantyCost : "";
         String idText = id != null ? "id=" + id + ", " : "";
         return "Sale{" + idText + "date=" + date + ", client=" + client.getName() +
-                ", seller=" + seller.getName() + discount +
+                ", seller=" + seller.getName() + discount + warranty +
                 ", total=$" + calculateFinalTotal() + "}";
     }
 }
