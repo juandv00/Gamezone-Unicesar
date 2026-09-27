@@ -1,5 +1,8 @@
 package com.gamezone;
 
+import com.gamezone.persistence.AccessoryRepository;
+import com.gamezone.persistence.SalePersistence;
+import com.gamezone.service.AccessoryService;
 import com.gamezone.service.PersonService;
 import com.gamezone.service.ProductService;
 import com.gamezone.service.SaleService;
@@ -7,13 +10,13 @@ import com.gamezone.ui.ConsoleUI;
 
 /**
  * Entry point of the GameZone Unicesar application. Wires together the
- * services of the three modules (products, people, and sales) and starts
- * the console-based user interface, which loads previously stored data
- * automatically when the application starts.
+ * services of the modules (products, people, accessories, and sales) and
+ * starts the console-based user interface, which loads previously stored
+ * data automatically when the application starts.
  */
 public class Main {
 
-    /**3
+    /**
      * Starts the GameZone Unicesar application.
      *
      * @param args command-line arguments (not used)
@@ -23,7 +26,11 @@ public class Main {
 
         ProductService productService = new ProductService();
         PersonService personService = new PersonService();
-        SaleService saleService = new SaleService(productService);
+
+        AccessoryRepository accessoryRepository = new AccessoryRepository();
+        AccessoryService accessoryService = new AccessoryService(accessoryRepository);
+        SalePersistence salePersistence = new SalePersistence(accessoryRepository);
+        SaleService saleService = new SaleService(productService, accessoryService, salePersistence);
 
         ConsoleUI consoleUI = new ConsoleUI(productService, personService, saleService);
         consoleUI.run();
