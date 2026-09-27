@@ -6,8 +6,9 @@ workshop (Universidad Popular del Cesar).
 
 The system manages products (video games and consoles), accessories
 (controllers, cables, and memories), people (clients and sellers),
-sales, promotional discounts, and product returns, with a monthly
-balance report and data persisted to local files between executions.
+sales, promotional discounts, product returns, and console warranties,
+with a monthly balance report and data persisted to local files between
+executions.
 
 ## Requirements
 
@@ -21,7 +22,8 @@ com.gamezone
 ├── model        # Domain classes (Person, Client, Seller, Product, VideoGame,
 │                #   Console, Accessory, Controller, Cable, Memory, Sale,
 │                #   Promotion, PercentageDiscount, CategoryDiscount,
-│                #   BulkPurchaseDiscount, Return)
+│                #   BulkPurchaseDiscount, Return, Warranty,
+│                #   BasicWarranty, ExtendedWarranty)
 ├── persistence  # File-based read/write for each module
 ├── service      # Business rules and validations
 ├── ui           # Console-based user interface (ConsoleUI)
@@ -32,7 +34,8 @@ Additional folders:
 - `data/` — files where the application's data is persisted:
   - `persons.txt` — clients and sellers (includes 3 pre-loaded sellers
     required for the first run).
-  - `products.txt`, `accessories.txt`, `sales.txt`, `returns.csv` —
+  - `products.txt`, `accessories.txt`, `sales.txt`, `returns.csv`,
+    `warranties.csv` —
     created automatically when the first item of each kind is
     registered.
   - `promotions.csv` — promotions (includes 3 pre-loaded promotions, one
@@ -66,7 +69,7 @@ startup is automatically saved back to disk after each operation.
 
 ## Functional operations
 
-The main menu is organized into six modules:
+The main menu is organized into seven modules:
 
 **1. Product management**
 1. Register a new video game
@@ -81,8 +84,10 @@ The main menu is organized into six modules:
 **3. Sale management**
 1. Register a new sale (client + seller + one or more products, plus
    optional accessories). The sale receives an id (`SALE-1`,
-   `SALE-2`, ...), the best active promotion is applied automatically,
-   and the receipt is printed.
+   `SALE-2`, ...), and for each console the seller is asked whether to
+   add an extended warranty. The best active promotion is applied
+   automatically, every console receives its warranty, and the receipt
+   and warranty certificates are printed.
 2. View full sales history
 3. View purchase history for a specific client
 4. View sales history for a specific seller
@@ -113,6 +118,14 @@ The main menu is organized into six modules:
 4. List returns by sale
 5. View the monthly balance (total sales, total returns, and net
    balance for a given month and year)
+
+**7. Warranty management**
+1. View the warranty of a product in a specific sale (certificate and
+   whether it is active today)
+2. List all warranties
+3. List the warranties active today
+4. List the warranties expiring soon (within a number of days chosen by
+   the user)
 
 ## Business rules
 
@@ -159,10 +172,28 @@ The main menu is organized into six modules:
 - Only products can be returned; accessories are not part of the return
   module.
 
+**Warranties**
+- Only consoles receive warranties; video games and accessories do not.
+- Every console sold receives exactly one warranty, starting on the sale
+  date:
+  - *Basic warranty* (default): covers factory defects for 6 months, at
+    no additional cost.
+  - *Extended warranty* (optional, chosen by the seller): covers factory
+    defects and accidental damage for 12 months, and costs 10% of the
+    console price per unit. It replaces the basic warranty, since it
+    covers the same and more.
+- The cost of the extended warranties is added to the sale total and is
+  not affected by promotion discounts.
+- A warranty is active from its start date to its end date, both
+  included.
+- Returning a console does not change its warranty, and the extended
+  warranty cost is not refunded.
+
 **Monthly balance**
 - For a given month and year, the report shows the total sales (final
-  totals, after promotion discounts), the total refunded by the returns
-  registered in that month, and the net balance (sales minus returns).
+  totals, after promotion discounts and including extended warranty
+  costs), the total refunded by the returns registered in that month,
+  and the net balance (sales minus returns).
 
 ## Team
 
@@ -176,10 +207,13 @@ See the [docs/](docs) folder for:
   module.
 - `promotion-analysis.md` — design analysis of the promotion module.
 - `return-analysis.md` — design analysis of the return module.
+- `warranty-analysis.md` — design analysis of the warranty module.
 - `hierarchy-diagram.md`, `class-diagram.md`, `layers-diagram.md` — the
   base system's UML diagrams, written in Mermaid.
 - `promotion-class-diagram.md` — the updated class diagram with the
   promotion module, written in Mermaid.
 - `return-class-diagram.md` — the updated class diagram with the return
   module, written in Mermaid.
+- `warranty-class-diagram.md` — the updated class diagram with the
+  warranty module, written in Mermaid.
 - `ai-usage/` — each team member's AI usage log.
