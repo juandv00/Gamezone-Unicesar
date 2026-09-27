@@ -337,8 +337,8 @@ public class ConsoleUI {
     /**
      * Guides the user through registering a new sale: selecting the client,
      * the seller, one or more products and, when the accessory module is
-     * available, one or more accessories. A sale must include at least one
-     * product or accessory.
+     * available, any accessories sold together with them. A sale must
+     * include at least one product.
      */
     private void registerSale() {
         System.out.print("Client id: ");
@@ -389,7 +389,7 @@ public class ConsoleUI {
         try {
             Sale sale = saleService.registerSale(client, seller, products, accessories);
             if (sale == null) {
-                System.out.println("Sale could not be registered (no products or accessories, or insufficient stock).");
+                System.out.println("Sale could not be registered (no products, or insufficient stock).");
             } else {
                 System.out.println("Sale registered successfully. Total: $" + sale.calculateTotal());
             }

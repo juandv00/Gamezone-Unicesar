@@ -89,8 +89,9 @@ public class SaleService {
     }
 
     /**
-     * Registers a new sale that may include products and accessories.
-     * The sale must contain at least one item in total. Each occurrence of
+     * Registers a new sale that includes products and, optionally,
+     * accessories. The sale must contain at least one product; accessories
+     * can only be sold together with products. Each occurrence of
      * an item in its list counts as one unit, so if the same item appears
      * several times, the stock is validated against the total requested.
      * Stock is validated for every item before anything is reduced, so a
@@ -98,10 +99,10 @@ public class SaleService {
      *
      * @param client      the client making the purchase
      * @param seller      the seller attending the sale
-     * @param products    the list of products included in the sale (may be empty)
+     * @param products    the list of products included in the sale
      * @param accessories the list of accessories included in the sale (may be empty)
      * @return the registered Sale if successful, or null if the sale could
-     *         not be registered (no items or insufficient stock for any item)
+     *         not be registered (no products or insufficient stock for any item)
      * @throws IOException           if the accessory stock could not be persisted
      * @throws IllegalStateException if accessories are given but this service
      *                               was created without an AccessoryService
@@ -111,7 +112,7 @@ public class SaleService {
         List<Product> saleProducts = products == null ? new ArrayList<>() : new ArrayList<>(products);
         List<Accessory> saleAccessories = accessories == null ? new ArrayList<>() : new ArrayList<>(accessories);
 
-        if (saleProducts.isEmpty() && saleAccessories.isEmpty()) {
+        if (saleProducts.isEmpty()) {
             return null;
         }
         if (!saleAccessories.isEmpty() && accessoryService == null) {
