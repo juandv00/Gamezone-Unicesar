@@ -9,6 +9,7 @@ import com.gamezone.model.Memory;
 import com.gamezone.model.Person;
 import com.gamezone.model.Product;
 import com.gamezone.model.Promotion;
+import com.gamezone.model.Return;
 import com.gamezone.model.Sale;
 import com.gamezone.model.Seller;
 import com.gamezone.model.VideoGame;
@@ -16,19 +17,21 @@ import com.gamezone.service.AccessoryService;
 import com.gamezone.service.PersonService;
 import com.gamezone.service.ProductService;
 import com.gamezone.service.PromotionService;
+import com.gamezone.service.ReturnService;
 import com.gamezone.service.SaleService;
 import java.io.IOException;
 import java.time.LocalDate;
 import java.time.format.DateTimeParseException;
 import java.util.ArrayList;
 import java.util.List;
+import java.util.Locale;
 import java.util.Scanner;
 
 /**
  * Provides the console-based user interface for GameZone Unicesar,
- * allowing the user to manage products, people, accessories, sales, and
- * promotions through a text menu that delegates all operations to the
- * corresponding services.
+ * allowing the user to manage products, people, accessories, sales,
+ * promotions, and returns through a text menu that delegates all operations
+ * to the corresponding services.
  */
 public class ConsoleUI {
 
@@ -37,6 +40,7 @@ public class ConsoleUI {
     private final SaleService saleService;
     private final AccessoryService accessoryService;
     private final PromotionService promotionService;
+    private final ReturnService returnService;
     private final Scanner scanner;
 
     /**
@@ -81,11 +85,33 @@ public class ConsoleUI {
     public ConsoleUI(ProductService productService, PersonService personService,
                      SaleService saleService, AccessoryService accessoryService,
                      PromotionService promotionService) {
+        this(productService, personService, saleService, accessoryService, promotionService, null);
+    }
+
+    /**
+     * Creates a new ConsoleUI that also supports registering and consulting
+     * product returns and the monthly balance report, in addition to
+     * accessories, promotions, and sales.
+     *
+     * @param productService   the service used for product operations
+     * @param personService    the service used for people operations
+     * @param saleService      the service used for sale operations
+     * @param accessoryService the service used for accessory operations, or
+     *                         null to disable the accessory module
+     * @param promotionService the service used for promotion operations, or
+     *                         null to disable the promotion module
+     * @param returnService    the service used for return operations, or
+     *                         null to disable the return module
+     */
+    public ConsoleUI(ProductService productService, PersonService personService,
+                     SaleService saleService, AccessoryService accessoryService,
+                     PromotionService promotionService, ReturnService returnService) {
         this.productService = productService;
         this.personService = personService;
         this.saleService = saleService;
         this.accessoryService = accessoryService;
         this.promotionService = promotionService;
+        this.returnService = returnService;
         this.scanner = new Scanner(System.in);
     }
 
@@ -104,6 +130,7 @@ public class ConsoleUI {
                 case 3 -> saleMenu();
                 case 4 -> accessoryMenu();
                 case 5 -> promotionMenu();
+                case 6 -> returnMenu();
                 case 0 -> exit = true;
                 default -> System.out.println("Invalid option. Please try again.");
             }
@@ -122,6 +149,7 @@ public class ConsoleUI {
         System.out.println("3. Sale management");
         System.out.println("4. Accessory management");
         System.out.println("5. Promotion management");
+        System.out.println("6. Return management");
         System.out.println("0. Exit");
         System.out.print("Select an option: ");
     }
@@ -839,6 +867,175 @@ public class ConsoleUI {
             System.out.println("[" + accessory.getType() + "] " + accessory.getId() + " - "
                     + accessory.getDescription());
         }
+    }
+
+    // ===================== RETURN MENU =====================
+
+    /**
+     * Displays the return management submenu, allowing the user to register
+     * returns, consult them (all, by client, or by sale), and view the
+     * monthly balance report.
+     */
+    private void returnMenu() {
+        if (returnService == null) {
+            System.out.println("The return module is not available.");
+            return;
+        }
+        boolean back = false;
+        while (!back) {
+            System.out.println("\n--- Return management ---");
+            System.out.println("1. Register a new return");
+            System.out.println("2. List all returns");
+            System.out.println("3. List returns by client");
+            System.out.println("4. List returns by sale");
+            System.out.println("5. View monthly balance");
+            System.out.println("0. Back to main menu");
+            System.out.print("Select an option: ");
+            int option = readOption();
+            switch (option) {
+                case 1 -> registerReturn();
+                case 2 -> printReturns(returnService.viewAllReturns(), "No returns registered yet.");
+                case 3 -> listReturnsByClient();
+                case 4 -> listReturnsBySale();
+                case 5 -> showMonthlyBalance();
+                case 0 -> back = true;
+                default -> System.out.println("Invalid option. Please try again.");
+            }
+        }
+    }
+
+    /**
+     * Guides the user through registering a return: choosing the original
+     * sale, selecting which of its products are returned, and giving a
+     * reason. The business rules (30-day window, products belonging to the
+     * sale, units not returned twice) are validated by the ReturnService;
+     * the sale window is also checked here to warn the user early.
+     */
+    private void registerReturn() {
+        System.out.print("Sale id (e.g. SALE-1): ");
+        String saleId = scanner.nextLine().trim();
+        Sale sale = saleService.findById(saleId);
+        if (sale == null) {
+            System.out.println("No sale found with that id.");
+            return;
+        }
+        if (!sale.canBeReturned()) {
+            System.out.println("This sale can no longer be returned: more than 30 days have passed since "
+                    + sale.getDate() + ".");
+            return;
+        }
+
+        System.out.println("\nProducts in sale " + sale.getId() + ":");
+        for (Product product : sale.getProducts()) {
+            System.out.println("  " + product.getId() + " - " + product.getTitle()
+                    + " (" + formatAmount(product.getPrice()) + ")");
+        }
+
+        List<String> productIds = new ArrayList<>();
+        boolean addingProducts = true;
+        while (addingProducts) {
+            System.out.print("Product id to return (or 0 to finish): ");
+            String productId = scanner.nextLine().trim();
+            if (productId.equals("0")) {
+                addingProducts = false;
+            } else if (!productId.isEmpty()) {
+                productIds.add(productId);
+            }
+        }
+        if (productIds.isEmpty()) {
+            System.out.println("No products selected. The return was cancelled.");
+            return;
+        }
+
+        System.out.print("Reason for the return: ");
+        String reason = scanner.nextLine().trim();
+
+        try {
+            Return registeredReturn = returnService.registerReturn(saleId, productIds, reason);
+            System.out.println("Return registered successfully.");
+            System.out.println(registeredReturn.generateReturnReceipt());
+        } catch (IllegalArgumentException e) {
+            System.out.println("Could not register return: " + e.getMessage());
+        }
+    }
+
+    /**
+     * Lists the returns of the sales made by a client chosen by the user.
+     */
+    private void listReturnsByClient() {
+        System.out.print("Client id: ");
+        String clientId = scanner.nextLine().trim();
+        printReturns(returnService.viewReturnsByCustomer(clientId),
+                "No returns found for that client.");
+    }
+
+    /**
+     * Lists the returns associated with a sale chosen by the user.
+     */
+    private void listReturnsBySale() {
+        System.out.print("Sale id: ");
+        String saleId = scanner.nextLine().trim();
+        printReturns(returnService.viewReturnsBySale(saleId), "No returns found for that sale.");
+    }
+
+    /**
+     * Asks the user for a month and year and shows the monthly balance:
+     * total sales, total refunded by returns, and the net balance.
+     */
+    private void showMonthlyBalance() {
+        System.out.print("Month (1-12): ");
+        int month = readOption();
+        System.out.print("Year (e.g. 2026): ");
+        int year = readOption();
+        if (year <= 0) {
+            System.out.println("Invalid year.");
+            return;
+        }
+        try {
+            double sales = returnService.calculateMonthlySalesTotal(month, year);
+            double refunds = returnService.calculateMonthlyReturnsTotal(month, year);
+            double balance = returnService.generateMonthlyBalance(month, year);
+            System.out.println("\n===== Monthly balance " + String.format("%02d/%d", month, year) + " =====");
+            System.out.println("Total sales:   " + formatAmount(sales));
+            System.out.println("Total returns: " + formatAmount(refunds));
+            System.out.println("Net balance:   " + formatAmount(balance));
+        } catch (IllegalArgumentException e) {
+            System.out.println("Could not generate the balance: " + e.getMessage());
+        }
+    }
+
+    /**
+     * Prints a one-line summary of each return in the given list, or the
+     * given message if the list is empty.
+     *
+     * @param returns      the returns to print
+     * @param emptyMessage the message shown when there are no returns
+     */
+    private void printReturns(List<Return> returns, String emptyMessage) {
+        if (returns.isEmpty()) {
+            System.out.println(emptyMessage);
+            return;
+        }
+        System.out.println("\n--- Returns ---");
+        for (Return r : returns) {
+            Sale sale = r.getOriginalSale();
+            System.out.println(r.getId() + " | " + r.getDate()
+                    + " | sale " + sale.getId()
+                    + " | client " + sale.getClient().getName()
+                    + " | " + r.getReturnedProducts().size() + " product(s)"
+                    + " | refund " + formatAmount(r.getRefundAmount())
+                    + " | reason: " + r.getReason());
+        }
+    }
+
+    /**
+     * Formats an amount of money for display, e.g. $1,250,000.00.
+     *
+     * @param amount the amount to format
+     * @return the formatted amount
+     */
+    private String formatAmount(double amount) {
+        return String.format(Locale.US, "$%,.2f", amount);
     }
 
     // ===================== PROMOTION MENU =====================
