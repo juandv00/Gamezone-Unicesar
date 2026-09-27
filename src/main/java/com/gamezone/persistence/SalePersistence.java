@@ -20,10 +20,11 @@ import java.util.List;
  * reconstructing a Sale from stored data.
  *
  * <p>Each sale is stored as one line with the format
- * {@code date;clientId;sellerId;productIds[;accessoryIds]}, where ids are
- * separated by commas. The accessory field is only written when the sale
- * includes accessories, so lines stored before accessories existed are
- * still read correctly.</p>
+ * {@code date;clientId;sellerId;productIds[;accessoryIds[;promotionName;discountAmount]]},
+ * where ids are separated by commas. The accessory field is only written
+ * when the sale includes accessories or a promotion, and the promotion
+ * fields only when a discount was applied, so lines stored before these
+ * features existed are still read correctly.</p>
  */
 public class SalePersistence {
 
@@ -134,7 +135,7 @@ public class SalePersistence {
                 .append(productIds);
 
         List<Accessory> accessories = sale.getAccessories();
-        if (!accessories.isEmpty()) {
+        if (!accessories.isEmpty() || sale.hasDiscount()) {
             line.append(DELIMITER);
             for (int i = 0; i < accessories.size(); i++) {
                 line.append(accessories.get(i).getId());
@@ -143,13 +144,20 @@ public class SalePersistence {
                 }
             }
         }
+
+        if (sale.hasDiscount()) {
+            String promotionName = sale.getAppliedPromotionName().replace(DELIMITER, ",");
+            line.append(DELIMITER).append(promotionName)
+                    .append(DELIMITER).append(sale.getDiscountAmount());
+        }
         return line.toString();
     }
 
     /**
      * Parses a single delimited line of text back into a Sale instance,
      * resolving the client, seller, products and accessories by matching
-     * ids against the given lists.
+     * ids against the given lists, and restoring the promotion discount
+     * applied to the sale, if any.
      *
      * @param line        the text line to parse
      * @param people      the list of people to search for the client and seller
@@ -209,6 +217,15 @@ public class SalePersistence {
             return null;
         }
 
-        return new Sale(client, seller, saleProducts, saleAccessories, date);
+        Sale sale = new Sale(client, seller, saleProducts, saleAccessories, date);
+        if (parts.length > 6) {
+            try {
+                sale.setDiscountAmount(Double.parseDouble(parts[6]));
+                sale.setAppliedPromotionName(parts[5]);
+            } catch (IllegalArgumentException e) {
+                System.out.println("Invalid discount stored for a sale; it was ignored.");
+            }
+        }
+        return sale;
     }
 }
