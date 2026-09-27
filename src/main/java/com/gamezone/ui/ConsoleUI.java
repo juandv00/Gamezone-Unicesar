@@ -1,29 +1,37 @@
 package com.gamezone.ui;
 
+import com.gamezone.model.Accessory;
+import com.gamezone.model.Cable;
 import com.gamezone.model.Client;
 import com.gamezone.model.Console;
+import com.gamezone.model.Controller;
+import com.gamezone.model.Memory;
 import com.gamezone.model.Person;
 import com.gamezone.model.Product;
 import com.gamezone.model.Sale;
 import com.gamezone.model.Seller;
 import com.gamezone.model.VideoGame;
+import com.gamezone.service.AccessoryService;
 import com.gamezone.service.PersonService;
 import com.gamezone.service.ProductService;
 import com.gamezone.service.SaleService;
+import java.io.IOException;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.Scanner;
 
 /**
  * Provides the console-based user interface for GameZone Unicesar,
- * allowing the user to manage products, people, and sales through a
- * text menu that delegates all operations to the corresponding services.
+ * allowing the user to manage products, people, accessories, and sales
+ * through a text menu that delegates all operations to the corresponding
+ * services.
  */
 public class ConsoleUI {
 
     private final ProductService productService;
     private final PersonService personService;
     private final SaleService saleService;
+    private final AccessoryService accessoryService;
     private final Scanner scanner;
 
     /**
@@ -35,9 +43,25 @@ public class ConsoleUI {
      * @param saleService    the service used for sale operations
      */
     public ConsoleUI(ProductService productService, PersonService personService, SaleService saleService) {
+        this(productService, personService, saleService, null);
+    }
+
+    /**
+     * Creates a new ConsoleUI that also supports managing accessories and
+     * selling them together with products.
+     *
+     * @param productService   the service used for product operations
+     * @param personService    the service used for people operations
+     * @param saleService      the service used for sale operations
+     * @param accessoryService the service used for accessory operations, or
+     *                         null to disable the accessory module
+     */
+    public ConsoleUI(ProductService productService, PersonService personService,
+                     SaleService saleService, AccessoryService accessoryService) {
         this.productService = productService;
         this.personService = personService;
         this.saleService = saleService;
+        this.accessoryService = accessoryService;
         this.scanner = new Scanner(System.in);
     }
 
@@ -54,6 +78,7 @@ public class ConsoleUI {
                 case 1 -> productMenu();
                 case 2 -> personMenu();
                 case 3 -> saleMenu();
+                case 4 -> accessoryMenu();
                 case 0 -> exit = true;
                 default -> System.out.println("Invalid option. Please try again.");
             }
@@ -70,6 +95,7 @@ public class ConsoleUI {
         System.out.println("1. Product management");
         System.out.println("2. Person management");
         System.out.println("3. Sale management");
+        System.out.println("4. Accessory management");
         System.out.println("0. Exit");
         System.out.print("Select an option: ");
     }
@@ -310,7 +336,9 @@ public class ConsoleUI {
 
     /**
      * Guides the user through registering a new sale: selecting the client,
-     * the seller, and one or more products.
+     * the seller, one or more products and, when the accessory module is
+     * available, one or more accessories. A sale must include at least one
+     * product or accessory.
      */
     private void registerSale() {
         System.out.print("Client id: ");
@@ -347,12 +375,54 @@ public class ConsoleUI {
             System.out.println(product.getTitle() + " added.");
         }
 
-        Sale sale = saleService.registerSale(client, seller, products);
-        if (sale == null) {
-            System.out.println("Sale could not be registered (no products, or insufficient stock).");
-        } else {
-            System.out.println("Sale registered successfully. Total: $" + sale.calculateTotal());
+        if (accessoryService == null) {
+            Sale sale = saleService.registerSale(client, seller, products);
+            if (sale == null) {
+                System.out.println("Sale could not be registered (no products, or insufficient stock).");
+            } else {
+                System.out.println("Sale registered successfully. Total: $" + sale.calculateTotal());
+            }
+            return;
         }
+
+        List<Accessory> accessories = readSaleAccessories();
+        try {
+            Sale sale = saleService.registerSale(client, seller, products, accessories);
+            if (sale == null) {
+                System.out.println("Sale could not be registered (no products or accessories, or insufficient stock).");
+            } else {
+                System.out.println("Sale registered successfully. Total: $" + sale.calculateTotal());
+            }
+        } catch (IOException | IllegalStateException e) {
+            System.out.println("Could not register sale: " + e.getMessage());
+        }
+    }
+
+    /**
+     * Asks the user for the accessories to include in a sale, one id at a
+     * time, until the user enters 0.
+     *
+     * @return the list of accessories selected (may be empty)
+     */
+    private List<Accessory> readSaleAccessories() {
+        List<Accessory> accessories = new ArrayList<>();
+        boolean addingAccessories = true;
+        while (addingAccessories) {
+            System.out.print("Accessory id to add (or 0 to finish): ");
+            String accessoryId = scanner.nextLine().trim();
+            if (accessoryId.equals("0")) {
+                addingAccessories = false;
+                continue;
+            }
+            Accessory accessory = accessoryService.findById(accessoryId);
+            if (accessory == null) {
+                System.out.println("No accessory found with that id.");
+                continue;
+            }
+            accessories.add(accessory);
+            System.out.println(accessory.getTitle() + " added.");
+        }
+        return accessories;
     }
 
     /**
@@ -396,6 +466,325 @@ public class ConsoleUI {
         System.out.println("\n--- Sales ---");
         for (Sale sale : sales) {
             System.out.println(sale);
+            List<Accessory> accessories = sale.getAccessories();
+            if (!accessories.isEmpty()) {
+                StringBuilder titles = new StringBuilder();
+                for (Accessory accessory : accessories) {
+                    if (titles.length() > 0) {
+                        titles.append(", ");
+                    }
+                    titles.append(accessory.getTitle());
+                }
+                System.out.println("  Accessories: " + titles);
+            }
+        }
+    }
+
+    // ===================== ACCESSORY MENU =====================
+
+    /**
+     * Displays the accessory management submenu, allowing the user to
+     * register controllers, cables and memories, list and filter them,
+     * query and register console compatibility, and update their stock.
+     */
+    private void accessoryMenu() {
+        if (accessoryService == null) {
+            System.out.println("The accessory module is not available.");
+            return;
+        }
+        boolean back = false;
+        while (!back) {
+            System.out.println("\n--- Accessory management ---");
+            System.out.println("1. Register a new controller");
+            System.out.println("2. Register a new cable");
+            System.out.println("3. Register a new memory");
+            System.out.println("4. List all accessories");
+            System.out.println("5. List accessories by type");
+            System.out.println("6. Find accessories compatible with a console");
+            System.out.println("7. Add a compatible console to a controller or memory");
+            System.out.println("8. Update accessory stock");
+            System.out.println("0. Back to main menu");
+            System.out.print("Select an option: ");
+            int option = readOption();
+            switch (option) {
+                case 1 -> registerController();
+                case 2 -> registerCable();
+                case 3 -> registerMemory();
+                case 4 -> listAccessories();
+                case 5 -> listAccessoriesByType();
+                case 6 -> listAccessoriesCompatibleWithConsole();
+                case 7 -> addCompatibleConsole();
+                case 8 -> updateAccessoryStock();
+                case 0 -> back = true;
+                default -> System.out.println("Invalid option. Please try again.");
+            }
+        }
+    }
+
+    /**
+     * Prompts the user for the data of a new controller, registers it and
+     * optionally registers its compatible consoles.
+     */
+    private void registerController() {
+        CommonAccessoryData data = readCommonAccessoryData();
+        if (data == null) {
+            return;
+        }
+        System.out.print("Connection type (1 = WIRELESS, 2 = WIRED): ");
+        Controller.ConnectionType connectionType = switch (readOption()) {
+            case 1 -> Controller.ConnectionType.WIRELESS;
+            case 2 -> Controller.ConnectionType.WIRED;
+            default -> null;
+        };
+        if (connectionType == null) {
+            System.out.println("Invalid connection type.");
+            return;
+        }
+
+        try {
+            Controller controller = accessoryService.registerController(
+                    data.id(), data.title(), data.price(), data.stock(), connectionType);
+            System.out.println("Controller registered successfully.");
+            readCompatibleConsoles(controller.getId());
+        } catch (IllegalArgumentException | IOException e) {
+            System.out.println("Could not register controller: " + e.getMessage());
+        }
+    }
+
+    /**
+     * Prompts the user for the data of a new cable and registers it.
+     */
+    private void registerCable() {
+        CommonAccessoryData data = readCommonAccessoryData();
+        if (data == null) {
+            return;
+        }
+        System.out.print("Length in meters: ");
+        double length;
+        try {
+            length = Double.parseDouble(scanner.nextLine().trim());
+        } catch (NumberFormatException e) {
+            System.out.println("Invalid length.");
+            return;
+        }
+        System.out.print("Connector type (e.g. HDMI, USB): ");
+        String connectorType = scanner.nextLine().trim();
+
+        try {
+            accessoryService.registerCable(data.id(), data.title(), data.price(), data.stock(),
+                    length, connectorType);
+            System.out.println("Cable registered successfully.");
+        } catch (IllegalArgumentException | IOException e) {
+            System.out.println("Could not register cable: " + e.getMessage());
+        }
+    }
+
+    /**
+     * Prompts the user for the data of a new memory, registers it and
+     * optionally registers its compatible consoles.
+     */
+    private void registerMemory() {
+        CommonAccessoryData data = readCommonAccessoryData();
+        if (data == null) {
+            return;
+        }
+        System.out.print("Capacity in GB: ");
+        int capacity;
+        try {
+            capacity = Integer.parseInt(scanner.nextLine().trim());
+        } catch (NumberFormatException e) {
+            System.out.println("Invalid capacity.");
+            return;
+        }
+        System.out.print("Memory type (1 = SD, 2 = MICRO_SD, 3 = INTERNAL_CARD): ");
+        Memory.MemoryType memoryType = switch (readOption()) {
+            case 1 -> Memory.MemoryType.SD;
+            case 2 -> Memory.MemoryType.MICRO_SD;
+            case 3 -> Memory.MemoryType.INTERNAL_CARD;
+            default -> null;
+        };
+        if (memoryType == null) {
+            System.out.println("Invalid memory type.");
+            return;
+        }
+
+        try {
+            Memory memory = accessoryService.registerMemory(
+                    data.id(), data.title(), data.price(), data.stock(), capacity, memoryType);
+            System.out.println("Memory registered successfully.");
+            readCompatibleConsoles(memory.getId());
+        } catch (IllegalArgumentException | IOException e) {
+            System.out.println("Could not register memory: " + e.getMessage());
+        }
+    }
+
+    /**
+     * Reads the attributes shared by every accessory type (id, title, price,
+     * and stock), rejecting empty ids and ids already in use.
+     *
+     * @return the common accessory data, or null if any value was invalid
+     */
+    private CommonAccessoryData readCommonAccessoryData() {
+        System.out.print("Accessory id: ");
+        String id = scanner.nextLine().trim();
+        if (id.isEmpty()) {
+            System.out.println("The accessory id cannot be empty.");
+            return null;
+        }
+        if (accessoryService.findById(id) != null) {
+            System.out.println("An accessory with that id already exists.");
+            return null;
+        }
+        System.out.print("Title: ");
+        String title = scanner.nextLine().trim();
+        Double price = readPrice();
+        Integer stock = readStock();
+        if (price == null || stock == null) {
+            return null;
+        }
+        return new CommonAccessoryData(id, title, price, stock);
+    }
+
+    /**
+     * Simple holder for the attributes shared by every accessory type,
+     * used only while collecting input in the console UI.
+     */
+    private record CommonAccessoryData(String id, String title, double price, int stock) {
+    }
+
+    /**
+     * Asks the user for console ids to register as compatible with the given
+     * accessory, one at a time, until the user enters 0.
+     *
+     * @param accessoryId the id of the controller or memory being updated
+     */
+    private void readCompatibleConsoles(String accessoryId) {
+        boolean adding = true;
+        while (adding) {
+            System.out.print("Compatible console id (or 0 to finish): ");
+            String consoleId = scanner.nextLine().trim();
+            if (consoleId.equals("0")) {
+                adding = false;
+                continue;
+            }
+            registerCompatibility(accessoryId, consoleId);
+        }
+    }
+
+    /**
+     * Validates that the given id belongs to a registered console and, if so,
+     * registers it as compatible with the given accessory.
+     *
+     * @param accessoryId the id of the controller or memory
+     * @param consoleId   the id of the console to register
+     */
+    private void registerCompatibility(String accessoryId, String consoleId) {
+        if (!(productService.findById(consoleId) instanceof Console console)) {
+            System.out.println("No console found with that id.");
+            return;
+        }
+        try {
+            if (accessoryService.addCompatibleConsole(accessoryId, consoleId)) {
+                System.out.println(console.getTitle() + " registered as compatible.");
+            } else {
+                System.out.println("Only controllers and memories support console compatibility.");
+            }
+        } catch (IOException e) {
+            System.out.println("Could not save compatibility: " + e.getMessage());
+        }
+    }
+
+    /**
+     * Lets the user add a compatible console to an existing controller or
+     * memory.
+     */
+    private void addCompatibleConsole() {
+        System.out.print("Accessory id: ");
+        String accessoryId = scanner.nextLine().trim();
+        Accessory accessory = accessoryService.findById(accessoryId);
+        if (accessory == null) {
+            System.out.println("No accessory found with that id.");
+            return;
+        }
+        if (!(accessory instanceof Controller) && !(accessory instanceof Memory)) {
+            System.out.println("Only controllers and memories support console compatibility.");
+            return;
+        }
+        System.out.print("Console id: ");
+        String consoleId = scanner.nextLine().trim();
+        registerCompatibility(accessoryId, consoleId);
+    }
+
+    /**
+     * Lists every accessory currently available in the inventory.
+     */
+    private void listAccessories() {
+        printAccessories(accessoryService.listAllAccessories(), "No accessories registered yet.");
+    }
+
+    /**
+     * Lists the accessories of the type chosen by the user.
+     */
+    private void listAccessoriesByType() {
+        System.out.print("Type (Controller, Cable or Memory): ");
+        String type = scanner.nextLine().trim();
+        printAccessories(accessoryService.listAccessoriesByType(type),
+                "No accessories found for that type.");
+    }
+
+    /**
+     * Lists the accessories registered as compatible with the console chosen
+     * by the user.
+     */
+    private void listAccessoriesCompatibleWithConsole() {
+        System.out.print("Console id: ");
+        String consoleId = scanner.nextLine().trim();
+        printAccessories(accessoryService.findAccessoriesCompatibleWith(consoleId),
+                "No accessories registered as compatible with that console.");
+    }
+
+    /**
+     * Updates the stock of an accessory to a new non-negative quantity.
+     */
+    private void updateAccessoryStock() {
+        System.out.print("Accessory id: ");
+        String accessoryId = scanner.nextLine().trim();
+        if (accessoryService.findById(accessoryId) == null) {
+            System.out.println("No accessory found with that id.");
+            return;
+        }
+        Integer stock = readStock();
+        if (stock == null) {
+            return;
+        }
+        if (stock < 0) {
+            System.out.println("Stock cannot be negative.");
+            return;
+        }
+        try {
+            accessoryService.updateStock(accessoryId, stock);
+            System.out.println("Stock updated successfully.");
+        } catch (IOException e) {
+            System.out.println("Could not update stock: " + e.getMessage());
+        }
+    }
+
+    /**
+     * Prints the given list of accessories with their type and id, or the
+     * given message if the list is empty.
+     *
+     * @param accessories  the accessories to print
+     * @param emptyMessage the message shown when there are no accessories
+     */
+    private void printAccessories(List<Accessory> accessories, String emptyMessage) {
+        if (accessories.isEmpty()) {
+            System.out.println(emptyMessage);
+            return;
+        }
+        System.out.println("\n--- Accessories ---");
+        for (Accessory accessory : accessories) {
+            System.out.println("[" + accessory.getType() + "] " + accessory.getId() + " - "
+                    + accessory.getDescription());
         }
     }
 

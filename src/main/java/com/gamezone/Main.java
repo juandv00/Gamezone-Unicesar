@@ -32,7 +32,7 @@ public class Main {
         SalePersistence salePersistence = new SalePersistence(accessoryRepository);
         SaleService saleService = new SaleService(productService, accessoryService, salePersistence);
 
-        ConsoleUI consoleUI = new ConsoleUI(productService, personService, saleService);
+        ConsoleUI consoleUI = new ConsoleUI(productService, personService, saleService, accessoryService);
         consoleUI.run();
     }
 }
