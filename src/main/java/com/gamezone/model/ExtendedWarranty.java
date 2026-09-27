@@ -9,6 +9,15 @@ import java.time.LocalDate;
  */
 public class ExtendedWarranty extends Warranty {
 
+    /**
+     * Creates a new ExtendedWarranty for the given product and sale.
+     *
+     * @param id        unique identifier of the warranty
+     * @param product   product covered by this warranty
+     * @param sale      sale in which the product was purchased
+     * @param startDate date on which the warranty coverage begins
+     */
+
     public ExtendedWarranty(String id, Product product, Sale sale, LocalDate startDate) {
         super(id, product, sale, startDate);
     }
