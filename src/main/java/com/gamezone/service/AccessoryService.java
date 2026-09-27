@@ -1,4 +1,3 @@
-
 package com.gamezone.service;
 
 import com.gamezone.model.Accessory;
@@ -12,8 +11,9 @@ import java.util.List;
 
 /**
  * Contains the business rules for managing accessories at GameZone Unicesar,
- * such as registering new controllers, cables, and memories, listing
- * available inventory, and querying compatibility with consoles.
+ * such as registering new controllers, cables, and memories, listing available
+ * inventory, querying compatibility with consoles, and validating/reducing
+ * stock when a sale is registered.
  */
 public class AccessoryService {
 
@@ -21,8 +21,8 @@ public class AccessoryService {
     private List<Accessory> accessories;
 
     /**
-     * Creates a new AccessoryService, loading the currently stored
-     * accessories from the repository.
+     * Creates a new AccessoryService, loading the currently stored accessories
+     * from the repository.
      *
      * @param accessoryRepository the repository used to persist accessories
      */
@@ -34,11 +34,12 @@ public class AccessoryService {
     /**
      * Registers a new controller and immediately persists the updated list.
      *
-     * @param id             unique identifier of the controller
-     * @param title          display title of the controller
-     * @param price          unit price of the controller
-     * @param stock          initial quantity available in inventory
-     * @param connectionType connection type of the controller (wireless or wired)
+     * @param id unique identifier of the controller
+     * @param title display title of the controller
+     * @param price unit price of the controller
+     * @param stock initial quantity available in inventory
+     * @param connectionType connection type of the controller (wireless or
+     * wired)
      * @return the newly registered Controller instance
      */
     public Controller registerController(String id, String title, double price,
@@ -52,10 +53,10 @@ public class AccessoryService {
     /**
      * Registers a new cable and immediately persists the updated list.
      *
-     * @param id            unique identifier of the cable
-     * @param title         display title of the cable
-     * @param price         unit price of the cable
-     * @param stock         initial quantity available in inventory
+     * @param id unique identifier of the cable
+     * @param title display title of the cable
+     * @param price unit price of the cable
+     * @param stock initial quantity available in inventory
      * @param lengthInMeters length of the cable, in meters
      * @param connectorType connector type of the cable (e.g. HDMI, USB)
      * @return the newly registered Cable instance
@@ -71,12 +72,12 @@ public class AccessoryService {
     /**
      * Registers a new memory and immediately persists the updated list.
      *
-     * @param id           unique identifier of the memory
-     * @param title        display title of the memory
-     * @param price        unit price of the memory
-     * @param stock        initial quantity available in inventory
+     * @param id unique identifier of the memory
+     * @param title display title of the memory
+     * @param price unit price of the memory
+     * @param stock initial quantity available in inventory
      * @param capacityInGB storage capacity of the memory, in gigabytes
-     * @param memoryType   type of the memory (SD, microSD, internal card)
+     * @param memoryType type of the memory (SD, microSD, internal card)
      * @return the newly registered Memory instance
      */
     public Memory registerMemory(String id, String title, double price, int stock,
@@ -115,10 +116,10 @@ public class AccessoryService {
     }
 
     /**
-     * Returns the accessories that are compatible with the given console.
-     * Only accessories that expose console compatibility (Controller and
-     * Memory) are considered; Cable accessories never match, since cables
-     * do not register console compatibility.
+     * Returns the accessories that are compatible with the given console. Only
+     * accessories that expose console compatibility (Controller and Memory) are
+     * considered; Cable accessories never match, since cables do not register
+     * console compatibility.
      *
      * @param consoleId the id of the console to check compatibility for
      * @return the list of accessories compatible with that console
@@ -153,11 +154,11 @@ public class AccessoryService {
     }
 
     /**
-     * Updates the stock of a given accessory to the specified quantity
-     * and persists the change.
+     * Updates the stock of a given accessory to the specified quantity and
+     * persists the change.
      *
      * @param accessoryId the id of the accessory to update
-     * @param quantity    the new stock quantity to set
+     * @param quantity the new stock quantity to set
      * @return true if the accessory was found and updated, false otherwise
      */
     public boolean updateStock(String accessoryId, int quantity) throws IOException {
@@ -166,6 +167,38 @@ public class AccessoryService {
             return false;
         }
         accessory.setStock(quantity);
+        accessoryRepository.saveAll(accessories);
+        return true;
+    }
+
+    /**
+     * Checks whether an accessory has enough stock available for a given
+     * quantity.
+     *
+     * @param accessoryId the id of the accessory to check
+     * @param amount the quantity requested
+     * @return true if there is enough stock, false otherwise
+     */
+    public boolean hasEnoughStock(String accessoryId, int amount) {
+        Accessory accessory = findById(accessoryId);
+        return accessory != null && accessory.getStock() >= amount;
+    }
+
+    /**
+     * Reduces the stock of a given accessory by the specified amount, used when
+     * a sale is registered.
+     *
+     * @param accessoryId the id of the accessory being sold
+     * @param amount the quantity to subtract from stock
+     * @return true if the stock was successfully reduced, false if there is not
+     * enough stock available or the accessory does not exist
+     */
+    public boolean reduceStock(String accessoryId, int amount) throws IOException {
+        Accessory accessory = findById(accessoryId);
+        if (accessory == null || accessory.getStock() < amount) {
+            return false;
+        }
+        accessory.setStock(accessory.getStock() - amount);
         accessoryRepository.saveAll(accessories);
         return true;
     }
