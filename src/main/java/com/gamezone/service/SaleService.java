@@ -3,6 +3,7 @@ package com.gamezone.service;
 import com.gamezone.model.Accessory;
 import com.gamezone.model.Client;
 import com.gamezone.model.Product;
+import com.gamezone.model.Promotion;
 import com.gamezone.model.Sale;
 import com.gamezone.model.Seller;
 import com.gamezone.persistence.SalePersistence;
@@ -16,13 +17,15 @@ import java.util.Map;
  * Contains the business rules for managing sales at GameZone Unicesar,
  * such as registering new sales with stock validation, updating inventory
  * automatically, and consulting sales history by client or seller.
- * Sales may include products, accessories, or both.
+ * Sales may include products and accessories, and the best active
+ * promotion is applied automatically when a sale is registered.
  */
 public class SaleService {
 
     private final SalePersistence salePersistence;
     private final ProductService productService;
     private final AccessoryService accessoryService;
+    private final PromotionService promotionService;
     private List<Sale> sales;
 
     /**
@@ -48,17 +51,33 @@ public class SaleService {
      */
     public SaleService(ProductService productService, AccessoryService accessoryService,
                        SalePersistence salePersistence) {
+        this(productService, accessoryService, salePersistence, null);
+    }
+
+    /**
+     * Creates a new SaleService that supports accessories and applies the
+     * best active promotion to every sale it registers.
+     *
+     * @param productService   the service used to validate and reduce product stock
+     * @param accessoryService the service used to validate and reduce accessory stock
+     * @param salePersistence  the persistence used to load and save sales
+     * @param promotionService the service used to find the best promotion for a
+     *                         sale, or null to register sales without discounts
+     */
+    public SaleService(ProductService productService, AccessoryService accessoryService,
+                       SalePersistence salePersistence, PromotionService promotionService) {
         this.productService = productService;
         this.accessoryService = accessoryService;
         this.salePersistence = salePersistence;
+        this.promotionService = promotionService;
         this.sales = salePersistence.load();
     }
 
     /**
      * Registers a new sale after validating that it contains at least
      * one product and that every product has enough stock available.
-     * If valid, the stock of each product is reduced automatically and
-     * the sale is persisted.
+     * If valid, the stock of each product is reduced automatically, the
+     * best active promotion (if any) is applied, and the sale is persisted.
      *
      * @param client   the client making the purchase
      * @param seller   the seller attending the sale
@@ -83,6 +102,7 @@ public class SaleService {
         }
 
         Sale sale = new Sale(client, seller, products);
+        applyBestPromotion(sale);
         sales.add(sale);
         salePersistence.save(sales);
         return sale;
@@ -95,7 +115,8 @@ public class SaleService {
      * an item in its list counts as one unit, so if the same item appears
      * several times, the stock is validated against the total requested.
      * Stock is validated for every item before anything is reduced, so a
-     * rejected sale leaves the inventory untouched.
+     * rejected sale leaves the inventory untouched. The best active
+     * promotion (if any) is applied before the sale is persisted.
      *
      * @param client      the client making the purchase
      * @param seller      the seller attending the sale
@@ -141,6 +162,7 @@ public class SaleService {
         }
 
         Sale sale = new Sale(client, seller, saleProducts, saleAccessories);
+        applyBestPromotion(sale);
         sales.add(sale);
         salePersistence.save(sales);
         return sale;
@@ -201,5 +223,27 @@ public class SaleService {
             units.merge(accessory.getId(), 1, Integer::sum);
         }
         return units;
+    }
+
+    /**
+     * Asks the PromotionService for the best promotion for the given sale
+     * and, if there is one, stores its name and discount in the sale. The
+     * discount is capped at the sale subtotal, so a misconfigured promotion
+     * can never produce a negative final total. Promotions are not
+     * cumulative: at most one promotion is applied.
+     *
+     * @param sale the sale to apply the promotion to
+     */
+    private void applyBestPromotion(Sale sale) {
+        if (promotionService == null) {
+            return;
+        }
+        Promotion bestPromotion = promotionService.findBestPromotionFor(sale);
+        if (bestPromotion == null) {
+            return;
+        }
+        double discount = Math.min(bestPromotion.calculateDiscount(sale), sale.calculateTotal());
+        sale.setAppliedPromotionName(bestPromotion.getName());
+        sale.setDiscountAmount(discount);
     }
 }
