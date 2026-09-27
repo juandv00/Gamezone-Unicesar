@@ -65,6 +65,31 @@ public abstract class Warranty {
         return !date.isBefore(startDate) && !date.isAfter(endDate);
     }
 
+    /**
+     * Generates a text certificate describing this warranty: its id, type,
+     * covered product (id and title), the id of the sale it belongs to,
+     * coverage dates and additional cost.
+     *
+     * @return the certificate of the warranty as multi-line text
+     */
+    public String generateWarrantyCertificate() {
+        StringBuilder sb = new StringBuilder();
+        sb.append("===== GameZone Unicesar - Warranty Certificate =====\n");
+        sb.append("Warranty ID: ").append(id).append("\n");
+        sb.append("Type: ").append(getWarrantyType()).append("\n");
+        sb.append("Product: ").append(product.getId())
+                .append(" - ").append(product.getTitle()).append("\n");
+        sb.append("Sale ID: ").append(sale.getId()).append("\n");
+        sb.append("Start date: ").append(startDate).append("\n");
+        sb.append("End date: ").append(endDate).append("\n");
+        sb.append("Additional cost: ").append(formatAmount(getAdditionalCost())).append("\n");
+        sb.append("======================================================");
+        return sb.toString();
+    }
+
+    private String formatAmount(double amount) {
+        return String.format(java.util.Locale.US, "$%,.2f", amount);
+    }
 
     public String getId() {
         return id;
