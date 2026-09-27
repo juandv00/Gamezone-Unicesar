@@ -15,6 +15,7 @@ import java.util.Locale;
  */
 public class Sale {
 
+    private String id;
     private LocalDate date;
     private Client client;
     private Seller seller;
@@ -89,6 +90,29 @@ public class Sale {
         this.seller = seller;
         this.products = products;
         this.accessories = new ArrayList<>(accessories);
+    }
+
+    /**
+     * Returns the unique identifier of this sale.
+     *
+     * @return the sale id, or null if the sale has not been assigned one yet
+     */
+    public String getId() {
+        return id;
+    }
+
+    /**
+     * Sets the unique identifier of this sale. The id is assigned by the
+     * service layer when the sale is registered or loaded.
+     *
+     * @param id the sale id
+     * @throws IllegalArgumentException if id is null or blank
+     */
+    public void setId(String id) {
+        if (id == null || id.isBlank()) {
+            throw new IllegalArgumentException("Sale id cannot be empty.");
+        }
+        this.id = id;
     }
 
     public LocalDate getDate() {
@@ -206,6 +230,9 @@ public class Sale {
     public String generateReceipt() {
         StringBuilder receipt = new StringBuilder();
         receipt.append("===== GameZone Unicesar - Receipt =====\n");
+        if (id != null) {
+            receipt.append("Sale ID: ").append(id).append("\n");
+        }
         receipt.append("Date: ").append(date).append("\n");
         receipt.append("Client: ").append(client.getName()).append("\n");
         receipt.append("Seller: ").append(seller.getName()).append("\n");
@@ -239,7 +266,8 @@ public class Sale {
         String discount = hasDiscount()
                 ? ", discount=$" + discountAmount + " (" + appliedPromotionName + ")"
                 : "";
-        return "Sale{date=" + date + ", client=" + client.getName() +
+        String idText = id != null ? "id=" + id + ", " : "";
+        return "Sale{" + idText + "date=" + date + ", client=" + client.getName() +
                 ", seller=" + seller.getName() + discount +
                 ", total=$" + calculateFinalTotal() + "}";
     }
