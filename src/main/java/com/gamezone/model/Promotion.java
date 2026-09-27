@@ -73,4 +73,35 @@ public abstract class Promotion {
         return !date.isBefore(startDate) && !date.isAfter(endDate);
     }
 
+    /**
+     * Calculates the monetary discount that this promotion would grant
+     * to the given sale. Each concrete subclass defines its own
+     * calculation strategy.
+     *
+     * @param sale the sale to evaluate
+     * @return the discount amount in currency units
+     */
+    public abstract double calculateDiscount(Sale sale);
+
+    @Override
+    public String toString() {
+        return "Promotion{id='" + id + "', name='" + name +
+                "', startDate=" + startDate + ", endDate=" + endDate + "}";
+    }
+
+    @Override
+    public boolean equals(Object o) {
+        if (this == o) return true;
+        if (!(o instanceof Promotion)) return false;
+        Promotion promotion = (Promotion) o;
+        return Objects.equals(id, promotion.id);
+    }
+
+    @Override
+    public int hashCode() {
+        return Objects.hash(id);
+    }
+
+
+
 }
