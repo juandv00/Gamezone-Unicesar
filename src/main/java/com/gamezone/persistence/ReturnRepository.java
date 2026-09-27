@@ -108,7 +108,7 @@ public class ReturnRepository {
                 + r.getDate() + DELIMITER
                 + r.getOriginalSale().getId() + DELIMITER
                 + productIds + DELIMITER
-                + r.getReason() + DELIMITER
+                + r.getReason().replace(DELIMITER, ",") + DELIMITER
                 + r.getRefundAmount();
     }
 
@@ -118,10 +118,28 @@ public class ReturnRepository {
      * the sales and products currently registered in the system.
      *
      * @param line the text line to parse
-     * @return the reconstructed Return, or null if the line is invalid or a
+     * @return the reconstructed Return, or null if the line is malformed or a
      * referenced sale or product cannot be found
      */
     private Return fromLine(String line) {
+        try {
+            return parseLine(line);
+        } catch (RuntimeException e) {
+            System.out.println("Skipping malformed return line: " + line);
+            return null;
+        }
+    }
+
+    /**
+     * Parses the fields of a stored return line. Invalid numbers, dates or data
+     * rejected by the Return constructor raise a RuntimeException that is
+     * handled by {@link #fromLine(String)}.
+     *
+     * @param line the text line to parse
+     * @return the reconstructed Return, or null if the line is incomplete or a
+     * referenced sale or product cannot be found
+     */
+    private Return parseLine(String line) {
         String[] parts = line.split(DELIMITER);
         if (parts.length < 6) {
             return null;
@@ -132,7 +150,6 @@ public class ReturnRepository {
         String saleId = parts[2];
         String[] productIds = parts[3].split(ID_SEPARATOR);
         String reason = parts[4];
-        double refundAmount = Double.parseDouble(parts[5]);
 
         Sale sale = saleService.findById(saleId);
         if (sale == null) {
