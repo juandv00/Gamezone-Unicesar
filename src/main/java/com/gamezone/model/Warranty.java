@@ -53,4 +53,28 @@ public abstract class Warranty {
     public abstract String getWarrantyType();
 
     public abstract double getAdditionalCost();
+
+
+    public String getId() {
+        return id;
+    }
+
+    public Product getProduct() {
+        return product;
+    }
+
+    public Sale getSale() {
+        return sale;
+    }
+
+    public LocalDate getStartDate() {
+        return startDate;
+    }
+
+    public LocalDate getEndDate() {
+        return endDate;
+    }
+
+
+
 }
