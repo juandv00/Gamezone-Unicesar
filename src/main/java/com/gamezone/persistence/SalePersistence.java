@@ -1,5 +1,6 @@
 package com.gamezone.persistence;
 
+import com.gamezone.model.Accessory;
 import com.gamezone.model.Client;
 import com.gamezone.model.Person;
 import com.gamezone.model.Product;
@@ -13,9 +14,16 @@ import java.util.List;
 /**
  * Handles saving and loading Sale data to and from a file, so that sales
  * information persists between application runs. Since a Sale references
- * a client, a seller, and a list of products, this class relies on
- * ProductPersistence and PersonPersistence to resolve those references
- * by id when reconstructing a Sale from stored data.
+ * a client, a seller, a list of products and a list of accessories, this
+ * class relies on ProductPersistence, PersonPersistence and
+ * AccessoryRepository to resolve those references by id when
+ * reconstructing a Sale from stored data.
+ *
+ * <p>Each sale is stored as one line with the format
+ * {@code date;clientId;sellerId;productIds[;accessoryIds]}, where ids are
+ * separated by commas. The accessory field is only written when the sale
+ * includes accessories, so lines stored before accessories existed are
+ * still read correctly.</p>
  */
 public class SalePersistence {
 
@@ -25,14 +33,31 @@ public class SalePersistence {
 
     private final ProductPersistence productPersistence;
     private final PersonPersistence personPersistence;
+    private final AccessoryRepository accessoryRepository;
 
     /**
      * Creates a new SalePersistence, using the given persistence classes
-     * to resolve client, seller, and product references when loading sales.
+     * to resolve client, seller, product and accessory references when
+     * loading sales. A default AccessoryRepository is used.
      */
     public SalePersistence() {
+        this(new AccessoryRepository());
+    }
+
+    /**
+     * Creates a new SalePersistence that resolves accessory references
+     * with the given repository when loading sales.
+     *
+     * @param accessoryRepository the repository used to resolve accessories by id
+     * @throws IllegalArgumentException if accessoryRepository is null
+     */
+    public SalePersistence(AccessoryRepository accessoryRepository) {
+        if (accessoryRepository == null) {
+            throw new IllegalArgumentException("Accessory repository cannot be null.");
+        }
         this.productPersistence = new ProductPersistence();
         this.personPersistence = new PersonPersistence();
+        this.accessoryRepository = accessoryRepository;
     }
 
     /**
@@ -54,8 +79,8 @@ public class SalePersistence {
 
     /**
      * Loads the list of sales stored in the data file, resolving each
-     * client, seller, and product reference against the currently
-     * persisted people and products.
+     * client, seller, product and accessory reference against the
+     * currently persisted people, products and accessories.
      *
      * @return the list of sales found, or an empty list if the file does
      *         not exist yet
@@ -69,11 +94,12 @@ public class SalePersistence {
 
         List<Person> people = personPersistence.load();
         List<Product> products = productPersistence.load();
+        List<Accessory> accessories = accessoryRepository.loadAll();
 
         try (BufferedReader br = new BufferedReader(new FileReader(file))) {
             String line;
             while ((line = br.readLine()) != null) {
-                Sale sale = fromLine(line, people, products);
+                Sale sale = fromLine(line, people, products, accessories);
                 if (sale != null) {
                     sales.add(sale);
                 }
@@ -86,7 +112,7 @@ public class SalePersistence {
 
     /**
      * Converts a Sale into a single delimited line of text for storage,
-     * using the ids of its client, seller, and products.
+     * using the ids of its client, seller, products and accessories.
      *
      * @param sale the sale to convert
      * @return the text line representing the sale
@@ -101,24 +127,40 @@ public class SalePersistence {
             }
         }
 
-        return sale.getDate() + DELIMITER +
-                sale.getClient().getId() + DELIMITER +
-                sale.getSeller().getId() + DELIMITER +
-                productIds;
+        StringBuilder line = new StringBuilder()
+                .append(sale.getDate()).append(DELIMITER)
+                .append(sale.getClient().getId()).append(DELIMITER)
+                .append(sale.getSeller().getId()).append(DELIMITER)
+                .append(productIds);
+
+        List<Accessory> accessories = sale.getAccessories();
+        if (!accessories.isEmpty()) {
+            line.append(DELIMITER);
+            for (int i = 0; i < accessories.size(); i++) {
+                line.append(accessories.get(i).getId());
+                if (i < accessories.size() - 1) {
+                    line.append(ID_SEPARATOR);
+                }
+            }
+        }
+        return line.toString();
     }
 
     /**
      * Parses a single delimited line of text back into a Sale instance,
-     * resolving the client, seller, and products by matching ids against
-     * the given lists of people and products.
+     * resolving the client, seller, products and accessories by matching
+     * ids against the given lists.
      *
-     * @param line     the text line to parse
-     * @param people   the list of people to search for the client and seller
-     * @param products the list of products to search for the sale's items
-     * @return the reconstructed Sale, or null if the line is invalid or a
-     *         referenced client, seller, or product cannot be found
+     * @param line        the text line to parse
+     * @param people      the list of people to search for the client and seller
+     * @param products    the list of products to search for the sale's items
+     * @param accessories the list of accessories to search for the sale's accessories
+     * @return the reconstructed Sale, or null if the line is invalid, a
+     *         referenced client or seller cannot be found, or no product
+     *         or accessory of the sale can be resolved
      */
-    private Sale fromLine(String line, List<Person> people, List<Product> products) {
+    private Sale fromLine(String line, List<Person> people, List<Product> products,
+                          List<Accessory> accessories) {
         String[] parts = line.split(DELIMITER);
         if (parts.length < 4) {
             return null;
@@ -128,6 +170,7 @@ public class SalePersistence {
         String clientId = parts[1];
         String sellerId = parts[2];
         String[] productIds = parts[3].split(ID_SEPARATOR);
+        String[] accessoryIds = parts.length > 4 ? parts[4].split(ID_SEPARATOR) : new String[0];
 
         Client client = null;
         Seller seller = null;
@@ -153,10 +196,19 @@ public class SalePersistence {
             }
         }
 
-        if (saleProducts.isEmpty()) {
+        List<Accessory> saleAccessories = new ArrayList<>();
+        for (String accessoryId : accessoryIds) {
+            for (Accessory accessory : accessories) {
+                if (accessory.getId().equals(accessoryId)) {
+                    saleAccessories.add(accessory);
+                }
+            }
+        }
+
+        if (saleProducts.isEmpty() && saleAccessories.isEmpty()) {
             return null;
         }
 
-        return new Sale(client, seller, saleProducts, date);
+        return new Sale(client, seller, saleProducts, saleAccessories, date);
     }
 }
