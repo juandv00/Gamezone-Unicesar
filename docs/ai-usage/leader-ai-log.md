@@ -251,3 +251,80 @@ several Git and GitHub problems during Requirement 2.
 - The shared branch must not be deleted when merging intermediate Pull
   Requests; it is deleted only after the last one, as the assignment
   requires.
+
+## 13. Exam Requirement 3: integrating the return module
+
+**What I asked:** Requested help integrating the return module into the
+system. Developer 1 implemented the model (`Return` and
+`Sale.canBeReturned()`) and Developer 2 the persistence and service
+(`ReturnRepository` and `ReturnService`, including the monthly balance).
+My part covered `ProductService.restoreStock`, the return submenu and the
+monthly balance report in `ConsoleUI`, `Main`, `README.md`, and the
+documentation (`return-analysis.md` and `return-class-diagram.md`). Every
+class was checked against the real repository and compiled before
+committing.
+
+**What I learned and applied:**
+- Finding a missing prerequisite before starting: the specification
+  refers to sales by id (`registerReturn(String saleId, ...)`), but our
+  `Sale` class had no id. Before my teammates started, I added a unique
+  id to `Sale`, stored it in `SalePersistence` (keeping old lines
+  readable), and added `SaleService.findById`. Sales stored before the
+  change receive an id when they are loaded, and it is saved immediately
+  so it stays the same.
+- Unblocking the team first: `restoreStock` and the sale id were
+  committed before my teammates began, because their code depended on
+  them. Then I sent them the exact method signatures and the business
+  decisions the specification left open.
+- Documenting business decisions that the specification does not define:
+  the refund uses list prices even if the sale had a discount, the
+  monthly balance uses the final total of each sale, a unit cannot be
+  returned twice, and accessories are not returnable.
+- Asking for what the interface needs: the report must show three
+  values, but `generateMonthlyBalance` returns only one, so
+  `ReturnService` also provides `calculateMonthlySalesTotal` and
+  `calculateMonthlyReturnsTotal`.
+- Model and service share the validation: `Sale.canBeReturned()` defines
+  the 30-day rule, `ReturnService` enforces it, and `ConsoleUI` only uses
+  it to warn the user early.
+- Reusing the stock logic: `restoreStock` follows the same approach as
+  the existing `reduceStock` in `ProductService`, so all stock changes go
+  through one class that also saves the file.
+- Being honest in the documentation: the analysis explains that
+  `restoreStock` was added in this requirement, and what was reused from
+  Workshop 1, instead of claiming it already existed.
+
+## 14. Code review during Requirement 3
+
+**What I asked:** Requested help reviewing my teammates' Pull Requests
+before approving them, and handling the review of a shared branch.
+
+**What I learned:**
+- Checking that the PR contains what it claims: the first version of
+  Developer 1's PR had no `Return` class at all, and one of his commits
+  removed all the JavaDoc comments of `Sale` (90 comment lines) while
+  adding a single method. Reading the diff stats ("104 deletions" for a
+  small change) revealed the problem.
+- Testing code instead of only reading it: the first version of `Return`
+  accepted null or empty data and started with a refund of 0, and the
+  first version of `ReturnService` allowed returning the same unit
+  several times. In a test, one game sold for 200,000 produced
+  1,000,000 in refunds and raised the stock above its initial value.
+  Other issues: the balance used subtotals instead of final totals, the
+  30-day rule was duplicated instead of using `canBeReturned()`, and a
+  malformed line in `returns.csv` crashed the application on startup.
+- Using "Request changes" and fix commits: the PRs stayed open until the
+  problems were fixed, and the fixes were added as new commits to the
+  same PR, which I reviewed again before approving.
+- Verifying the fix, not just the commit: one "fix" commit only changed
+  the repository class and left the service untouched, so the errors
+  were still there. Comparing the pushed files with the expected version
+  showed it.
+- Who approves: a PR on a shared branch includes every commit not yet in
+  `develop`. Developer 1's PR contained my sale-id commits, so Developer 2
+  approved it; Developer 2's PR contained only his commits, so I
+  approved it.
+- A repository inside OneDrive can make Git fail to delete folders
+  ("Deletion of directory ... failed"), because the synchronization locks
+  them. The branch was deleted anyway; only an empty log folder
+  remained.
