@@ -8,23 +8,27 @@ import com.gamezone.model.Controller;
 import com.gamezone.model.Memory;
 import com.gamezone.model.Person;
 import com.gamezone.model.Product;
+import com.gamezone.model.Promotion;
 import com.gamezone.model.Sale;
 import com.gamezone.model.Seller;
 import com.gamezone.model.VideoGame;
 import com.gamezone.service.AccessoryService;
 import com.gamezone.service.PersonService;
 import com.gamezone.service.ProductService;
+import com.gamezone.service.PromotionService;
 import com.gamezone.service.SaleService;
 import java.io.IOException;
+import java.time.LocalDate;
+import java.time.format.DateTimeParseException;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.Scanner;
 
 /**
  * Provides the console-based user interface for GameZone Unicesar,
- * allowing the user to manage products, people, accessories, and sales
- * through a text menu that delegates all operations to the corresponding
- * services.
+ * allowing the user to manage products, people, accessories, sales, and
+ * promotions through a text menu that delegates all operations to the
+ * corresponding services.
  */
 public class ConsoleUI {
 
@@ -32,6 +36,7 @@ public class ConsoleUI {
     private final PersonService personService;
     private final SaleService saleService;
     private final AccessoryService accessoryService;
+    private final PromotionService promotionService;
     private final Scanner scanner;
 
     /**
@@ -58,10 +63,29 @@ public class ConsoleUI {
      */
     public ConsoleUI(ProductService productService, PersonService personService,
                      SaleService saleService, AccessoryService accessoryService) {
+        this(productService, personService, saleService, accessoryService, null);
+    }
+
+    /**
+     * Creates a new ConsoleUI that also supports managing promotions, in
+     * addition to accessories and sales.
+     *
+     * @param productService   the service used for product operations
+     * @param personService    the service used for people operations
+     * @param saleService      the service used for sale operations
+     * @param accessoryService the service used for accessory operations, or
+     *                         null to disable the accessory module
+     * @param promotionService the service used for promotion operations, or
+     *                         null to disable the promotion module
+     */
+    public ConsoleUI(ProductService productService, PersonService personService,
+                     SaleService saleService, AccessoryService accessoryService,
+                     PromotionService promotionService) {
         this.productService = productService;
         this.personService = personService;
         this.saleService = saleService;
         this.accessoryService = accessoryService;
+        this.promotionService = promotionService;
         this.scanner = new Scanner(System.in);
     }
 
@@ -79,6 +103,7 @@ public class ConsoleUI {
                 case 2 -> personMenu();
                 case 3 -> saleMenu();
                 case 4 -> accessoryMenu();
+                case 5 -> promotionMenu();
                 case 0 -> exit = true;
                 default -> System.out.println("Invalid option. Please try again.");
             }
@@ -96,6 +121,7 @@ public class ConsoleUI {
         System.out.println("2. Person management");
         System.out.println("3. Sale management");
         System.out.println("4. Accessory management");
+        System.out.println("5. Promotion management");
         System.out.println("0. Exit");
         System.out.print("Select an option: ");
     }
@@ -320,6 +346,7 @@ public class ConsoleUI {
             System.out.println("2. View full sales history");
             System.out.println("3. View purchase history for a client");
             System.out.println("4. View sales history for a seller");
+            System.out.println("5. View the receipt of a sale");
             System.out.println("0. Back to main menu");
             System.out.print("Select an option: ");
             int option = readOption();
@@ -328,6 +355,7 @@ public class ConsoleUI {
                 case 2 -> listAllSales();
                 case 3 -> listSalesByClient();
                 case 4 -> listSalesBySeller();
+                case 5 -> viewSaleReceipt();
                 case 0 -> back = true;
                 default -> System.out.println("Invalid option. Please try again.");
             }
@@ -380,7 +408,8 @@ public class ConsoleUI {
             if (sale == null) {
                 System.out.println("Sale could not be registered (no products, or insufficient stock).");
             } else {
-                System.out.println("Sale registered successfully. Total: $" + sale.calculateTotal());
+                System.out.println("Sale registered successfully.");
+                System.out.println(sale.generateReceipt());
             }
             return;
         }
@@ -391,7 +420,8 @@ public class ConsoleUI {
             if (sale == null) {
                 System.out.println("Sale could not be registered (no products, or insufficient stock).");
             } else {
-                System.out.println("Sale registered successfully. Total: $" + sale.calculateTotal());
+                System.out.println("Sale registered successfully.");
+                System.out.println(sale.generateReceipt());
             }
         } catch (IOException | IllegalStateException e) {
             System.out.println("Could not register sale: " + e.getMessage());
@@ -431,6 +461,29 @@ public class ConsoleUI {
     private void listAllSales() {
         List<Sale> sales = saleService.listAll();
         printSales(sales);
+    }
+
+    /**
+     * Lists every registered sale with a number and shows the full receipt
+     * of the sale chosen by the user, including the discount applied.
+     */
+    private void viewSaleReceipt() {
+        List<Sale> sales = saleService.listAll();
+        if (sales.isEmpty()) {
+            System.out.println("No sales found.");
+            return;
+        }
+        System.out.println("\n--- Sales ---");
+        for (int i = 0; i < sales.size(); i++) {
+            System.out.println((i + 1) + ". " + sales.get(i));
+        }
+        System.out.print("Sale number to view: ");
+        int number = readOption();
+        if (number < 1 || number > sales.size()) {
+            System.out.println("Invalid sale number.");
+            return;
+        }
+        System.out.println(sales.get(number - 1).generateReceipt());
     }
 
     /**
@@ -788,6 +841,187 @@ public class ConsoleUI {
         }
     }
 
+    // ===================== PROMOTION MENU =====================
+
+    /**
+     * Displays the promotion management submenu, allowing the user to
+     * register percentage, category and bulk purchase promotions, and to
+     * list all promotions or only the ones active today.
+     */
+    private void promotionMenu() {
+        if (promotionService == null) {
+            System.out.println("The promotion module is not available.");
+            return;
+        }
+        boolean back = false;
+        while (!back) {
+            System.out.println("\n--- Promotion management ---");
+            System.out.println("1. Register a new percentage promotion");
+            System.out.println("2. Register a new category promotion");
+            System.out.println("3. Register a new bulk purchase promotion");
+            System.out.println("4. List all promotions");
+            System.out.println("5. List active promotions (today)");
+            System.out.println("0. Back to main menu");
+            System.out.print("Select an option: ");
+            int option = readOption();
+            switch (option) {
+                case 1 -> registerPercentagePromotion();
+                case 2 -> registerCategoryPromotion();
+                case 3 -> registerBulkPurchasePromotion();
+                case 4 -> printPromotions(promotionService.listAllPromotions(),
+                        "No promotions registered yet.");
+                case 5 -> printPromotions(promotionService.listActivePromotions(),
+                        "No promotions are active today.");
+                case 0 -> back = true;
+                default -> System.out.println("Invalid option. Please try again.");
+            }
+        }
+    }
+
+    /**
+     * Prompts the user for the data of a new percentage promotion and
+     * registers it.
+     */
+    private void registerPercentagePromotion() {
+        CommonPromotionData data = readCommonPromotionData();
+        if (data == null) {
+            return;
+        }
+        Double percentage = readPercentage();
+        if (percentage == null) {
+            return;
+        }
+        try {
+            promotionService.registerPercentageDiscount(data.id(), data.name(),
+                    data.startDate(), data.endDate(), percentage);
+            System.out.println("Percentage promotion registered successfully.");
+        } catch (IllegalArgumentException e) {
+            System.out.println("Could not register promotion: " + e.getMessage());
+        }
+    }
+
+    /**
+     * Prompts the user for the data of a new category promotion and
+     * registers it.
+     */
+    private void registerCategoryPromotion() {
+        CommonPromotionData data = readCommonPromotionData();
+        if (data == null) {
+            return;
+        }
+        Double percentage = readPercentage();
+        if (percentage == null) {
+            return;
+        }
+        System.out.print("Target category (1 = VIDEOGAME, 2 = CONSOLE): ");
+        String targetCategory = switch (readOption()) {
+            case 1 -> "VIDEOGAME";
+            case 2 -> "CONSOLE";
+            default -> null;
+        };
+        if (targetCategory == null) {
+            System.out.println("Invalid category.");
+            return;
+        }
+        try {
+            promotionService.registerCategoryDiscount(data.id(), data.name(),
+                    data.startDate(), data.endDate(), percentage, targetCategory);
+            System.out.println("Category promotion registered successfully.");
+        } catch (IllegalArgumentException e) {
+            System.out.println("Could not register promotion: " + e.getMessage());
+        }
+    }
+
+    /**
+     * Prompts the user for the data of a new bulk purchase promotion and
+     * registers it.
+     */
+    private void registerBulkPurchasePromotion() {
+        CommonPromotionData data = readCommonPromotionData();
+        if (data == null) {
+            return;
+        }
+        System.out.print("Minimum number of products: ");
+        int minimumQuantity = readOption();
+        if (minimumQuantity <= 0) {
+            System.out.println("The minimum number of products must be greater than zero.");
+            return;
+        }
+        Double percentage = readPercentage();
+        if (percentage == null) {
+            return;
+        }
+        try {
+            promotionService.registerBulkPurchaseDiscount(data.id(), data.name(),
+                    data.startDate(), data.endDate(), minimumQuantity, percentage);
+            System.out.println("Bulk purchase promotion registered successfully.");
+        } catch (IllegalArgumentException e) {
+            System.out.println("Could not register promotion: " + e.getMessage());
+        }
+    }
+
+    /**
+     * Reads the attributes shared by every promotion type (id, name, start
+     * date and end date), rejecting empty or repeated ids and date ranges
+     * where the start date is after the end date.
+     *
+     * @return the common promotion data, or null if any value was invalid
+     */
+    private CommonPromotionData readCommonPromotionData() {
+        System.out.print("Promotion id: ");
+        String id = scanner.nextLine().trim();
+        if (id.isEmpty()) {
+            System.out.println("The promotion id cannot be empty.");
+            return null;
+        }
+        if (promotionService.findById(id) != null) {
+            System.out.println("A promotion with that id already exists.");
+            return null;
+        }
+        System.out.print("Name: ");
+        String name = scanner.nextLine().trim();
+        LocalDate startDate = readDate("Start date (YYYY-MM-DD): ");
+        if (startDate == null) {
+            return null;
+        }
+        LocalDate endDate = readDate("End date (YYYY-MM-DD): ");
+        if (endDate == null) {
+            return null;
+        }
+        if (startDate.isAfter(endDate)) {
+            System.out.println("The start date cannot be after the end date.");
+            return null;
+        }
+        return new CommonPromotionData(id, name, startDate, endDate);
+    }
+
+    /**
+     * Simple holder for the attributes shared by every promotion type,
+     * used only while collecting input in the console UI.
+     */
+    private record CommonPromotionData(String id, String name, LocalDate startDate, LocalDate endDate) {
+    }
+
+    /**
+     * Prints the given list of promotions, marking each one as active or
+     * inactive today, or the given message if the list is empty.
+     *
+     * @param promotions   the promotions to print
+     * @param emptyMessage the message shown when there are no promotions
+     */
+    private void printPromotions(List<Promotion> promotions, String emptyMessage) {
+        if (promotions.isEmpty()) {
+            System.out.println(emptyMessage);
+            return;
+        }
+        LocalDate today = LocalDate.now();
+        System.out.println("\n--- Promotions ---");
+        for (Promotion promotion : promotions) {
+            String status = promotion.isActive(today) ? "[ACTIVE] " : "[INACTIVE] ";
+            System.out.println(status + promotion);
+        }
+    }
+
     // ===================== INPUT HELPERS =====================
 
     /**
@@ -818,6 +1052,44 @@ public class ConsoleUI {
             return Integer.parseInt(scanner.nextLine().trim());
         } catch (NumberFormatException e) {
             System.out.println("Invalid stock.");
+            return null;
+        }
+    }
+
+    /**
+     * Reads a discount percentage from the user, returning null if the input
+     * is not a number between 0 and 100.
+     *
+     * @return the percentage entered, or null if invalid
+     */
+    private Double readPercentage() {
+        System.out.print("Discount percentage (0-100): ");
+        try {
+            double percentage = Double.parseDouble(scanner.nextLine().trim());
+            if (percentage < 0 || percentage > 100) {
+                System.out.println("The percentage must be between 0 and 100.");
+                return null;
+            }
+            return percentage;
+        } catch (NumberFormatException e) {
+            System.out.println("Invalid percentage.");
+            return null;
+        }
+    }
+
+    /**
+     * Reads a date in ISO format (YYYY-MM-DD) from the user, returning null
+     * if the input is not a valid date.
+     *
+     * @param prompt the text shown to the user before reading the date
+     * @return the date entered, or null if invalid
+     */
+    private LocalDate readDate(String prompt) {
+        System.out.print(prompt);
+        try {
+            return LocalDate.parse(scanner.nextLine().trim());
+        } catch (DateTimeParseException e) {
+            System.out.println("Invalid date. Use the format YYYY-MM-DD.");
             return null;
         }
     }
