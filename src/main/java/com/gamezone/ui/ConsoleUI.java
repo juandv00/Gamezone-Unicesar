@@ -423,11 +423,11 @@ public class ConsoleUI {
 
     /**
      * Guides the user through registering a new sale: selecting the client,
-     * the seller, one or more products and, when the accessory module is
-     * available, any accessories sold together with them. When the warranty
-     * module is available, the user is asked whether each console of the sale
-     * should receive an extended warranty. A sale must include at least one
-     * product.
+     * the seller, and the items sold (products and accessories are entered
+     * in the same list, by id). When the warranty module is available, the
+     * user is asked whether each console of the sale should receive an
+     * extended warranty. The sale follows the unified registration flow of
+     * SaleService, and the receipt and warranty certificates are printed.
      */
     private void registerSale() {
         System.out.print("Client id: ");
@@ -446,63 +446,45 @@ public class ConsoleUI {
             return;
         }
 
+        List<String> itemIds = new ArrayList<>();
         List<Product> products = new ArrayList<>();
-        boolean addingProducts = true;
-        while (addingProducts) {
-            System.out.print("Product id to add (or 0 to finish): ");
-            String productId = scanner.nextLine().trim();
-            if (productId.equals("0")) {
-                addingProducts = false;
+        boolean addingItems = true;
+        while (addingItems) {
+            System.out.print("Item id to add, product or accessory (or 0 to finish): ");
+            String itemId = scanner.nextLine().trim();
+            if (itemId.equals("0")) {
+                addingItems = false;
                 continue;
             }
-            Product product = productService.findById(productId);
-            if (product == null) {
-                System.out.println("No product found with that id.");
+            Product product = productService.findById(itemId);
+            if (product != null) {
+                itemIds.add(product.getId());
+                products.add(product);
+                System.out.println(product.getTitle() + " added.");
                 continue;
             }
-            products.add(product);
-            System.out.println(product.getTitle() + " added.");
+            Accessory accessory = accessoryService != null ? accessoryService.findById(itemId) : null;
+            if (accessory != null) {
+                itemIds.add(accessory.getId());
+                System.out.println(accessory.getTitle() + " (accessory) added.");
+                continue;
+            }
+            System.out.println("No product or accessory found with that id.");
         }
 
-        if (warrantyService != null) {
-            List<Accessory> accessories = accessoryService != null ? readSaleAccessories() : new ArrayList<>();
-            List<String> extendedIds = askExtendedWarranties(products);
-            try {
-                Sale sale = saleService.registerSale(client, seller, products, accessories, extendedIds);
-                if (sale == null) {
-                    System.out.println("Sale could not be registered (no products, or insufficient stock).");
-                } else {
-                    System.out.println("Sale registered successfully.");
-                    System.out.println(sale.generateReceipt());
+        List<String> extendedIds = warrantyService != null ? askExtendedWarranties(products) : new ArrayList<>();
+        try {
+            Sale sale = saleService.registerSaleByItemIds(client, seller, itemIds, extendedIds);
+            if (sale == null) {
+                System.out.println("Sale could not be registered (no items, or insufficient stock).");
+            } else {
+                System.out.println("Sale registered successfully.");
+                System.out.println(sale.generateReceipt());
+                if (warrantyService != null) {
                     printSaleWarranties(sale);
                 }
-            } catch (IOException | IllegalArgumentException | IllegalStateException e) {
-                System.out.println("Could not register sale: " + e.getMessage());
             }
-            return;
-        }
-
-        if (accessoryService == null) {
-            Sale sale = saleService.registerSale(client, seller, products);
-            if (sale == null) {
-                System.out.println("Sale could not be registered (no products, or insufficient stock).");
-            } else {
-                System.out.println("Sale registered successfully.");
-                System.out.println(sale.generateReceipt());
-            }
-            return;
-        }
-
-        List<Accessory> accessories = readSaleAccessories();
-        try {
-            Sale sale = saleService.registerSale(client, seller, products, accessories);
-            if (sale == null) {
-                System.out.println("Sale could not be registered (no products, or insufficient stock).");
-            } else {
-                System.out.println("Sale registered successfully.");
-                System.out.println(sale.generateReceipt());
-            }
-        } catch (IOException | IllegalStateException e) {
+        } catch (IOException | IllegalArgumentException | IllegalStateException e) {
             System.out.println("Could not register sale: " + e.getMessage());
         }
     }
@@ -545,33 +527,6 @@ public class ConsoleUI {
                 System.out.println(warranty.generateWarrantyCertificate());
             }
         }
-    }
-
-    /**
-     * Asks the user for the accessories to include in a sale, one id at a
-     * time, until the user enters 0.
-     *
-     * @return the list of accessories selected (may be empty)
-     */
-    private List<Accessory> readSaleAccessories() {
-        List<Accessory> accessories = new ArrayList<>();
-        boolean addingAccessories = true;
-        while (addingAccessories) {
-            System.out.print("Accessory id to add (or 0 to finish): ");
-            String accessoryId = scanner.nextLine().trim();
-            if (accessoryId.equals("0")) {
-                addingAccessories = false;
-                continue;
-            }
-            Accessory accessory = accessoryService.findById(accessoryId);
-            if (accessory == null) {
-                System.out.println("No accessory found with that id.");
-                continue;
-            }
-            accessories.add(accessory);
-            System.out.println(accessory.getTitle() + " added.");
-        }
-        return accessories;
     }
 
     /**
