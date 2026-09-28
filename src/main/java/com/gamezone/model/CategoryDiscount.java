@@ -4,9 +4,10 @@ import java.time.LocalDate;
 
 /**
  * Represents a promotion that applies a percentage discount only to the
- * products of a specific target category within a sale (e.g. only video
- * games, or only consoles).
+ * items of a specific target category within a sale (video games, consoles,
+ * or accessories).
  */
+
 public class CategoryDiscount extends Promotion {
 
     private double percentage;
@@ -20,7 +21,7 @@ public class CategoryDiscount extends Promotion {
      * @param startDate      date on which the promotion becomes valid
      * @param endDate        date on which the promotion stops being valid
      * @param percentage     discount percentage to apply (between 0 and 100)
-     * @param targetCategory category the discount applies to ("VIDEOGAME" or "CONSOLE")
+     * @param targetCategory category the discount applies to ("VIDEOGAME", "CONSOLE" or "ACCESSORY")
      */
     public CategoryDiscount(String id, String name, LocalDate startDate, LocalDate endDate,
                             double percentage, String targetCategory) {
@@ -65,9 +66,15 @@ public class CategoryDiscount extends Promotion {
     @Override
     public double calculateDiscount(Sale sale) {
         double categorySubtotal = 0.0;
-        for (Product product : sale.getProducts()) {
-            if (matchesCategory(product)) {
-                categorySubtotal += product.getPrice();
+        if ("ACCESSORY".equalsIgnoreCase(targetCategory)) {
+            for (Accessory accessory : sale.getAccessories()) {
+                categorySubtotal += accessory.getPrice();
+            }
+        } else {
+            for (Product product : sale.getProducts()) {
+                if (matchesCategory(product)) {
+                    categorySubtotal += product.getPrice();
+                }
             }
         }
         return categorySubtotal * (percentage / 100.0);
