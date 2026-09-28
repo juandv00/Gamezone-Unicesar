@@ -20,7 +20,7 @@ import java.util.List;
  */
 public class AccessoryRepository {
 
-    private static final String FILE_PATH = "data/accessories.txt";
+    private static final String FILE_PATH = "data/accessories.csv";
     private static final String DELIMITER = "\t";
 
     /**
