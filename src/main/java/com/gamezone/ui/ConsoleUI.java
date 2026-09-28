@@ -27,13 +27,14 @@ import java.time.format.DateTimeParseException;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.Locale;
+
 import java.util.Scanner;
 
 /**
- * Provides the console-based user interface for GameZone Unicesar,
- * allowing the user to manage products, people, accessories, sales,
- * promotions, returns, and warranties through a text menu that delegates
- * all operations to the corresponding services.
+ * Provides the console-based user interface for GameZone Unicesar, allowing the
+ * user to manage products, people, accessories, sales, promotions, returns, and
+ * warranties through a text menu that delegates all operations to the
+ * corresponding services.
  */
 public class ConsoleUI {
 
@@ -47,12 +48,12 @@ public class ConsoleUI {
     private final Scanner scanner;
 
     /**
-     * Creates a new ConsoleUI using the given services to perform all
-     * business operations.
+     * Creates a new ConsoleUI using the given services to perform all business
+     * operations.
      *
      * @param productService the service used for product operations
-     * @param personService  the service used for people operations
-     * @param saleService    the service used for sale operations
+     * @param personService the service used for people operations
+     * @param saleService the service used for sale operations
      */
     public ConsoleUI(ProductService productService, PersonService personService, SaleService saleService) {
         this(productService, personService, saleService, null);
@@ -62,14 +63,14 @@ public class ConsoleUI {
      * Creates a new ConsoleUI that also supports managing accessories and
      * selling them together with products.
      *
-     * @param productService   the service used for product operations
-     * @param personService    the service used for people operations
-     * @param saleService      the service used for sale operations
+     * @param productService the service used for product operations
+     * @param personService the service used for people operations
+     * @param saleService the service used for sale operations
      * @param accessoryService the service used for accessory operations, or
-     *                         null to disable the accessory module
+     * null to disable the accessory module
      */
     public ConsoleUI(ProductService productService, PersonService personService,
-                     SaleService saleService, AccessoryService accessoryService) {
+            SaleService saleService, AccessoryService accessoryService) {
         this(productService, personService, saleService, accessoryService, null);
     }
 
@@ -77,17 +78,17 @@ public class ConsoleUI {
      * Creates a new ConsoleUI that also supports managing promotions, in
      * addition to accessories and sales.
      *
-     * @param productService   the service used for product operations
-     * @param personService    the service used for people operations
-     * @param saleService      the service used for sale operations
+     * @param productService the service used for product operations
+     * @param personService the service used for people operations
+     * @param saleService the service used for sale operations
      * @param accessoryService the service used for accessory operations, or
-     *                         null to disable the accessory module
+     * null to disable the accessory module
      * @param promotionService the service used for promotion operations, or
-     *                         null to disable the promotion module
+     * null to disable the promotion module
      */
     public ConsoleUI(ProductService productService, PersonService personService,
-                     SaleService saleService, AccessoryService accessoryService,
-                     PromotionService promotionService) {
+            SaleService saleService, AccessoryService accessoryService,
+            PromotionService promotionService) {
         this(productService, personService, saleService, accessoryService, promotionService, null);
     }
 
@@ -96,19 +97,19 @@ public class ConsoleUI {
      * product returns and the monthly balance report, in addition to
      * accessories, promotions, and sales.
      *
-     * @param productService   the service used for product operations
-     * @param personService    the service used for people operations
-     * @param saleService      the service used for sale operations
+     * @param productService the service used for product operations
+     * @param personService the service used for people operations
+     * @param saleService the service used for sale operations
      * @param accessoryService the service used for accessory operations, or
-     *                         null to disable the accessory module
+     * null to disable the accessory module
      * @param promotionService the service used for promotion operations, or
-     *                         null to disable the promotion module
-     * @param returnService    the service used for return operations, or
-     *                         null to disable the return module
+     * null to disable the promotion module
+     * @param returnService the service used for return operations, or null to
+     * disable the return module
      */
     public ConsoleUI(ProductService productService, PersonService personService,
-                     SaleService saleService, AccessoryService accessoryService,
-                     PromotionService promotionService, ReturnService returnService) {
+            SaleService saleService, AccessoryService accessoryService,
+            PromotionService promotionService, ReturnService returnService) {
         this(productService, personService, saleService, accessoryService, promotionService,
                 returnService, null);
     }
@@ -118,22 +119,22 @@ public class ConsoleUI {
      * registering a sale and consulting the warranties of sold consoles, in
      * addition to accessories, promotions, returns, and sales.
      *
-     * @param productService   the service used for product operations
-     * @param personService    the service used for people operations
-     * @param saleService      the service used for sale operations
+     * @param productService the service used for product operations
+     * @param personService the service used for people operations
+     * @param saleService the service used for sale operations
      * @param accessoryService the service used for accessory operations, or
-     *                         null to disable the accessory module
+     * null to disable the accessory module
      * @param promotionService the service used for promotion operations, or
-     *                         null to disable the promotion module
-     * @param returnService    the service used for return operations, or
-     *                         null to disable the return module
-     * @param warrantyService  the service used for warranty operations, or
-     *                         null to disable the warranty module
+     * null to disable the promotion module
+     * @param returnService the service used for return operations, or null to
+     * disable the return module
+     * @param warrantyService the service used for warranty operations, or null
+     * to disable the warranty module
      */
     public ConsoleUI(ProductService productService, PersonService personService,
-                     SaleService saleService, AccessoryService accessoryService,
-                     PromotionService promotionService, ReturnService returnService,
-                     WarrantyService warrantyService) {
+            SaleService saleService, AccessoryService accessoryService,
+            PromotionService promotionService, ReturnService returnService,
+            WarrantyService warrantyService) {
         this.productService = productService;
         this.personService = personService;
         this.saleService = saleService;
@@ -145,8 +146,8 @@ public class ConsoleUI {
     }
 
     /**
-     * Starts the application's main loop, showing the main menu until
-     * the user chooses to exit.
+     * Starts the application's main loop, showing the main menu until the user
+     * chooses to exit.
      */
     public void run() {
         boolean exit = false;
@@ -154,15 +155,24 @@ public class ConsoleUI {
             showMainMenu();
             int option = readOption();
             switch (option) {
-                case 1 -> productMenu();
-                case 2 -> personMenu();
-                case 3 -> saleMenu();
-                case 4 -> accessoryMenu();
-                case 5 -> promotionMenu();
-                case 6 -> returnMenu();
-                case 7 -> warrantyMenu();
-                case 0 -> exit = true;
-                default -> System.out.println("Invalid option. Please try again.");
+                case 1 ->
+                    productMenu();
+                case 2 ->
+                    personMenu();
+                case 3 ->
+                    saleMenu();
+                case 4 ->
+                    accessoryMenu();
+                case 5 ->
+                    promotionMenu();
+                case 6 ->
+                    returnMenu();
+                case 7 ->
+                    warrantyMenu();
+                case 0 ->
+                    exit = true;
+                default ->
+                    System.out.println("Invalid option. Please try again.");
             }
         }
         System.out.println("Thank you for using GameZone Unicesar!");
@@ -186,8 +196,8 @@ public class ConsoleUI {
     }
 
     /**
-     * Reads an integer option from the user, returning -1 if the input
-     * is not a valid number.
+     * Reads an integer option from the user, returning -1 if the input is not a
+     * valid number.
      *
      * @return the option selected by the user
      */
@@ -200,7 +210,6 @@ public class ConsoleUI {
     }
 
     // ===================== PRODUCT MENU =====================
-
     /**
      * Displays the product management submenu, allowing the user to register
      * video games, register consoles, and list all available products.
@@ -216,11 +225,16 @@ public class ConsoleUI {
             System.out.print("Select an option: ");
             int option = readOption();
             switch (option) {
-                case 1 -> registerVideoGame();
-                case 2 -> registerConsole();
-                case 3 -> listProducts();
-                case 0 -> back = true;
-                default -> System.out.println("Invalid option. Please try again.");
+                case 1 ->
+                    registerVideoGame();
+                case 2 ->
+                    registerConsole();
+                case 3 ->
+                    listProducts();
+                case 0 ->
+                    back = true;
+                default ->
+                    System.out.println("Invalid option. Please try again.");
             }
         }
     }
@@ -274,8 +288,8 @@ public class ConsoleUI {
     }
 
     /**
-     * Reads the attributes shared by every product type (id, title, price,
-     * and stock), used when registering either a video game or a console.
+     * Reads the attributes shared by every product type (id, title, price, and
+     * stock), used when registering either a video game or a console.
      *
      * @return the common product data, or null if price or stock was invalid
      */
@@ -293,10 +307,11 @@ public class ConsoleUI {
     }
 
     /**
-     * Simple holder for the attributes shared by every product type,
-     * used only while collecting input in the console UI.
+     * Simple holder for the attributes shared by every product type, used only
+     * while collecting input in the console UI.
      */
     private record CommonProductData(String id, String title, double price, int stock) {
+
     }
 
     /**
@@ -315,7 +330,6 @@ public class ConsoleUI {
     }
 
     // ===================== PERSON MENU =====================
-
     /**
      * Displays the person management submenu, allowing the user to register
      * clients and list registered clients and sellers.
@@ -331,11 +345,16 @@ public class ConsoleUI {
             System.out.print("Select an option: ");
             int option = readOption();
             switch (option) {
-                case 1 -> registerClient();
-                case 2 -> listClients();
-                case 3 -> listSellers();
-                case 0 -> back = true;
-                default -> System.out.println("Invalid option. Please try again.");
+                case 1 ->
+                    registerClient();
+                case 2 ->
+                    listClients();
+                case 3 ->
+                    listSellers();
+                case 0 ->
+                    back = true;
+                default ->
+                    System.out.println("Invalid option. Please try again.");
             }
         }
     }
@@ -392,10 +411,9 @@ public class ConsoleUI {
     }
 
     // ===================== SALE MENU =====================
-
     /**
-     * Displays the sale management submenu, allowing the user to register a
-     * new sale and consult sales history.
+     * Displays the sale management submenu, allowing the user to register a new
+     * sale and consult sales history.
      */
     private void saleMenu() {
         boolean back = false;
@@ -410,24 +428,31 @@ public class ConsoleUI {
             System.out.print("Select an option: ");
             int option = readOption();
             switch (option) {
-                case 1 -> registerSale();
-                case 2 -> listAllSales();
-                case 3 -> listSalesByClient();
-                case 4 -> listSalesBySeller();
-                case 5 -> viewSaleReceipt();
-                case 0 -> back = true;
-                default -> System.out.println("Invalid option. Please try again.");
+                case 1 ->
+                    registerSale();
+                case 2 ->
+                    listAllSales();
+                case 3 ->
+                    listSalesByClient();
+                case 4 ->
+                    listSalesBySeller();
+                case 5 ->
+                    viewSaleReceipt();
+                case 0 ->
+                    back = true;
+                default ->
+                    System.out.println("Invalid option. Please try again.");
             }
         }
     }
 
     /**
-     * Guides the user through registering a new sale: selecting the client,
-     * the seller, and the items sold (products and accessories are entered
-     * in the same list, by id). When the warranty module is available, the
-     * user is asked whether each console of the sale should receive an
-     * extended warranty. The sale follows the unified registration flow of
-     * SaleService, and the receipt and warranty certificates are printed.
+     * Guides the user through registering a new sale: selecting the client, the
+     * seller, and the items sold (products and accessories are entered in the
+     * same list, by id). When the warranty module is available, the user is
+     * asked whether each console of the sale should receive an extended
+     * warranty. The sale follows the unified registration flow of SaleService,
+     * and the receipt and warranty certificates are printed.
      */
     private void registerSale() {
         System.out.print("Client id: ");
@@ -490,9 +515,9 @@ public class ConsoleUI {
     }
 
     /**
-     * Asks the user, for each different console included in the sale,
-     * whether it should receive an extended warranty instead of the basic
-     * one, showing its cost (10% of the console price, per unit).
+     * Asks the user, for each different console included in the sale, whether
+     * it should receive an extended warranty instead of the basic one, showing
+     * its cost (10% of the console price, per unit).
      *
      * @param products the products of the sale
      * @return the ids of the consoles that must receive an extended warranty
@@ -538,8 +563,8 @@ public class ConsoleUI {
     }
 
     /**
-     * Lists every registered sale with a number and shows the full receipt
-     * of the sale chosen by the user, including the discount applied.
+     * Lists every registered sale with a number and shows the full receipt of
+     * the sale chosen by the user, including the discount applied.
      */
     private void viewSaleReceipt() {
         List<Sale> sales = saleService.listAll();
@@ -608,11 +633,10 @@ public class ConsoleUI {
     }
 
     // ===================== ACCESSORY MENU =====================
-
     /**
-     * Displays the accessory management submenu, allowing the user to
-     * register controllers, cables and memories, list and filter them,
-     * query and register console compatibility, and update their stock.
+     * Displays the accessory management submenu, allowing the user to register
+     * controllers, cables and memories, list and filter them, query and
+     * register console compatibility, and update their stock.
      */
     private void accessoryMenu() {
         if (accessoryService == null) {
@@ -634,16 +658,26 @@ public class ConsoleUI {
             System.out.print("Select an option: ");
             int option = readOption();
             switch (option) {
-                case 1 -> registerController();
-                case 2 -> registerCable();
-                case 3 -> registerMemory();
-                case 4 -> listAccessories();
-                case 5 -> listAccessoriesByType();
-                case 6 -> listAccessoriesCompatibleWithConsole();
-                case 7 -> addCompatibleConsole();
-                case 8 -> updateAccessoryStock();
-                case 0 -> back = true;
-                default -> System.out.println("Invalid option. Please try again.");
+                case 1 ->
+                    registerController();
+                case 2 ->
+                    registerCable();
+                case 3 ->
+                    registerMemory();
+                case 4 ->
+                    listAccessories();
+                case 5 ->
+                    listAccessoriesByType();
+                case 6 ->
+                    listAccessoriesCompatibleWithConsole();
+                case 7 ->
+                    addCompatibleConsole();
+                case 8 ->
+                    updateAccessoryStock();
+                case 0 ->
+                    back = true;
+                default ->
+                    System.out.println("Invalid option. Please try again.");
             }
         }
     }
@@ -659,9 +693,12 @@ public class ConsoleUI {
         }
         System.out.print("Connection type (1 = WIRELESS, 2 = WIRED): ");
         Controller.ConnectionType connectionType = switch (readOption()) {
-            case 1 -> Controller.ConnectionType.WIRELESS;
-            case 2 -> Controller.ConnectionType.WIRED;
-            default -> null;
+            case 1 ->
+                Controller.ConnectionType.WIRELESS;
+            case 2 ->
+                Controller.ConnectionType.WIRED;
+            default ->
+                null;
         };
         if (connectionType == null) {
             System.out.println("Invalid connection type.");
@@ -725,10 +762,14 @@ public class ConsoleUI {
         }
         System.out.print("Memory type (1 = SD, 2 = MICRO_SD, 3 = INTERNAL_CARD): ");
         Memory.MemoryType memoryType = switch (readOption()) {
-            case 1 -> Memory.MemoryType.SD;
-            case 2 -> Memory.MemoryType.MICRO_SD;
-            case 3 -> Memory.MemoryType.INTERNAL_CARD;
-            default -> null;
+            case 1 ->
+                Memory.MemoryType.SD;
+            case 2 ->
+                Memory.MemoryType.MICRO_SD;
+            case 3 ->
+                Memory.MemoryType.INTERNAL_CARD;
+            default ->
+                null;
         };
         if (memoryType == null) {
             System.out.println("Invalid memory type.");
@@ -773,10 +814,11 @@ public class ConsoleUI {
     }
 
     /**
-     * Simple holder for the attributes shared by every accessory type,
-     * used only while collecting input in the console UI.
+     * Simple holder for the attributes shared by every accessory type, used
+     * only while collecting input in the console UI.
      */
     private record CommonAccessoryData(String id, String title, double price, int stock) {
+
     }
 
     /**
@@ -803,7 +845,7 @@ public class ConsoleUI {
      * registers it as compatible with the given accessory.
      *
      * @param accessoryId the id of the controller or memory
-     * @param consoleId   the id of the console to register
+     * @param consoleId the id of the console to register
      */
     private void registerCompatibility(String accessoryId, String consoleId) {
         if (!(productService.findById(consoleId) instanceof Console console)) {
@@ -860,8 +902,8 @@ public class ConsoleUI {
     }
 
     /**
-     * Lists the accessories registered as compatible with the console chosen
-     * by the user.
+     * Lists the accessories registered as compatible with the console chosen by
+     * the user.
      */
     private void listAccessoriesCompatibleWithConsole() {
         System.out.print("Console id: ");
@@ -897,10 +939,10 @@ public class ConsoleUI {
     }
 
     /**
-     * Prints the given list of accessories with their type and id, or the
-     * given message if the list is empty.
+     * Prints the given list of accessories with their type and id, or the given
+     * message if the list is empty.
      *
-     * @param accessories  the accessories to print
+     * @param accessories the accessories to print
      * @param emptyMessage the message shown when there are no accessories
      */
     private void printAccessories(List<Accessory> accessories, String emptyMessage) {
@@ -916,11 +958,10 @@ public class ConsoleUI {
     }
 
     // ===================== WARRANTY MENU =====================
-
     /**
      * Displays the warranty management submenu, allowing the user to consult
-     * the warranty of a product in a specific sale, and to list all
-     * warranties, the ones active today, or the ones expiring soon.
+     * the warranty of a product in a specific sale, and to list all warranties,
+     * the ones active today, or the ones expiring soon.
      */
     private void warrantyMenu() {
         if (warrantyService == null) {
@@ -938,12 +979,18 @@ public class ConsoleUI {
             System.out.print("Select an option: ");
             int option = readOption();
             switch (option) {
-                case 1 -> viewWarrantyOfProduct();
-                case 2 -> printWarranties(warrantyService.listAllWarranties(), "No warranties registered yet.");
-                case 3 -> printWarranties(warrantyService.listActiveWarranties(), "No warranties are active today.");
-                case 4 -> listWarrantiesExpiringSoon();
-                case 0 -> back = true;
-                default -> System.out.println("Invalid option. Please try again.");
+                case 1 ->
+                    viewWarrantyOfProduct();
+                case 2 ->
+                    printWarranties(warrantyService.listAllWarranties(), "No warranties registered yet.");
+                case 3 ->
+                    printWarranties(warrantyService.listActiveWarranties(), "No warranties are active today.");
+                case 4 ->
+                    listWarrantiesExpiringSoon();
+                case 0 ->
+                    back = true;
+                default ->
+                    System.out.println("Invalid option. Please try again.");
             }
         }
     }
@@ -985,8 +1032,8 @@ public class ConsoleUI {
     }
 
     /**
-     * Asks the user how many days ahead to look and lists the active
-     * warranties that expire within that period.
+     * Asks the user how many days ahead to look and lists the active warranties
+     * that expire within that period.
      */
     private void listWarrantiesExpiringSoon() {
         System.out.print("Days ahead (e.g. 30): ");
@@ -1003,7 +1050,7 @@ public class ConsoleUI {
      * Prints a one-line summary of each warranty in the given list, marking it
      * as active or expired today, or the given message if the list is empty.
      *
-     * @param warranties   the warranties to print
+     * @param warranties the warranties to print
      * @param emptyMessage the message shown when there are no warranties
      */
     private void printWarranties(List<Warranty> warranties, String emptyMessage) {
@@ -1024,11 +1071,10 @@ public class ConsoleUI {
     }
 
     // ===================== RETURN MENU =====================
-
     /**
      * Displays the return management submenu, allowing the user to register
-     * returns, consult them (all, by client, or by sale), and view the
-     * monthly balance report.
+     * returns, consult them (all, by client, or by sale), and view the monthly
+     * balance report.
      */
     private void returnMenu() {
         if (returnService == null) {
@@ -1047,23 +1093,30 @@ public class ConsoleUI {
             System.out.print("Select an option: ");
             int option = readOption();
             switch (option) {
-                case 1 -> registerReturn();
-                case 2 -> printReturns(returnService.viewAllReturns(), "No returns registered yet.");
-                case 3 -> listReturnsByClient();
-                case 4 -> listReturnsBySale();
-                case 5 -> showMonthlyBalance();
-                case 0 -> back = true;
-                default -> System.out.println("Invalid option. Please try again.");
+                case 1 ->
+                    registerReturn();
+                case 2 ->
+                    printReturns(returnService.viewAllReturns(), "No returns registered yet.");
+                case 3 ->
+                    listReturnsByClient();
+                case 4 ->
+                    listReturnsBySale();
+                case 5 ->
+                    showMonthlyBalance();
+                case 0 ->
+                    back = true;
+                default ->
+                    System.out.println("Invalid option. Please try again.");
             }
         }
     }
 
     /**
-     * Guides the user through registering a return: choosing the original
-     * sale, selecting which of its products are returned, and giving a
-     * reason. The business rules (30-day window, products belonging to the
-     * sale, units not returned twice) are validated by the ReturnService;
-     * the sale window is also checked here to warn the user early.
+     * Guides the user through registering a return: choosing the original sale,
+     * selecting which of its products are returned, and giving a reason. The
+     * business rules (30-day window, products belonging to the sale, units not
+     * returned twice) are validated by the ReturnService; the sale window is
+     * also checked here to warn the user early.
      */
     private void registerReturn() {
         System.out.print("Sale id (e.g. SALE-1): ");
@@ -1133,8 +1186,8 @@ public class ConsoleUI {
     }
 
     /**
-     * Asks the user for a month and year and shows the monthly balance:
-     * total sales, total refunded by returns, and the net balance.
+     * Asks the user for a month and year and shows the monthly balance: total
+     * sales, total refunded by returns, and the net balance.
      */
     private void showMonthlyBalance() {
         System.out.print("Month (1-12): ");
@@ -1146,8 +1199,8 @@ public class ConsoleUI {
             return;
         }
         try {
-            double sales = returnService.calculateMonthlySalesTotal(month, year);
-            double refunds = returnService.calculateMonthlyReturnsTotal(month, year);
+            double sales = returnService.calculateMonthlySales(month, year);
+            double refunds = returnService.calculateMonthlyReturns(month, year);
             double balance = returnService.generateMonthlyBalance(month, year);
             System.out.println("\n===== Monthly balance " + String.format("%02d/%d", month, year) + " =====");
             System.out.println("Total sales:   " + formatAmount(sales));
@@ -1159,10 +1212,10 @@ public class ConsoleUI {
     }
 
     /**
-     * Prints a one-line summary of each return in the given list, or the
-     * given message if the list is empty.
+     * Prints a one-line summary of each return in the given list, or the given
+     * message if the list is empty.
      *
-     * @param returns      the returns to print
+     * @param returns the returns to print
      * @param emptyMessage the message shown when there are no returns
      */
     private void printReturns(List<Return> returns, String emptyMessage) {
@@ -1193,11 +1246,10 @@ public class ConsoleUI {
     }
 
     // ===================== PROMOTION MENU =====================
-
     /**
-     * Displays the promotion management submenu, allowing the user to
-     * register percentage, category and bulk purchase promotions, and to
-     * list all promotions or only the ones active today.
+     * Displays the promotion management submenu, allowing the user to register
+     * percentage, category and bulk purchase promotions, and to list all
+     * promotions or only the ones active today.
      */
     private void promotionMenu() {
         if (promotionService == null) {
@@ -1216,22 +1268,29 @@ public class ConsoleUI {
             System.out.print("Select an option: ");
             int option = readOption();
             switch (option) {
-                case 1 -> registerPercentagePromotion();
-                case 2 -> registerCategoryPromotion();
-                case 3 -> registerBulkPurchasePromotion();
-                case 4 -> printPromotions(promotionService.listAllPromotions(),
-                        "No promotions registered yet.");
-                case 5 -> printPromotions(promotionService.listActivePromotions(),
-                        "No promotions are active today.");
-                case 0 -> back = true;
-                default -> System.out.println("Invalid option. Please try again.");
+                case 1 ->
+                    registerPercentagePromotion();
+                case 2 ->
+                    registerCategoryPromotion();
+                case 3 ->
+                    registerBulkPurchasePromotion();
+                case 4 ->
+                    printPromotions(promotionService.listAllPromotions(),
+                            "No promotions registered yet.");
+                case 5 ->
+                    printPromotions(promotionService.listActivePromotions(),
+                            "No promotions are active today.");
+                case 0 ->
+                    back = true;
+                default ->
+                    System.out.println("Invalid option. Please try again.");
             }
         }
     }
 
     /**
-     * Prompts the user for the data of a new percentage promotion and
-     * registers it.
+     * Prompts the user for the data of a new percentage promotion and registers
+     * it.
      */
     private void registerPercentagePromotion() {
         CommonPromotionData data = readCommonPromotionData();
@@ -1252,8 +1311,8 @@ public class ConsoleUI {
     }
 
     /**
-     * Prompts the user for the data of a new category promotion and
-     * registers it.
+     * Prompts the user for the data of a new category promotion and registers
+     * it.
      */
     private void registerCategoryPromotion() {
         CommonPromotionData data = readCommonPromotionData();
@@ -1266,10 +1325,14 @@ public class ConsoleUI {
         }
         System.out.print("Target category (1 = VIDEOGAME, 2 = CONSOLE, 3 = ACCESSORY): ");
         String targetCategory = switch (readOption()) {
-            case 1 -> "VIDEOGAME";
-            case 2 -> "CONSOLE";
-            case 3 -> "ACCESSORY";
-            default -> null;
+            case 1 ->
+                "VIDEOGAME";
+            case 2 ->
+                "CONSOLE";
+            case 3 ->
+                "ACCESSORY";
+            default ->
+                null;
         };
         if (targetCategory == null) {
             System.out.println("Invalid category.");
@@ -1313,9 +1376,9 @@ public class ConsoleUI {
     }
 
     /**
-     * Reads the attributes shared by every promotion type (id, name, start
-     * date and end date), rejecting empty or repeated ids and date ranges
-     * where the start date is after the end date.
+     * Reads the attributes shared by every promotion type (id, name, start date
+     * and end date), rejecting empty or repeated ids and date ranges where the
+     * start date is after the end date.
      *
      * @return the common promotion data, or null if any value was invalid
      */
@@ -1348,17 +1411,18 @@ public class ConsoleUI {
     }
 
     /**
-     * Simple holder for the attributes shared by every promotion type,
-     * used only while collecting input in the console UI.
+     * Simple holder for the attributes shared by every promotion type, used
+     * only while collecting input in the console UI.
      */
     private record CommonPromotionData(String id, String name, LocalDate startDate, LocalDate endDate) {
+
     }
 
     /**
      * Prints the given list of promotions, marking each one as active or
      * inactive today, or the given message if the list is empty.
      *
-     * @param promotions   the promotions to print
+     * @param promotions the promotions to print
      * @param emptyMessage the message shown when there are no promotions
      */
     private void printPromotions(List<Promotion> promotions, String emptyMessage) {
@@ -1375,10 +1439,9 @@ public class ConsoleUI {
     }
 
     // ===================== INPUT HELPERS =====================
-
     /**
-     * Reads a price from the user, returning null if the input is not a
-     * valid non-negative number.
+     * Reads a price from the user, returning null if the input is not a valid
+     * non-negative number.
      *
      * @return the price entered, or null if invalid
      */
@@ -1393,8 +1456,8 @@ public class ConsoleUI {
     }
 
     /**
-     * Reads a stock quantity from the user, returning null if the input is
-     * not a valid integer.
+     * Reads a stock quantity from the user, returning null if the input is not
+     * a valid integer.
      *
      * @return the stock entered, or null if invalid
      */
@@ -1409,8 +1472,8 @@ public class ConsoleUI {
     }
 
     /**
-     * Reads a discount percentage from the user, returning null if the input
-     * is not a number between 0 and 100.
+     * Reads a discount percentage from the user, returning null if the input is
+     * not a number between 0 and 100.
      *
      * @return the percentage entered, or null if invalid
      */
@@ -1430,8 +1493,8 @@ public class ConsoleUI {
     }
 
     /**
-     * Reads a date in ISO format (YYYY-MM-DD) from the user, returning null
-     * if the input is not a valid date.
+     * Reads a date in ISO format (YYYY-MM-DD) from the user, returning null if
+     * the input is not a valid date.
      *
      * @param prompt the text shown to the user before reading the date
      * @return the date entered, or null if invalid
