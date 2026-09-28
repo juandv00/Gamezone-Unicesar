@@ -185,15 +185,15 @@ public class ReturnService {
 
     /**
      * Calculates the total income from the sales registered in the given month
-     * and year, using the final total of each sale (after the promotion
-     * discount, if any).
+     * and year, using the final total of each sale: subtotal minus the
+     * promotion discount plus the cost of the extended warranties.
      *
      * @param month the month to evaluate (1-12)
      * @param year the year to evaluate
      * @return the total of the sales of that period
      * @throws IllegalArgumentException if the month is not between 1 and 12
      */
-    public double calculateMonthlySalesTotal(int month, int year) {
+    public double calculateMonthlySales(int month, int year) {
         validateMonth(month);
         double totalSales = 0.0;
         for (Sale sale : saleService.listAll()) {
@@ -213,7 +213,7 @@ public class ReturnService {
      * @return the total refunded in that period
      * @throws IllegalArgumentException if the month is not between 1 and 12
      */
-    public double calculateMonthlyReturnsTotal(int month, int year) {
+    public double calculateMonthlyReturns(int month, int year) {
         validateMonth(month);
         double totalReturns = 0.0;
         for (Return r : returns) {
@@ -236,7 +236,7 @@ public class ReturnService {
      * @throws IllegalArgumentException if the month is not between 1 and 12
      */
     public double generateMonthlyBalance(int month, int year) {
-        return calculateMonthlySalesTotal(month, year) - calculateMonthlyReturnsTotal(month, year);
+        return calculateMonthlySales(month, year) - calculateMonthlyReturns(month, year);
     }
 
     /**
