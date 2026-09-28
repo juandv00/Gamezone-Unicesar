@@ -1309,10 +1309,11 @@ public class ConsoleUI {
         if (percentage == null) {
             return;
         }
-        System.out.print("Target category (1 = VIDEOGAME, 2 = CONSOLE): ");
+        System.out.print("Target category (1 = VIDEOGAME, 2 = CONSOLE, 3 = ACCESSORY): ");
         String targetCategory = switch (readOption()) {
             case 1 -> "VIDEOGAME";
             case 2 -> "CONSOLE";
+            case 3 -> "ACCESSORY";
             default -> null;
         };
         if (targetCategory == null) {

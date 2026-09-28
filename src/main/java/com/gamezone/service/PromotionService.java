@@ -44,7 +44,7 @@ public class PromotionService {
      * exists
      */
     public PercentageDiscount registerPercentageDiscount(String id, String name,
-            LocalDate startDate, LocalDate endDate, double percentage) {
+                                                         LocalDate startDate, LocalDate endDate, double percentage) {
         ensureIdIsAvailable(id);
         PercentageDiscount promotion = new PercentageDiscount(id, name, startDate, endDate, percentage);
         promotions.add(promotion);
@@ -60,13 +60,21 @@ public class PromotionService {
      * @param startDate start date of the promotion's validity period
      * @param endDate end date of the promotion's validity period
      * @param percentage discount percentage applied to matching products
-     * @param targetCategory the product category this promotion applies to
+     * @param targetCategory the category this promotion applies to: VIDEOGAME,
+     * CONSOLE, or ACCESSORY
      * @return the newly registered CategoryDiscount instance
-     * @throws IllegalArgumentException if a promotion with the same id already
-     * exists
+     * @throws IllegalArgumentException if the target category is not VIDEOGAME,
+     * CONSOLE, or ACCESSORY, or if a promotion with the same id already exists
      */
     public CategoryDiscount registerCategoryDiscount(String id, String name,
-            LocalDate startDate, LocalDate endDate, double percentage, String targetCategory) {
+                                                     LocalDate startDate, LocalDate endDate, double percentage, String targetCategory) {
+        if (targetCategory == null
+                || !(targetCategory.equalsIgnoreCase("VIDEOGAME")
+                || targetCategory.equalsIgnoreCase("CONSOLE")
+                || targetCategory.equalsIgnoreCase("ACCESSORY"))) {
+            throw new IllegalArgumentException(
+                    "The target category must be VIDEOGAME, CONSOLE, or ACCESSORY.");
+        }
         ensureIdIsAvailable(id);
         CategoryDiscount promotion = new CategoryDiscount(id, name, startDate, endDate, percentage, targetCategory);
         promotions.add(promotion);
@@ -88,7 +96,7 @@ public class PromotionService {
      * exists
      */
     public BulkPurchaseDiscount registerBulkPurchaseDiscount(String id, String name,
-            LocalDate startDate, LocalDate endDate, int minimumQuantity, double percentage) {
+                                                             LocalDate startDate, LocalDate endDate, int minimumQuantity, double percentage) {
         ensureIdIsAvailable(id);
         BulkPurchaseDiscount promotion
                 = new BulkPurchaseDiscount(id, name, startDate, endDate, minimumQuantity, percentage);
