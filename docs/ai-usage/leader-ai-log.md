@@ -425,3 +425,13 @@ for Requirement 4 before approving them.
 - **Response:** An analysis covering the independent hierarchy decision, the design of each subclass and its enums, console compatibility, persistence with a type discriminator, and the integration with sales; and a Mermaid diagram by layers, checked with the Mermaid parser.
 - **Decision:** Accepted both files after checking the class members against the code. The file name `data/accessories.csv` is used because Developer 2 changes it in `fix/accessory-data-file` during the same phase.
 - **Related commit:** `docs: add accessory module analysis`, `docs: add accessory module class diagram`
+
+### A3 — Unified sale registration flow
+- **Date:** 2026-09-27
+- **Tool:** Claude (Anthropic)
+- **Phase and branch:** Phase 3 – `refactor/unified-sale-registration`
+- **Objective:** Reorganize `SaleService.registerSale` into the eight steps required by Requirement 5, and let the console sale flow select products and accessories in one list.
+- **Query:** Asked to compare the current `registerSale` methods with the eight steps of A3 and reorganize them without breaking the existing callers.
+- **Response:** The three existing `registerSale` overloads now delegate to one private method (`processSale`) that follows the required order: validate items, validate stock, create the sale, apply the promotion on the subtotal, assign warranties, final total, update the inventory by item type, and persist. A new `registerSaleByItemIds` resolves each id as a product or an accessory. In `ConsoleUI`, products and accessories are entered in the same list.
+- **Decision:** Accepted. Two differences from the previous behavior were kept on purpose and will be documented in `integration-analysis.md`: the stock is now reduced after the promotion and the warranties (step 7), and a sale with only accessories is allowed because A3 requires "at least one item". Warranties are still persisted by `WarrantyService` when they are assigned (step 5), because its API saves them on each assignment. Tested an end-to-end sale (console + video game + accessory), an accessory-only sale, rejection without stock changes, and the old product-only method.
+- **Related commit:** `refactor: unify sale registration flow in SaleService`, `refactor: select products and accessories in one list in ConsoleUI`
