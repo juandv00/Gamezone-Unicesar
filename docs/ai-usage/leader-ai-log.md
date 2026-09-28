@@ -403,3 +403,25 @@ for Requirement 4 before approving them.
   into seven atomic commits, while Developer 2 used two. Commits that are
   already pushed cannot be split without `push --force`, which is not
   allowed, so the team should plan small commits from the start.
+
+## Requirement 5 — Integration (entries in the required format)
+
+### Planning the integration and the team's work
+- **Date:** 2026-09-27
+- **Tool:** Claude (Anthropic)
+- **Phase and branch:** Phase 2 – planning (before `docs/accessory-documentation`)
+- **Objective:** Compare the Requirement 5 specification with the real code in `develop` to know which integration adjustments were already covered, which were missing, and in which order the team could work.
+- **Query:** Asked for help to decide who starts first, which branch depends on which, and to prepare a message for the team with the exact signatures so their own AI tools could help them.
+- **Response:** A status table of A1–A9 (A2, A3, and A6 partially covered; A1, A4, A5, A7, A8, A9 pending), three missing deliverables (`accessory-analysis.md`, `accessory-class-diagram.md`, and `data/accessories.csv`), and a plan by phases with a separate branch per adjustment. It also noted that A4 and A5 both modify `Return`, so A5 should start after A4 is merged.
+- **Decision:** Accepted the plan and shared it with the team. Accepted that A5 (proportional refund), A7 (warranty cancellation), and A2 (warranty references resolved in the service) replace decisions we had documented in Requirements 3 and 4, because Requirement 5 now defines them; these changes will be explained in `integration-analysis.md`.
+- **Related commit:** — (planning, no commit)
+
+### Accessory module documentation
+- **Date:** 2026-09-27
+- **Tool:** Claude (Anthropic)
+- **Phase and branch:** Phase 2 – `docs/accessory-documentation`
+- **Objective:** Create `docs/accessory-analysis.md` and `docs/accessory-class-diagram.md`, required by Requirement 5 and missing from the repository.
+- **Query:** Asked to write both files from the real accessory classes and the answer to question 12 of `analysis.md`.
+- **Response:** An analysis covering the independent hierarchy decision, the design of each subclass and its enums, console compatibility, persistence with a type discriminator, and the integration with sales; and a Mermaid diagram by layers, checked with the Mermaid parser.
+- **Decision:** Accepted both files after checking the class members against the code. The file name `data/accessories.csv` is used because Developer 2 changes it in `fix/accessory-data-file` during the same phase.
+- **Related commit:** `docs: add accessory module analysis`, `docs: add accessory module class diagram`
