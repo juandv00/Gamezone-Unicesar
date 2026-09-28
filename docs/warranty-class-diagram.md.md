@@ -1,6 +1,8 @@
-﻿# Warranty Module Class Diagram
+# Warranty Module Class Diagram
+
 This diagram shows the warranty module and how it integrates with the existing classes of the system, organized by layer. It includes the new warranty hierarchy (the abstract `Warranty` class with the `BasicWarranty` and `ExtendedWarranty` subclasses) with its attributes, methods, and inheritance relationships; the new persistence and service classes; and the integration with `Sale` (warranty cost), `Product` and `Console` (only consoles receive warranties), `SaleService` (warranty assignment when a sale is registered), and the console menu. After integration adjustment A2, `WarrantyRepository` stores and loads only identifiers (`WarrantyRecord`), and `WarrantyService` resolves the sale and product of each warranty through `SalePersistence` and `ProductService`, which removes the circular dependency with `SaleService`. Classes of the system not involved in the warranty module are omitted for readability; see `class-diagram.md` for the complete base system and the promotion and return diagrams for those modules.
-~~~ mermaid
+
+```mermaid
 classDiagram
     namespace model {
         class Warranty {
@@ -184,4 +186,4 @@ classDiagram
     Main ..> WarrantyService
     Main ..> SaleService
     Main ..> ConsoleUI
-~~~
+```
