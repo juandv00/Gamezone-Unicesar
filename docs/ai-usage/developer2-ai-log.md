@@ -333,3 +333,13 @@ assistance received and removed claims that the AI directly implemented complete
 modules.
 
 * **Related commit:** docs: add developer 2 AI usage log
+
+### A2 — Warranty circular dependency
+- **Date:** 2026-09-27
+- **Tool:** Claude (Anthropic)
+- **Phase and branch:** Phase 3 – `fix/warranty-circular-dependency`
+- **Objective:** Remove the dependency of `WarrantyRepository` on sales, as required by adjustment A2, so the repository stores and loads only identifiers and `WarrantyService` resolves the sale and product.
+- **Query:** How to make the repository return only identifiers and where to rebuild the warranties from them.
+- **Response:** Use a small record (`WarrantyRecord`) with the stored fields; `loadAll()` returns records, and `WarrantyService` receives `SalePersistence` and `ProductService` by constructor to resolve the sale and product of each record, skipping the ones that cannot be found.
+- **Decision:** Accepted. After pushing the record and the service, the project did not compile because `Main` still used the old constructors; the review also found an outdated class JavaDoc and unused imports in `WarrantyRepository`, and the class diagram still showed the old dependency. I fixed `Main`, the JavaDoc, the imports, and the diagram in separate commits, and tested that warranties are saved as ids and reloaded after restarting.
+- **Related commit:** `fix: add WarrantyRecord to hold warranty identifiers`, `fix: resolve warranty references in WarrantyService from stored ids`, `fix: wire WarrantyService with SalePersistence and ProductService in Main`

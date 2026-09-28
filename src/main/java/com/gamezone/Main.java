@@ -15,9 +15,9 @@ import com.gamezone.service.WarrantyService;
 import com.gamezone.ui.ConsoleUI;
 
 /**
- * Entry point of the GameZone Unicesar application. Wires together the
- * services of the modules (products, people, accessories, promotions,
- * sales, returns, and warranties) and starts the console-based user interface, which loads
+ * Entry point of the GameZone Unicesar application. Wires together the services
+ * of the modules (products, people, accessories, promotions, sales, returns,
+ * and warranties) and starts the console-based user interface, which loads
  * previously stored data automatically when the application starts.
  */
 public class Main {
@@ -40,8 +40,9 @@ public class Main {
         PromotionService promotionService = new PromotionService(promotionRepository);
 
         SalePersistence salePersistence = new SalePersistence(accessoryRepository);
-        WarrantyRepository warrantyRepository = new WarrantyRepository(salePersistence);
-        WarrantyService warrantyService = new WarrantyService(warrantyRepository);
+        WarrantyRepository warrantyRepository = new WarrantyRepository();
+        WarrantyService warrantyService = new WarrantyService(warrantyRepository, salePersistence,
+                productService);
         SaleService saleService = new SaleService(productService, accessoryService,
                 salePersistence, promotionService, warrantyService);
 

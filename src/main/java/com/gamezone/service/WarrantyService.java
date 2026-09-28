@@ -1,39 +1,90 @@
 package com.gamezone.service;
-
+ 
 import com.gamezone.model.BasicWarranty;
 import com.gamezone.model.Console;
 import com.gamezone.model.ExtendedWarranty;
 import com.gamezone.model.Product;
 import com.gamezone.model.Sale;
 import com.gamezone.model.Warranty;
+import com.gamezone.persistence.SalePersistence;
+import com.gamezone.persistence.WarrantyRecord;
 import com.gamezone.persistence.WarrantyRepository;
 import java.time.LocalDate;
 import java.util.ArrayList;
 import java.util.List;
-
+ 
 /**
  * Contains the business rules for managing product warranties at GameZone
  * Unicesar, such as assigning basic and extended warranties to consoles,
  * querying warranty validity, and listing warranties expiring soon.
  */
 public class WarrantyService {
-
+ 
     private static final String WARRANTY_ID_PREFIX = "WAR-";
-
+ 
     private final WarrantyRepository warrantyRepository;
+    private final SalePersistence salePersistence;
+    private final ProductService productService;
     private List<Warranty> warranties;
-
+ 
     /**
-     * Creates a new WarrantyService, loading the currently stored
-     * warranties from the repository.
+     * Creates a new WarrantyService, loading the stored warranty records and
+     * resolving their sale and product references from the identifiers.
      *
      * @param warrantyRepository the repository used to persist warranties
+     * @param salePersistence    used to resolve the sale of each record
+     * @param productService     used to resolve the product of each record
      */
-    public WarrantyService(WarrantyRepository warrantyRepository) {
+    public WarrantyService(WarrantyRepository warrantyRepository,
+            SalePersistence salePersistence, ProductService productService) {
         this.warrantyRepository = warrantyRepository;
-        this.warranties = warrantyRepository.loadAll();
+        this.salePersistence = salePersistence;
+        this.productService = productService;
+        this.warranties = resolveWarranties(warrantyRepository.loadAll());
     }
-
+ 
+    /**
+     * Builds the warranties from the stored records, skipping the records
+     * whose sale or product can no longer be found.
+     *
+     * @param records the stored warranty records
+     * @return the warranties that could be fully resolved
+     */
+    private List<Warranty> resolveWarranties(List<WarrantyRecord> records) {
+        List<Sale> sales = salePersistence.load();
+        List<Warranty> resolved = new ArrayList<>();
+        for (WarrantyRecord record : records) {
+            Sale sale = findSaleById(sales, record.saleId());
+            Product product = productService.findById(record.productId());
+            if (sale == null || product == null) {
+                continue;
+            }
+            if (record.type().equals("BASIC")) {
+                resolved.add(new BasicWarranty(record.id(), product, sale, record.startDate()));
+            } else {
+                resolved.add(new ExtendedWarranty(record.id(), product, sale, record.startDate()));
+            }
+        }
+        return resolved;
+    }
+ 
+    /**
+     * Finds a sale by id in the given list, ignoring case and skipping
+     * sales without an id.
+     *
+     * @param sales  the sales to search
+     * @param saleId the id to look for
+     * @return the matching sale, or null if not found
+     */
+    private Sale findSaleById(List<Sale> sales, String saleId) {
+        for (Sale sale : sales) {
+            if (sale.getId() != null && sale.getId().equalsIgnoreCase(saleId)) {
+                return sale;
+            }
+        }
+        return null;
+    }
+ 
     /**
      * Creates and persists an automatic basic warranty for the given
      * console and sale.
@@ -51,7 +102,7 @@ public class WarrantyService {
         warrantyRepository.saveAll(warranties);
         return warranty;
     }
-
+ 
     /**
      * Creates and persists an extended warranty for the given console and
      * sale, requested optionally by the seller at the time of sale.
@@ -69,7 +120,7 @@ public class WarrantyService {
         warrantyRepository.saveAll(warranties);
         return warranty;
     }
-
+ 
     /**
      * Ensures the given product is a Console, since only consoles are
      * eligible for warranties.
@@ -82,7 +133,7 @@ public class WarrantyService {
             throw new IllegalArgumentException("Warranties can only be assigned to consoles.");
         }
     }
-
+ 
     /**
      * Finds the warranty associated with a specific product within a
      * specific sale.
@@ -99,7 +150,7 @@ public class WarrantyService {
         }
         return null;
     }
-
+ 
     /**
      * Returns all warranties currently registered.
      *
@@ -108,7 +159,7 @@ public class WarrantyService {
     public List<Warranty> listAllWarranties() {
         return new ArrayList<>(warranties);
     }
-
+ 
     /**
      * Returns the warranties that are currently active, based on today's date.
      *
@@ -124,7 +175,7 @@ public class WarrantyService {
         }
         return active;
     }
-
+ 
     /**
      * Returns the warranties that are active today and whose end date
      * falls on or before today plus the given number of days.
@@ -147,7 +198,7 @@ public class WarrantyService {
         }
         return expiringSoon;
     }
-
+ 
     /**
      * Generates the next available warranty id, with the format WAR-n,
      * where n is one more than the highest number already in use.
