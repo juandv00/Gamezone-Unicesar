@@ -1,0 +1,187 @@
+﻿# Warranty Module Class Diagram
+This diagram shows the warranty module and how it integrates with the existing classes of the system, organized by layer. It includes the new warranty hierarchy (the abstract `Warranty` class with the `BasicWarranty` and `ExtendedWarranty` subclasses) with its attributes, methods, and inheritance relationships; the new persistence and service classes; and the integration with `Sale` (warranty cost), `Product` and `Console` (only consoles receive warranties), `SaleService` (warranty assignment when a sale is registered), and the console menu. After integration adjustment A2, `WarrantyRepository` stores and loads only identifiers (`WarrantyRecord`), and `WarrantyService` resolves the sale and product of each warranty through `SalePersistence` and `ProductService`, which removes the circular dependency with `SaleService`. Classes of the system not involved in the warranty module are omitted for readability; see `class-diagram.md` for the complete base system and the promotion and return diagrams for those modules.
+~~~ mermaid
+classDiagram
+    namespace model {
+        class Warranty {
+            <<abstract>>
+            -String id
+            -Product product
+            -Sale sale
+            -LocalDate startDate
+            -LocalDate endDate
+            +Warranty(String id, Product product, Sale sale, LocalDate startDate)
+            +getId() String
+            +getProduct() Product
+            +getSale() Sale
+            +getStartDate() LocalDate
+            +getEndDate() LocalDate
+            +getDurationInMonths()* int
+            +getWarrantyType()* String
+            +getAdditionalCost()* double
+            +isActive(LocalDate date) boolean
+            +generateWarrantyCertificate() String
+            -formatAmount(double amount) String
+        }
+
+        class BasicWarranty {
+            +BasicWarranty(String id, Product product, Sale sale, LocalDate startDate)
+            +getDurationInMonths() int
+            +getWarrantyType() String
+            +getAdditionalCost() double
+        }
+
+        class ExtendedWarranty {
+            +ExtendedWarranty(String id, Product product, Sale sale, LocalDate startDate)
+            +getDurationInMonths() int
+            +getWarrantyType() String
+            +getAdditionalCost() double
+        }
+
+        class Sale {
+            -String id
+            -LocalDate date
+            -List~Product~ products
+            -List~Accessory~ accessories
+            -double discountAmount
+            -double warrantyCost
+            +getId() String
+            +getDate() LocalDate
+            +getProducts() List~Product~
+            +getWarrantyCost() double
+            +setWarrantyCost(double warrantyCost) void
+            +calculateTotal() double
+            +calculateFinalTotal() double
+            +generateReceipt() String
+        }
+
+        class Product {
+            <<abstract>>
+            -String id
+            -String title
+            -double price
+            -int stock
+            +getId() String
+            +getTitle() String
+            +getPrice() double
+            +getDescription()* String
+        }
+
+        class Console
+        class VideoGame
+        class Accessory
+    }
+
+    namespace persistence {
+        class WarrantyRepository {
+            -String FILE_PATH = "data/warranties.csv"
+            -String DELIMITER = ";"
+            +saveAll(List~Warranty~ warranties) void
+            +loadAll() List~WarrantyRecord~
+            -toLine(Warranty w) String
+            -fromLine(String line) WarrantyRecord
+        }
+
+        class WarrantyRecord {
+            <<record>>
+            +type() String
+            +id() String
+            +saleId() String
+            +productId() String
+            +startDate() LocalDate
+        }
+
+        class SalePersistence {
+            +save(List~Sale~ sales) void
+            +load() List~Sale~
+        }
+    }
+
+    namespace service {
+        class WarrantyService {
+            -String WARRANTY_ID_PREFIX = "WAR-"
+            -WarrantyRepository warrantyRepository
+            -SalePersistence salePersistence
+            -ProductService productService
+            -List~Warranty~ warranties
+            +WarrantyService(WarrantyRepository warrantyRepository, SalePersistence salePersistence, ProductService productService)
+            +assignBasicWarranty(Product product, Sale sale, LocalDate startDate) BasicWarranty
+            +assignExtendedWarranty(Product product, Sale sale, LocalDate startDate) ExtendedWarranty
+            +findWarrantyByProduct(String productId, String saleId) Warranty
+            +listAllWarranties() List~Warranty~
+            +listActiveWarranties() List~Warranty~
+            +listWarrantiesExpiringSoon(int daysAhead) List~Warranty~
+            -resolveWarranties(List~WarrantyRecord~ records) List~Warranty~
+            -findSaleById(List~Sale~ sales, String saleId) Sale
+            -validateConsole(Product product) void
+            -nextWarrantyId() String
+        }
+
+        class ProductService {
+            +findById(String productId) Product
+        }
+
+        class SaleService {
+            -SalePersistence salePersistence
+            -WarrantyService warrantyService
+            -List~Sale~ sales
+            +SaleService(ProductService productService, AccessoryService accessoryService, SalePersistence salePersistence, PromotionService promotionService, WarrantyService warrantyService)
+            +registerSale(Client client, Seller seller, List~Product~ products) Sale
+            +registerSale(Client client, Seller seller, List~Product~ products, List~Accessory~ accessories) Sale
+            +registerSale(Client client, Seller seller, List~Product~ products, List~Accessory~ accessories, List~String~ productIdsWithExtendedWarranty) Sale
+            +findById(String saleId) Sale
+            -assignWarranties(Sale sale, List~String~ extendedIds) void
+            -containsConsole(List~Product~ products, String productId) boolean
+            -containsId(List~String~ ids, String productId) boolean
+        }
+    }
+
+    namespace ui {
+        class ConsoleUI {
+            -SaleService saleService
+            -WarrantyService warrantyService
+            -registerSale() void
+            -askExtendedWarranties(List~Product~ products) List~String~
+            -printSaleWarranties(Sale sale) void
+            -warrantyMenu() void
+            -viewWarrantyOfProduct() void
+            -listWarrantiesExpiringSoon() void
+            -printWarranties(List~Warranty~ warranties, String emptyMessage) void
+        }
+
+        class Main {
+            +main(String[] args)$ void
+        }
+    }
+
+    Warranty <|-- BasicWarranty
+    Warranty <|-- ExtendedWarranty
+    Product <|-- Console
+    Product <|-- VideoGame
+
+    Warranty "0..*" --> "1" Product : covers
+    Warranty "0..*" --> "1" Sale : issued in
+    Sale o-- Product : 1..*
+    Sale o-- Accessory : 0..*
+
+    WarrantyRepository ..> Warranty : saves ids only
+    WarrantyRepository ..> WarrantyRecord : loads
+    SalePersistence ..> Sale : saves and loads (with warranty cost)
+
+    WarrantyService ..> WarrantyRepository
+    WarrantyService ..> SalePersistence : resolves sale by id
+    WarrantyService ..> ProductService : resolves product by id
+    WarrantyService ..> BasicWarranty : creates
+    WarrantyService ..> ExtendedWarranty : creates
+    WarrantyService ..> Console : only consoles (instanceof)
+    SaleService ..> WarrantyService : assignBasicWarranty, assignExtendedWarranty
+    SaleService ..> SalePersistence
+    SaleService ..> Sale : sets warranty cost
+
+    ConsoleUI ..> SaleService
+    ConsoleUI ..> WarrantyService
+    Main ..> WarrantyRepository
+    Main ..> WarrantyService
+    Main ..> SaleService
+    Main ..> ConsoleUI
+~~~
