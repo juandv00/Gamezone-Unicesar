@@ -41,7 +41,7 @@ public class PromotionService {
      * @param percentage discount percentage applied to the sale total
      * @return the newly registered PercentageDiscount instance
      * @throws IllegalArgumentException if a promotion with the same id already
-     * exists
+     * exists, or if the target category is not VIDEOGAME, CONSOLE, or ACCESSORY
      */
     public PercentageDiscount registerPercentageDiscount(String id, String name,
             LocalDate startDate, LocalDate endDate, double percentage) {
@@ -67,6 +67,16 @@ public class PromotionService {
      */
     public CategoryDiscount registerCategoryDiscount(String id, String name,
             LocalDate startDate, LocalDate endDate, double percentage, String targetCategory) {
+
+        if (targetCategory == null
+                || !(targetCategory.equalsIgnoreCase("VIDEOGAME")
+                || targetCategory.equalsIgnoreCase("CONSOLE")
+                || targetCategory.equalsIgnoreCase("ACCESSORY"))) {
+            throw new IllegalArgumentException(
+                    "The target category must be VIDEOGAME, CONSOLE, or ACCESSORY.");
+        }
+
+
         ensureIdIsAvailable(id);
         CategoryDiscount promotion = new CategoryDiscount(id, name, startDate, endDate, percentage, targetCategory);
         promotions.add(promotion);
@@ -168,6 +178,7 @@ public class PromotionService {
      * @param id the id to check
      * @throws IllegalArgumentException if the id is already in use
      */
+
     private void ensureIdIsAvailable(String id) {
         if (findById(id) != null) {
             throw new IllegalArgumentException("A promotion with id " + id + " already exists.");
