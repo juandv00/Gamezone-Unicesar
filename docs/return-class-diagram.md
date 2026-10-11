@@ -100,8 +100,8 @@ classDiagram
             +viewAllReturns() List~Return~
             +viewReturnsByCustomer(String customerId) List~Return~
             +viewReturnsBySale(String saleId) List~Return~
-            +calculateMonthlySalesTotal(int month, int year) double
-            +calculateMonthlyReturnsTotal(int month, int year) double
+            +calculateMonthlySales(int month, int year) double
+            +calculateMonthlyReturns(int month, int year) double
             +generateMonthlyBalance(int month, int year) double
             -countReturnableUnits(Sale sale) Map~String, Integer~
             -findProductById(List~Product~ products, String productId) Product
