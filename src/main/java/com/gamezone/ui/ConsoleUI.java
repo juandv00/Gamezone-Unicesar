@@ -1060,9 +1060,9 @@ public class ConsoleUI {
 
     /**
      * Guides the user through registering a return: choosing the original
-     * sale, selecting which of its products are returned, and giving a
-     * reason. The business rules (30-day window, products belonging to the
-     * sale, units not returned twice) are validated by the ReturnService;
+     * sale, selecting which of its products and accessories are returned, and
+     * giving a reason. The business rules (30-day window, items belonging to
+     * the sale, units not returned twice) are validated by the ReturnService;
      * the sale window is also checked here to warn the user early.
      */
     private void registerReturn() {
@@ -1079,25 +1079,29 @@ public class ConsoleUI {
             return;
         }
 
-        System.out.println("\nProducts in sale " + sale.getId() + ":");
+        System.out.println("\nItems in sale " + sale.getId() + ":");
         for (Product product : sale.getProducts()) {
             System.out.println("  " + product.getId() + " - " + product.getTitle()
                     + " (" + formatAmount(product.getPrice()) + ")");
         }
+        for (Accessory accessory : sale.getAccessories()) {
+            System.out.println("  " + accessory.getId() + " - " + accessory.getTitle()
+                    + " (accessory, " + formatAmount(accessory.getPrice()) + ")");
+        }
 
-        List<String> productIds = new ArrayList<>();
-        boolean addingProducts = true;
-        while (addingProducts) {
-            System.out.print("Product id to return (or 0 to finish): ");
-            String productId = scanner.nextLine().trim();
-            if (productId.equals("0")) {
-                addingProducts = false;
-            } else if (!productId.isEmpty()) {
-                productIds.add(productId);
+        List<String> itemIds = new ArrayList<>();
+        boolean addingItems = true;
+        while (addingItems) {
+            System.out.print("Item id to return (or 0 to finish): ");
+            String itemId = scanner.nextLine().trim();
+            if (itemId.equals("0")) {
+                addingItems = false;
+            } else if (!itemId.isEmpty()) {
+                itemIds.add(itemId);
             }
         }
-        if (productIds.isEmpty()) {
-            System.out.println("No products selected. The return was cancelled.");
+        if (itemIds.isEmpty()) {
+            System.out.println("No items selected. The return was cancelled.");
             return;
         }
 
@@ -1105,10 +1109,10 @@ public class ConsoleUI {
         String reason = scanner.nextLine().trim();
 
         try {
-            Return registeredReturn = returnService.registerReturn(saleId, productIds, reason);
+            Return registeredReturn = returnService.registerReturn(saleId, itemIds, reason);
             System.out.println("Return registered successfully.");
             System.out.println(registeredReturn.generateReturnReceipt());
-        } catch (IllegalArgumentException e) {
+        } catch (IllegalArgumentException | IllegalStateException e) {
             System.out.println("Could not register return: " + e.getMessage());
         }
     }
@@ -1176,7 +1180,7 @@ public class ConsoleUI {
             System.out.println(r.getId() + " | " + r.getDate()
                     + " | sale " + sale.getId()
                     + " | client " + sale.getClient().getName()
-                    + " | " + r.getReturnedProducts().size() + " product(s)"
+                    + " | " + (r.getReturnedProducts().size() + r.getReturnedAccessories().size()) + " item(s)"
                     + " | refund " + formatAmount(r.getRefundAmount())
                     + " | reason: " + r.getReason());
         }
