@@ -115,28 +115,57 @@ public class Return {
     }
 
     /**
-     * Calculates the refund amount by summing the price of every returned
-     * product and accessory, stores it in the refundAmount attribute, and
-     * returns it.
+     * Calculates the refund amount, stores it in the refundAmount attribute,
+     * and returns it. The refund of each returned product or accessory is
+     * proportional to the discount of the original sale:
+     * {@code price * (1 - discount / subtotal)}, so the customer never gets
+     * back more than what was actually paid for the item.
      *
      * @return the calculated refund amount
      */
     public double calculateRefundAmount() {
         double total = 0.0;
         for (Product product : returnedProducts) {
-            total += product.getPrice();
+            total += refundFor(product.getPrice());
         }
         for (Accessory accessory : returnedAccessories) {
-            total += accessory.getPrice();
+            total += refundFor(accessory.getPrice());
         }
         this.refundAmount = total;
         return this.refundAmount;
     }
 
     /**
+     * Returns the fraction of the list price that the customer actually paid
+     * in the original sale: {@code 1 - discount / subtotal}. If the sale has
+     * no subtotal, the factor is 1 (no discount).
+     *
+     * @return the factor to apply to each list price
+     */
+    private double paidFactor() {
+        double subtotal = originalSale.calculateTotal();
+        if (subtotal <= 0) {
+            return 1.0;
+        }
+        return 1.0 - originalSale.getDiscountAmount() / subtotal;
+    }
+
+    /**
+     * Calculates the refund of one item from its list price, applying the
+     * proportional discount of the original sale.
+     *
+     * @param listPrice the list price of the item
+     * @return the amount to refund for that item
+     */
+    private double refundFor(double listPrice) {
+        return listPrice * paidFactor();
+    }
+
+    /**
      * Generates a text receipt describing this return: its id and date, the
      * original sale it refers to, each returned product and accessory with its
-     * price, the reason, and the refunded amount.
+     * list price, proportional discount, and refunded amount, the reason, and
+     * the total refunded.
      *
      * @return the receipt of the return as multi-line text
      */
@@ -149,17 +178,31 @@ public class Return {
                 .append(" (").append(originalSale.getDate()).append(")\n");
         sb.append("Returned items:\n");
         for (Product product : returnedProducts) {
-            sb.append("  - ").append(product.getTitle())
-                    .append(": ").append(formatAmount(product.getPrice())).append("\n");
+            appendItemLine(sb, product.getTitle(), product.getPrice());
         }
         for (Accessory accessory : returnedAccessories) {
-            sb.append("  - ").append(accessory.getTitle())
-                    .append(" (accessory): ").append(formatAmount(accessory.getPrice())).append("\n");
+            appendItemLine(sb, accessory.getTitle() + " (accessory)", accessory.getPrice());
         }
         sb.append("Reason: ").append(reason).append("\n");
         sb.append("Refund amount: ").append(formatAmount(refundAmount)).append("\n");
         sb.append("==============================================");
         return sb.toString();
+    }
+
+    /**
+     * Appends one receipt line for a returned item, showing its list price,
+     * the proportional discount, and the refunded amount.
+     *
+     * @param sb        the receipt being built
+     * @param title     the title of the item
+     * @param listPrice the list price of the item
+     */
+    private void appendItemLine(StringBuilder sb, String title, double listPrice) {
+        double refund = refundFor(listPrice);
+        sb.append("  - ").append(title)
+                .append(": list price ").append(formatAmount(listPrice))
+                .append(", discount -").append(formatAmount(listPrice - refund))
+                .append(", refund ").append(formatAmount(refund)).append("\n");
     }
 
     private String formatAmount(double amount) {
