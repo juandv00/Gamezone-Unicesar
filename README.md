@@ -6,9 +6,16 @@ workshop (Universidad Popular del Cesar).
 
 The system manages products (video games and consoles), accessories
 (controllers, cables, and memories), people (clients and sellers),
-sales, promotional discounts, product returns, and console warranties,
-with a monthly balance report and data persisted to local files between
+sales, promotional discounts, returns, and console warranties, with a
+monthly balance report and data persisted to local files between
 executions.
+
+The four modules (accessories, promotions, returns, and warranties) work
+together in a single integrated system (Requirement 5): one sale can
+include video games, consoles, and accessories, receives the best active
+promotion automatically, generates basic and extended warranties, and
+can later be partially returned, which updates the inventory, the
+warranties, and the monthly balance.
 
 ## Requirements
 
@@ -24,7 +31,8 @@ com.gamezone
 │                #   Promotion, PercentageDiscount, CategoryDiscount,
 │                #   BulkPurchaseDiscount, Return, Warranty,
 │                #   BasicWarranty, ExtendedWarranty)
-├── persistence  # File-based read/write for each module
+├── persistence  # File-based read/write for each module (stores ids,
+│                #   not objects, for warranties and returns)
 ├── service      # Business rules and validations
 ├── ui           # Console-based user interface (ConsoleUI)
 └── Main.java    # Application entry point
@@ -34,12 +42,13 @@ Additional folders:
 - `data/` — files where the application's data is persisted:
   - `persons.txt` — clients and sellers (includes 3 pre-loaded sellers
     required for the first run).
-  - `products.txt`, `accessories.txt`, `sales.txt`, `returns.csv`,
-    `warranties.csv` —
+  - `accessories.csv` — accessories (includes 3 pre-loaded accessories,
+    one of each type: a controller, a cable, and a memory).
+  - `promotions.csv` — promotions (includes 4 pre-loaded promotions: one
+    of each type, plus a category promotion for accessories).
+  - `products.txt`, `sales.txt`, `returns.csv`, `warranties.csv` —
     created automatically when the first item of each kind is
     registered.
-  - `promotions.csv` — promotions (includes 3 pre-loaded promotions, one
-    of each type).
 - `docs/` — analysis documents, UML diagrams (Mermaid), and each team
   member's AI usage log.
 
@@ -82,12 +91,12 @@ The main menu is organized into seven modules:
 3. List all sellers *(three sellers come pre-loaded on first run)*
 
 **3. Sale management**
-1. Register a new sale (client + seller + one or more products, plus
-   optional accessories). The sale receives an id (`SALE-1`,
-   `SALE-2`, ...), and for each console the seller is asked whether to
-   add an extended warranty. The best active promotion is applied
-   automatically, every console receives its warranty, and the receipt
-   and warranty certificates are printed.
+1. Register a new sale (client + seller + one or more items). Products
+   and accessories are entered in the same list by their id. The sale
+   receives an id (`SALE-1`, `SALE-2`, ...), and for each console the
+   seller is asked whether to add an extended warranty. The best active
+   promotion is applied automatically, every console receives its
+   warranty, and the receipt and warranty certificates are printed.
 2. View full sales history
 3. View purchase history for a specific client
 4. View sales history for a specific seller
@@ -111,8 +120,10 @@ The main menu is organized into seven modules:
 5. List the promotions active today
 
 **6. Return management**
-1. Register a new return (sale id, products to return, and reason). The
-   refund is calculated automatically and the return receipt is printed.
+1. Register a new return (sale id, products and accessories to return,
+   and reason). The stock is restored, the warranties of returned
+   consoles are cancelled, the refund is calculated automatically, and
+   the return receipt is printed.
 2. List all returns
 3. List returns by client
 4. List returns by sale
@@ -130,10 +141,15 @@ The main menu is organized into seven modules:
 ## Business rules
 
 **Sales and stock**
-- A sale must include at least one product; accessories are optional
-  and can only be sold together with products.
+- A sale must include at least one item (a product or an accessory).
+- A sale is registered in this order: validate the items and their
+  stock, create the sale and calculate its subtotal, apply the best
+  promotion on the subtotal, assign the warranties of the consoles,
+  calculate the final total, reduce the stock of each item through its
+  own service, and save the sale.
 - Stock is validated for every product and accessory before anything
   is reduced, so a rejected sale leaves the inventory untouched.
+- Final total = subtotal − promotion discount + extended warranty cost.
 
 **Accessories**
 - Controllers and memories can register the consoles they are
@@ -142,8 +158,8 @@ The main menu is organized into seven modules:
 **Promotions**
 - There are three kinds of promotions:
   - *Percentage*: a percentage discount over the sale subtotal.
-  - *Category*: a percentage discount applied only to the products of a
-    target category (`VIDEOGAME` or `CONSOLE`).
+  - *Category*: a percentage discount applied only to the items of a
+    target category (`VIDEOGAME`, `CONSOLE`, or `ACCESSORY`).
   - *Bulk purchase*: a percentage discount over the subtotal when the
     sale includes a minimum number of products (accessories do not
     count toward the minimum).
@@ -157,20 +173,25 @@ The main menu is organized into seven modules:
   has no discount.
 - The discount can never exceed the sale subtotal.
 - The receipt shows each item, the subtotal, the discount applied (with
-  the promotion name), and the final total.
+  the promotion name), the extended warranty cost, and the final total.
 
 **Returns**
 - A return refers to an existing sale by its id and can include only
-  some of its products (partial returns are allowed).
+  some of its products and accessories (partial returns are allowed).
 - A return can only be registered within the 30 calendar days that
   follow the sale date (the 30th day included).
-- Every returned product must belong to the original sale, and each unit
+- Every returned item must belong to the original sale, and each unit
   sold can only be returned once, even across several returns of the
   same sale.
-- The refund is the sum of the list prices of the returned products,
-  and their stock is increased automatically.
-- Only products can be returned; accessories are not part of the return
-  module.
+- The stock of every returned item is restored through its own service
+  (products or accessories).
+- Each item is refunded in proportion to the discount of the original
+  sale: list price × (1 − discount / subtotal). The receipt shows the
+  list price, the proportional discount, and the refund of each item.
+- When a console is returned, its warranty is cancelled. The cost of a
+  cancelled extended warranty is added to the refund; a basic warranty
+  has no cost to refund. If a sale has several units of the same
+  console, one warranty is cancelled per returned unit.
 
 **Warranties**
 - Only consoles receive warranties; video games and accessories do not.
@@ -186,8 +207,7 @@ The main menu is organized into seven modules:
   not affected by promotion discounts.
 - A warranty is active from its start date to its end date, both
   included.
-- Returning a console does not change its warranty, and the extended
-  warranty cost is not refunded.
+- Returning a console cancels its warranty (see *Returns*).
 
 **Monthly balance**
 - For a given month and year, the report shows the total sales (final
@@ -208,12 +228,21 @@ See the [docs/](docs) folder for:
 - `promotion-analysis.md` — design analysis of the promotion module.
 - `return-analysis.md` — design analysis of the return module.
 - `warranty-analysis.md` — design analysis of the warranty module.
-- `hierarchy-diagram.md`, `class-diagram.md`, `layers-diagram.md` — the
-  base system's UML diagrams, written in Mermaid.
+- `accessory-analysis.md` — design analysis of the accessory module.
+- `integration-analysis.md` — the integration of the four modules
+  (Requirement 5): each adjustment, its cause, and the solution applied.
+- `hierarchy-diagram.md`, `class-diagram.md` — the base system's UML
+  diagrams, written in Mermaid.
+- `layers-diagram.md` — the four layers of the integrated system and
+  the dependencies between them, written in Mermaid.
 - `promotion-class-diagram.md` — the updated class diagram with the
   promotion module, written in Mermaid.
 - `return-class-diagram.md` — the updated class diagram with the return
   module, written in Mermaid.
 - `warranty-class-diagram.md` — the updated class diagram with the
   warranty module, written in Mermaid.
+- `accessory-class-diagram.md` — the class diagram of the accessory
+  module, written in Mermaid.
+- `integrated-class-diagram.md` — a single class diagram of the
+  integrated system, with the four layers and every module.
 - `ai-usage/` — each team member's AI usage log.
