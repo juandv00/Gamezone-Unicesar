@@ -435,3 +435,33 @@ for Requirement 4 before approving them.
 - **Response:** The three existing `registerSale` overloads now delegate to one private method (`processSale`) that follows the required order: validate items, validate stock, create the sale, apply the promotion on the subtotal, assign warranties, final total, update the inventory by item type, and persist. A new `registerSaleByItemIds` resolves each id as a product or an accessory. In `ConsoleUI`, products and accessories are entered in the same list.
 - **Decision:** Accepted. Two differences from the previous behavior were kept on purpose and will be documented in `integration-analysis.md`: the stock is now reduced after the promotion and the warranties (step 7), and a sale with only accessories is allowed because A3 requires "at least one item". Warranties are still persisted by `WarrantyService` when they are assigned (step 5), because its API saves them on each assignment. Tested an end-to-end sale (console + video game + accessory), an accessory-only sale, rejection without stock changes, and the old product-only method.
 - **Related commit:** `refactor: unify sale registration flow in SaleService`, `refactor: select products and accessories in one list in ConsoleUI`
+
+### Reviewing the Pull Requests of phases 3 and 4
+- **Date:** 2026-10-11
+- **Tool:** Claude (Anthropic)
+- **Phase and branch:** Phases 3 and 4 – reviews of #34, #36, #37, #38, and #39
+- **Objective:** Check every Pull Request of my teammates before approving it, and solve the process problems that appeared during phase 4.
+- **Query:** Asked to compare each branch with `develop` (commits, changed lines, and files), compile every commit, test each adjustment end to end, and explain how to recover from a Pull Request merged into the wrong branch and from a merge conflict.
+- **Response:** Every Pull Request was compiled and tested before approving it. Two incidents were solved: PR #35 (A6) was merged into `main` instead of `develop`, so the branch was restored and merged again through #36 with base `develop`; and the A5 branch was created from an outdated `develop`, so Developer 1 merged `origin/develop` into it and resolved the conflict in `Return.java` and his AI log.
+- **Decision:** Accepted. From then on I check that every Pull Request says "into develop" before approving, and every branch starts with `git checkout develop` and `git pull`. `main` was not reverted after #35, because its content was the same as `develop`; it is updated in A9. A small fix (conflict markers left in the AI log) was added as a new commit to the same Pull Request instead of requesting changes.
+- **Related commit:** — (reviews and approvals, no commit of mine)
+
+### Dependency direction in the return module
+- **Date:** 2026-10-11
+- **Tool:** Claude (Anthropic)
+- **Phase and branch:** Phase 5 – review before `docs/integration-documentation`
+- **Objective:** Check the integrated code against the restrictions of the workshop before documenting it.
+- **Query:** Asked to review the dependencies between layers of the integrated system before writing the integrated class diagram.
+- **Response:** `ReturnRepository` (persistence) received `SaleService` and `ProductService` (service) to resolve sales and products when loading returns, which breaks the dependency direction ui → service → persistence → model. The fix follows the approach of A2: a `ReturnRecord` with ids, and `ReturnService` resolves it.
+- **Decision:** Accepted. Developer 2 applied it in `refactor/return-repository-dependencies` before A8, so the documentation describes the corrected design. The file format did not change, and the returns stored before the change loaded with the same values.
+- **Related commit:** Developer 2's commits in `refactor/return-repository-dependencies`
+
+### A8 — Integration documentation
+- **Date:** 2026-10-11
+- **Tool:** Claude (Anthropic)
+- **Phase and branch:** Phase 5 – `docs/integration-documentation`
+- **Objective:** Create `docs/integration-analysis.md` and `docs/integrated-class-diagram.md`, and update `docs/layers-diagram.md` and `README.md` with every feature of the integrated system.
+- **Query:** Asked to write the documentation from the real code in `develop` and the history of the Pull Requests: each adjustment A1–A7 with its cause and solution, the decisions of earlier requirements that changed, and the incidents of the process.
+- **Response:** An analysis with every adjustment, the class names that differ from the specification (`SalePersistence` for `SaleRepository`, `ConsoleUI` for `ConsoleMenu`), the incidents, and a table of replaced decisions; a single Mermaid class diagram with the four layers and every module; a layers diagram with all the classes; and a README with the integrated operations and business rules.
+- **Decision:** Accepted after checking each class member against the code and validating both diagrams with the Mermaid parser. Corrected one point of the first draft: our Requirement 4 version had already avoided the circular dependency of A2 by using `SalePersistence`, so the analysis explains what A2 actually changed. Before writing the verification section, I ran the full scenario of the presentation with the real application (sale with a console, a video game, and an accessory; partial return of the console and the accessory; monthly balance) and documented the actual values.
+- **Related commit:** `docs: add integration analysis`, `docs: add integrated class diagram`, `docs: update layers diagram and README for the integrated system`, `docs: add Requirement 5 phase 4 and A8 entries to leader AI log`
