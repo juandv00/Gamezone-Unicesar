@@ -1,5 +1,6 @@
 package com.gamezone.service;
 
+import com.gamezone.model.Accessory;
 import com.gamezone.model.Product;
 import com.gamezone.model.Return;
 import com.gamezone.model.Sale;
@@ -11,9 +12,10 @@ import java.util.List;
 import java.util.Map;
 
 /**
- * Contains the business rules for managing product returns at GameZone
- * Unicesar, such as registering new returns with deadline and ownership
- * validation, restoring stock, and generating the monthly balance report.
+ * Contains the business rules for managing returns at GameZone Unicesar,
+ * such as registering new returns of products and accessories with deadline
+ * and ownership validation, restoring the stock of each item through its own
+ * service, and generating the monthly balance report.
  */
 public class ReturnService {
 
@@ -22,6 +24,7 @@ public class ReturnService {
     private final ReturnRepository returnRepository;
     private final SaleService saleService;
     private final ProductService productService;
+    private final AccessoryService accessoryService;
     private List<Return> returns;
 
     /**
@@ -34,26 +37,46 @@ public class ReturnService {
      */
     public ReturnService(ReturnRepository returnRepository, SaleService saleService,
             ProductService productService) {
+        this(returnRepository, saleService, productService, null);
+    }
+
+    /**
+     * Creates a new ReturnService that also supports returning accessories,
+     * restoring their stock through the given AccessoryService.
+     *
+     * @param returnRepository the repository used to persist returns
+     * @param saleService the service used to validate the original sale
+     * @param productService the service used to restore product stock
+     * @param accessoryService the service used to restore accessory stock, or
+     * null if accessories cannot be returned
+     */
+    public ReturnService(ReturnRepository returnRepository, SaleService saleService,
+            ProductService productService, AccessoryService accessoryService) {
         this.returnRepository = returnRepository;
         this.saleService = saleService;
         this.productService = productService;
+        this.accessoryService = accessoryService;
         this.returns = returnRepository.loadAll();
     }
 
     /**
      * Registers a new return for the given sale, validating the sale's
-     * existence, the 30-day return window, and that every product requested for
-     * return actually belongs to the original sale. On success, restores the
-     * stock of every returned product and persists the new return.
+     * existence, the 30-day return window, and that every item requested for
+     * return actually belongs to the original sale. Each id is resolved as a
+     * product of the sale first and, if no product matches, as an accessory of
+     * the sale. On success, restores the stock of every returned item through
+     * ProductService or AccessoryService, depending on its type, and persists
+     * the new return.
      *
      * @param saleId the id of the original sale
-     * @param productIds the ids of the products being returned
+     * @param productIds the ids of the items (products or accessories) being
+     * returned; an id repeated n times means n units
      * @param reason the reason given for the return
      * @return the newly registered Return
      * @throws IllegalArgumentException if the sale does not exist, the 30-day
-     * window has expired (checked with {@link Sale#canBeReturned()}), no
-     * product is given, a product does not belong to the original sale, or more
-     * units of a product are requested than remain returnable
+     * window has expired (checked with {@link Sale#canBeReturned()}), no item
+     * is given, an item does not belong to the original sale, or more units of
+     * an item are requested than remain returnable
      */
     public Return registerReturn(String saleId, List<String> productIds, String reason) {
         Sale sale = saleService.findById(saleId);
@@ -65,25 +88,34 @@ public class ReturnService {
                     "The return cannot be processed: more than 30 days have passed since the sale.");
         }
         if (productIds == null || productIds.isEmpty()) {
-            throw new IllegalArgumentException("Select at least one product to return.");
+            throw new IllegalArgumentException("Select at least one item to return.");
         }
 
-        List<Product> saleProducts = sale.getProducts();
         Map<String, Integer> returnableUnits = countReturnableUnits(sale);
         List<Product> returnedProducts = new ArrayList<>();
-        for (String productId : productIds) {
-            Product match = findProductById(saleProducts, productId);
-            if (match == null) {
+        List<Accessory> returnedAccessories = new ArrayList<>();
+        for (String itemId : productIds) {
+            Product product = findProductById(sale.getProducts(), itemId);
+            Accessory accessory = product == null ? findAccessoryById(sale.getAccessories(), itemId) : null;
+            if (product == null && accessory == null) {
                 throw new IllegalArgumentException(
-                        "The product " + productId + " does not belong to sale " + saleId + ".");
+                        "The item " + itemId + " does not belong to sale " + sale.getId() + ".");
             }
-            int remaining = returnableUnits.getOrDefault(match.getId(), 0);
+            if (accessory != null && accessoryService == null) {
+                throw new IllegalStateException("This ReturnService was created without accessory support.");
+            }
+            String key = product != null ? productKey(product.getId()) : accessoryKey(accessory.getId());
+            int remaining = returnableUnits.getOrDefault(key, 0);
             if (remaining <= 0) {
                 throw new IllegalArgumentException(
-                        "All units of product " + productId + " from this sale have already been returned.");
+                        "All units of item " + itemId + " from this sale have already been returned.");
             }
-            returnableUnits.put(match.getId(), remaining - 1);
-            returnedProducts.add(match);
+            returnableUnits.put(key, remaining - 1);
+            if (product != null) {
+                returnedProducts.add(product);
+            } else {
+                returnedAccessories.add(accessory);
+            }
         }
 
         Return newReturn = new Return(
@@ -91,11 +123,15 @@ public class ReturnService {
                 LocalDate.now(),
                 sale,
                 returnedProducts,
+                returnedAccessories,
                 reason
         );
 
         for (Product product : returnedProducts) {
             productService.restoreStock(product.getId(), 1);
+        }
+        for (Accessory accessory : returnedAccessories) {
+            accessoryService.restoreStock(accessory.getId(), 1);
         }
 
         returns.add(newReturn);
@@ -104,26 +140,59 @@ public class ReturnService {
     }
 
     /**
-     * Counts, for each product of the given sale, how many units can still be
+     * Counts, for each item of the given sale, how many units can still be
      * returned: the units sold minus the units already returned in previous
-     * returns of the same sale.
+     * returns of the same sale. Products and accessories are counted with
+     * separate keys, so an accessory and a product with the same id are not
+     * mixed.
      *
      * @param sale the original sale
-     * @return a map from product id to the number of units still returnable
+     * @return a map from item key to the number of units still returnable
      */
     private Map<String, Integer> countReturnableUnits(Sale sale) {
         Map<String, Integer> units = new HashMap<>();
         for (Product product : sale.getProducts()) {
-            units.merge(product.getId(), 1, Integer::sum);
+            units.merge(productKey(product.getId()), 1, Integer::sum);
+        }
+        for (Accessory accessory : sale.getAccessories()) {
+            units.merge(accessoryKey(accessory.getId()), 1, Integer::sum);
         }
         for (Return previous : returns) {
             if (previous.getOriginalSale().getId().equals(sale.getId())) {
                 for (Product product : previous.getReturnedProducts()) {
-                    units.merge(product.getId(), -1, Integer::sum);
+                    units.merge(productKey(product.getId()), -1, Integer::sum);
+                }
+                for (Accessory accessory : previous.getReturnedAccessories()) {
+                    units.merge(accessoryKey(accessory.getId()), -1, Integer::sum);
                 }
             }
         }
         return units;
+    }
+
+    private String productKey(String productId) {
+        return "P:" + productId;
+    }
+
+    private String accessoryKey(String accessoryId) {
+        return "A:" + accessoryId;
+    }
+
+    /**
+     * Finds an accessory with the given id within a specific list of
+     * accessories, ignoring case.
+     *
+     * @param accessories the list of accessories to search
+     * @param accessoryId the id to look for
+     * @return the matching accessory, or null if not found
+     */
+    private Accessory findAccessoryById(List<Accessory> accessories, String accessoryId) {
+        for (Accessory accessory : accessories) {
+            if (accessory.getId().equalsIgnoreCase(accessoryId)) {
+                return accessory;
+            }
+        }
+        return null;
     }
 
     /**
@@ -185,15 +254,15 @@ public class ReturnService {
 
     /**
      * Calculates the total income from the sales registered in the given month
-     * and year, using the final total of each sale (after the promotion
-     * discount, if any).
+     * and year, using the final total of each sale: subtotal minus the
+     * promotion discount plus the cost of the extended warranties.
      *
      * @param month the month to evaluate (1-12)
      * @param year the year to evaluate
      * @return the total of the sales of that period
      * @throws IllegalArgumentException if the month is not between 1 and 12
      */
-    public double calculateMonthlySalesTotal(int month, int year) {
+    public double calculateMonthlySales(int month, int year) {
         validateMonth(month);
         double totalSales = 0.0;
         for (Sale sale : saleService.listAll()) {
@@ -213,7 +282,7 @@ public class ReturnService {
      * @return the total refunded in that period
      * @throws IllegalArgumentException if the month is not between 1 and 12
      */
-    public double calculateMonthlyReturnsTotal(int month, int year) {
+    public double calculateMonthlyReturns(int month, int year) {
         validateMonth(month);
         double totalReturns = 0.0;
         for (Return r : returns) {
@@ -236,7 +305,7 @@ public class ReturnService {
      * @throws IllegalArgumentException if the month is not between 1 and 12
      */
     public double generateMonthlyBalance(int month, int year) {
-        return calculateMonthlySalesTotal(month, year) - calculateMonthlyReturnsTotal(month, year);
+        return calculateMonthlySales(month, year) - calculateMonthlyReturns(month, year);
     }
 
     /**

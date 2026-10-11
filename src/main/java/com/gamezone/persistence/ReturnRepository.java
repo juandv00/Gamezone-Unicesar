@@ -1,5 +1,6 @@
 package com.gamezone.persistence;
 
+import com.gamezone.model.Accessory;
 import com.gamezone.model.Product;
 import com.gamezone.model.Return;
 import com.gamezone.model.Sale;
@@ -18,9 +19,10 @@ import java.util.List;
 /**
  * Handles saving and loading Return data to and from a file, so that returns
  * information persists between application runs. Since a Return references an
- * original Sale and a list of returned Products, this class relies on
- * SaleService and ProductService to resolve those references by id when
- * reconstructing a Return from stored data.
+ * original Sale and the returned products and accessories, this class relies
+ * on SaleService to resolve the sale by id, and resolves each returned item id
+ * against the products of that sale first and then against its accessories
+ * (falling back to ProductService for products no longer in the sale).
  */
 public class ReturnRepository {
 
@@ -89,20 +91,21 @@ public class ReturnRepository {
 
     /**
      * Converts a Return into a single delimited line of text for storage, using
-     * the ids of its original sale and returned products.
+     * the ids of its original sale and returned items (products followed by
+     * accessories, in the same field).
      *
      * @param r the return to convert
      * @return the text line representing the return
      */
     private String toLine(Return r) {
-        StringBuilder productIds = new StringBuilder();
-        List<Product> returnedProducts = r.getReturnedProducts();
-        for (int i = 0; i < returnedProducts.size(); i++) {
-            productIds.append(returnedProducts.get(i).getId());
-            if (i < returnedProducts.size() - 1) {
-                productIds.append(ID_SEPARATOR);
-            }
+        List<String> itemIdList = new ArrayList<>();
+        for (Product product : r.getReturnedProducts()) {
+            itemIdList.add(product.getId());
         }
+        for (Accessory accessory : r.getReturnedAccessories()) {
+            itemIdList.add(accessory.getId());
+        }
+        String productIds = String.join(ID_SEPARATOR, itemIdList);
 
         return r.getId() + DELIMITER
                 + r.getDate() + DELIMITER
@@ -114,8 +117,8 @@ public class ReturnRepository {
 
     /**
      * Parses a single delimited line of text back into a Return instance,
-     * resolving the original sale and returned products by matching ids against
-     * the sales and products currently registered in the system.
+     * resolving the original sale and the returned products and accessories
+     * by matching ids against the sales currently registered in the system.
      *
      * @param line the text line to parse
      * @return the reconstructed Return, or null if the line is malformed or a
@@ -157,16 +160,40 @@ public class ReturnRepository {
         }
 
         List<Product> returnedProducts = new ArrayList<>();
-        for (String productId : productIds) {
-            Product product = productService.findById(productId);
+        List<Accessory> returnedAccessories = new ArrayList<>();
+        for (String itemId : productIds) {
+            Product product = findProduct(sale, itemId);
             if (product != null) {
                 returnedProducts.add(product);
+                continue;
+            }
+            Accessory accessory = findAccessory(sale, itemId);
+            if (accessory != null) {
+                returnedAccessories.add(accessory);
             }
         }
-        if (returnedProducts.isEmpty()) {
+        if (returnedProducts.isEmpty() && returnedAccessories.isEmpty()) {
             return null;
         }
 
-        return new Return(id, date, sale, returnedProducts, reason);
+        return new Return(id, date, sale, returnedProducts, returnedAccessories, reason);
+    }
+
+    private Product findProduct(Sale sale, String productId) {
+        for (Product product : sale.getProducts()) {
+            if (product.getId().equals(productId)) {
+                return product;
+            }
+        }
+        return productService.findById(productId);
+    }
+
+    private Accessory findAccessory(Sale sale, String accessoryId) {
+        for (Accessory accessory : sale.getAccessories()) {
+            if (accessory.getId().equals(accessoryId)) {
+                return accessory;
+            }
+        }
+        return null;
     }
 }

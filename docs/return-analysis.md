@@ -126,10 +126,10 @@ Reusing the existing methods is important because:
 ### 5. The monthly balance report needs to consolidate information from two different modules (sales and returns). In which service class is this report located, and why is this location consistent with the layered architecture? Which dependencies does this class need to generate it?
 
 The report is located in `ReturnService`, with three methods:
-- `calculateMonthlySalesTotal(month, year)`: the total of the sales of
+- `calculateMonthlySales(month, year)`: the total of the sales of
   that month, using the final total of each sale (after the promotion
   discount), which is the money that actually came in.
-- `calculateMonthlyReturnsTotal(month, year)`: the total refunded by the
+- `calculateMonthlyReturns(month, year)`: the total refunded by the
   returns registered in that month.
 - `generateMonthlyBalance(month, year)`: the difference between both.
 
