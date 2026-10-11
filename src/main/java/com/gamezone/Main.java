@@ -46,7 +46,7 @@ public class Main {
         SaleService saleService = new SaleService(productService, accessoryService,
                 salePersistence, promotionService, warrantyService);
 
-        ReturnRepository returnRepository = new ReturnRepository(saleService, productService);
+        ReturnRepository returnRepository = new ReturnRepository();
         ReturnService returnService = new ReturnService(returnRepository, saleService, productService,
                 accessoryService, warrantyService);
 

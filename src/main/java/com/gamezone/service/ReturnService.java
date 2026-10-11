@@ -5,6 +5,7 @@ import com.gamezone.model.Console;
 import com.gamezone.model.Product;
 import com.gamezone.model.Return;
 import com.gamezone.model.Sale;
+import com.gamezone.persistence.ReturnRecord;
 import com.gamezone.persistence.ReturnRepository;
 import java.time.LocalDate;
 import java.util.ArrayList;
@@ -78,7 +79,53 @@ public class ReturnService {
         this.productService = productService;
         this.accessoryService = accessoryService;
         this.warrantyService = warrantyService;
-        this.returns = returnRepository.loadAll();
+        this.returns = resolveReturns(returnRepository.loadAll());
+    }
+
+    /**
+     * Rebuilds the stored returns from their records, resolving the original
+     * sale through SaleService and each returned item id against the products
+     * of that sale first and then against its accessories (falling back to
+     * ProductService for products no longer in the sale). Records whose sale
+     * or items cannot be resolved are skipped.
+     *
+     * @param records the records loaded by the repository
+     * @return the resolved returns
+     */
+    private List<Return> resolveReturns(List<ReturnRecord> records) {
+        List<Return> resolved = new ArrayList<>();
+        for (ReturnRecord record : records) {
+            Sale sale = saleService.findById(record.saleId());
+            if (sale == null) {
+                continue;
+            }
+            List<Product> returnedProducts = new ArrayList<>();
+            List<Accessory> returnedAccessories = new ArrayList<>();
+            for (String itemId : record.itemIds()) {
+                Product product = findProductById(sale.getProducts(), itemId);
+                if (product == null) {
+                    product = productService.findById(itemId);
+                }
+                if (product != null) {
+                    returnedProducts.add(product);
+                    continue;
+                }
+                Accessory accessory = findAccessoryById(sale.getAccessories(), itemId);
+                if (accessory != null) {
+                    returnedAccessories.add(accessory);
+                }
+            }
+            if (returnedProducts.isEmpty() && returnedAccessories.isEmpty()) {
+                continue;
+            }
+            try {
+                resolved.add(new Return(record.id(), record.date(), sale, returnedProducts,
+                        returnedAccessories, record.reason(), record.warrantyRefund()));
+            } catch (IllegalArgumentException e) {
+                System.out.println("Skipping invalid stored return: " + record.id());
+            }
+        }
+        return resolved;
     }
 
     /**
