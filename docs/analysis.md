@@ -248,3 +248,10 @@ user interface or its persistence mechanism without touching the domain
 model at all. The `service` layer acts as the only layer that knows both the
 model and the persistence layer, and it is the only entry point available to
 the `ui` layer, centralizing business rule enforcement in a single place.
+
+### 12. Should accessories be integrated into the existing product hierarchy (extending Product), or should they form an independent hierarchy? Justify your decision, considering code reusability and consistency model
+
+Accessories were modeled as an independent hierarchy, with an abstract `Accessory` class extended by `Controller`, `Cable`, and `Memory`, instead of extending `Product`.
+Although accessories share attributes with products (id, title, price, and stock), they also have behavior that does not apply to video games or consoles: controllers and memories keep a list of compatible consoles, a relationship that only makes sense for accessories. Placing them under `Product` would either force that behavior into a class where it does not belong, or leave `Product` subclasses with operations that have no meaning for them.
+Keeping a separate hierarchy also protects consistency with the existing model. `Product`, `ProductService`, and the product persistence remained unchanged, so the accessory module could be developed in parallel and integrated additively: `Sale` gained a second list of accessories, and `SaleService` validates and reduces stock for both kinds of items in the same transaction, without breaking the sales already stored.
+The cost of this decision is some duplication of the common attributes and of the stock logic between both hierarchies. If the system grows, this could be reduced by extracting a shared abstraction (for example, a `Sellable` interface with `getId()`, `getPrice()`, and `getStock()`) that both `Product` and `Accessory` implement, so a sale could handle a single list of items.

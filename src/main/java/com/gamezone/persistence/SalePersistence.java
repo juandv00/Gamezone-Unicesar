@@ -1,5 +1,6 @@
 package com.gamezone.persistence;
 
+import com.gamezone.model.Accessory;
 import com.gamezone.model.Client;
 import com.gamezone.model.Person;
 import com.gamezone.model.Product;
@@ -7,15 +8,28 @@ import com.gamezone.model.Sale;
 import com.gamezone.model.Seller;
 import java.io.*;
 import java.time.LocalDate;
+import java.time.format.DateTimeParseException;
 import java.util.ArrayList;
+import java.util.Arrays;
 import java.util.List;
 
 /**
  * Handles saving and loading Sale data to and from a file, so that sales
  * information persists between application runs. Since a Sale references
- * a client, a seller, and a list of products, this class relies on
- * ProductPersistence and PersonPersistence to resolve those references
- * by id when reconstructing a Sale from stored data.
+ * a client, a seller, a list of products and a list of accessories, this
+ * class relies on ProductPersistence, PersonPersistence and
+ * AccessoryRepository to resolve those references by id when
+ * reconstructing a Sale from stored data.
+ *
+ * <p>Each sale is stored as one line with the format
+ * {@code [saleId;]date;clientId;sellerId;productIds[;accessoryIds[;promotionName;discountAmount[;warrantyCost]]]},
+ * where ids are separated by commas. Optional fields are only written when
+ * they (or a later field) have a value: a sale without accessories,
+ * discount or warranty cost is stored without them, and a sale with a
+ * warranty cost but no discount stores an empty promotion name and a
+ * discount of 0. Lines stored before sales had
+ * an id start directly with the date, so all older lines are still read
+ * correctly; those sales receive an id from the service layer.</p>
  */
 public class SalePersistence {
 
@@ -25,14 +39,31 @@ public class SalePersistence {
 
     private final ProductPersistence productPersistence;
     private final PersonPersistence personPersistence;
+    private final AccessoryRepository accessoryRepository;
 
     /**
      * Creates a new SalePersistence, using the given persistence classes
-     * to resolve client, seller, and product references when loading sales.
+     * to resolve client, seller, product and accessory references when
+     * loading sales. A default AccessoryRepository is used.
      */
     public SalePersistence() {
+        this(new AccessoryRepository());
+    }
+
+    /**
+     * Creates a new SalePersistence that resolves accessory references
+     * with the given repository when loading sales.
+     *
+     * @param accessoryRepository the repository used to resolve accessories by id
+     * @throws IllegalArgumentException if accessoryRepository is null
+     */
+    public SalePersistence(AccessoryRepository accessoryRepository) {
+        if (accessoryRepository == null) {
+            throw new IllegalArgumentException("Accessory repository cannot be null.");
+        }
         this.productPersistence = new ProductPersistence();
         this.personPersistence = new PersonPersistence();
+        this.accessoryRepository = accessoryRepository;
     }
 
     /**
@@ -54,8 +85,8 @@ public class SalePersistence {
 
     /**
      * Loads the list of sales stored in the data file, resolving each
-     * client, seller, and product reference against the currently
-     * persisted people and products.
+     * client, seller, product and accessory reference against the
+     * currently persisted people, products and accessories.
      *
      * @return the list of sales found, or an empty list if the file does
      *         not exist yet
@@ -69,11 +100,12 @@ public class SalePersistence {
 
         List<Person> people = personPersistence.load();
         List<Product> products = productPersistence.load();
+        List<Accessory> accessories = accessoryRepository.loadAll();
 
         try (BufferedReader br = new BufferedReader(new FileReader(file))) {
             String line;
             while ((line = br.readLine()) != null) {
-                Sale sale = fromLine(line, people, products);
+                Sale sale = fromLine(line, people, products, accessories);
                 if (sale != null) {
                     sales.add(sale);
                 }
@@ -86,7 +118,7 @@ public class SalePersistence {
 
     /**
      * Converts a Sale into a single delimited line of text for storage,
-     * using the ids of its client, seller, and products.
+     * using the ids of its client, seller, products and accessories.
      *
      * @param sale the sale to convert
      * @return the text line representing the sale
@@ -101,25 +133,65 @@ public class SalePersistence {
             }
         }
 
-        return sale.getDate() + DELIMITER +
-                sale.getClient().getId() + DELIMITER +
-                sale.getSeller().getId() + DELIMITER +
-                productIds;
+        StringBuilder line = new StringBuilder();
+        if (sale.getId() != null) {
+            line.append(sale.getId()).append(DELIMITER);
+        }
+        line.append(sale.getDate()).append(DELIMITER)
+                .append(sale.getClient().getId()).append(DELIMITER)
+                .append(sale.getSeller().getId()).append(DELIMITER)
+                .append(productIds);
+
+        List<Accessory> accessories = sale.getAccessories();
+        boolean hasWarrantyCost = sale.getWarrantyCost() > 0;
+        if (!accessories.isEmpty() || sale.hasDiscount() || hasWarrantyCost) {
+            line.append(DELIMITER);
+            for (int i = 0; i < accessories.size(); i++) {
+                line.append(accessories.get(i).getId());
+                if (i < accessories.size() - 1) {
+                    line.append(ID_SEPARATOR);
+                }
+            }
+        }
+
+        if (sale.hasDiscount()) {
+            String promotionName = sale.getAppliedPromotionName().replace(DELIMITER, ",");
+            line.append(DELIMITER).append(promotionName)
+                    .append(DELIMITER).append(sale.getDiscountAmount());
+        } else if (hasWarrantyCost) {
+            line.append(DELIMITER).append(DELIMITER).append(0.0);
+        }
+
+        if (hasWarrantyCost) {
+            line.append(DELIMITER).append(sale.getWarrantyCost());
+        }
+        return line.toString();
     }
 
     /**
      * Parses a single delimited line of text back into a Sale instance,
-     * resolving the client, seller, and products by matching ids against
-     * the given lists of people and products.
+     * resolving the client, seller, products and accessories by matching
+     * ids against the given lists, and restoring the sale id, the
+     * promotion discount applied to the sale and the cost of its extended
+     * warranties, if any. A line whose first
+     * field is not a date is considered to start with the sale id.
      *
-     * @param line     the text line to parse
-     * @param people   the list of people to search for the client and seller
-     * @param products the list of products to search for the sale's items
-     * @return the reconstructed Sale, or null if the line is invalid or a
-     *         referenced client, seller, or product cannot be found
+     * @param line        the text line to parse
+     * @param people      the list of people to search for the client and seller
+     * @param products    the list of products to search for the sale's items
+     * @param accessories the list of accessories to search for the sale's accessories
+     * @return the reconstructed Sale, or null if the line is invalid, a
+     *         referenced client or seller cannot be found, or no product
+     *         or accessory of the sale can be resolved
      */
-    private Sale fromLine(String line, List<Person> people, List<Product> products) {
+    private Sale fromLine(String line, List<Person> people, List<Product> products,
+                          List<Accessory> accessories) {
+        String saleId = null;
         String[] parts = line.split(DELIMITER);
+        if (parts.length > 0 && !isDate(parts[0])) {
+            saleId = parts[0];
+            parts = Arrays.copyOfRange(parts, 1, parts.length);
+        }
         if (parts.length < 4) {
             return null;
         }
@@ -128,6 +200,7 @@ public class SalePersistence {
         String clientId = parts[1];
         String sellerId = parts[2];
         String[] productIds = parts[3].split(ID_SEPARATOR);
+        String[] accessoryIds = parts.length > 4 ? parts[4].split(ID_SEPARATOR) : new String[0];
 
         Client client = null;
         Seller seller = null;
@@ -153,10 +226,53 @@ public class SalePersistence {
             }
         }
 
-        if (saleProducts.isEmpty()) {
+        List<Accessory> saleAccessories = new ArrayList<>();
+        for (String accessoryId : accessoryIds) {
+            for (Accessory accessory : accessories) {
+                if (accessory.getId().equals(accessoryId)) {
+                    saleAccessories.add(accessory);
+                }
+            }
+        }
+
+        if (saleProducts.isEmpty() && saleAccessories.isEmpty()) {
             return null;
         }
 
-        return new Sale(client, seller, saleProducts, date);
+        Sale sale = new Sale(client, seller, saleProducts, saleAccessories, date);
+        if (saleId != null && !saleId.isBlank()) {
+            sale.setId(saleId);
+        }
+        if (parts.length > 6 && !parts[5].isBlank()) {
+            try {
+                sale.setDiscountAmount(Double.parseDouble(parts[6]));
+                sale.setAppliedPromotionName(parts[5]);
+            } catch (IllegalArgumentException e) {
+                System.out.println("Invalid discount stored for a sale; it was ignored.");
+            }
+        }
+        if (parts.length > 7) {
+            try {
+                sale.setWarrantyCost(Double.parseDouble(parts[7]));
+            } catch (IllegalArgumentException e) {
+                System.out.println("Invalid warranty cost stored for a sale; it was ignored.");
+            }
+        }
+        return sale;
+    }
+
+    /**
+     * Checks whether the given text is a date in ISO format (YYYY-MM-DD).
+     *
+     * @param text the text to check
+     * @return true if the text is a valid date
+     */
+    private boolean isDate(String text) {
+        try {
+            LocalDate.parse(text);
+            return true;
+        } catch (DateTimeParseException e) {
+            return false;
+        }
     }
 }

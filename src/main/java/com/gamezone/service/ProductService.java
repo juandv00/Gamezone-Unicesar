@@ -92,4 +92,24 @@ public class ProductService {
         Product product = findById(productId);
         return product != null && product.getStock() >= amount;
     }
+
+    /**
+     * Increases the stock of a given product by the specified quantity and
+     * persists the change, used when products are returned. It is the
+     * counterpart of {@link #reduceStock(String, int)}.
+     *
+     * @param productId the id of the product being returned
+     * @param quantity  the quantity to add to the stock
+     * @return true if the stock was restored, false if the product does not
+     *         exist or the quantity is not positive
+     */
+    public boolean restoreStock(String productId, int quantity) {
+        Product product = findById(productId);
+        if (product == null || quantity <= 0) {
+            return false;
+        }
+        product.setStock(product.getStock() + quantity);
+        productPersistence.save(products);
+        return true;
+    }
 }

@@ -1,42 +1,113 @@
 package com.gamezone.service;
 
+import com.gamezone.model.Accessory;
 import com.gamezone.model.Client;
+import com.gamezone.model.Console;
+import com.gamezone.model.ExtendedWarranty;
 import com.gamezone.model.Product;
+import com.gamezone.model.Promotion;
 import com.gamezone.model.Sale;
 import com.gamezone.model.Seller;
 import com.gamezone.persistence.SalePersistence;
+import java.io.IOException;
+import java.io.UncheckedIOException;
 import java.util.ArrayList;
+import java.util.LinkedHashMap;
 import java.util.List;
+import java.util.Map;
 
 /**
  * Contains the business rules for managing sales at GameZone Unicesar,
  * such as registering new sales with stock validation, updating inventory
  * automatically, and consulting sales history by client or seller.
+ * Every sale follows one unified registration flow: validate the items and
+ * their stock, create the sale, apply the best active promotion on the
+ * subtotal, assign the console warranties (basic by default, or extended if
+ * requested), update the inventory of products and accessories, and
+ * persist the sale.
  */
 public class SaleService {
 
+    private static final String SALE_ID_PREFIX = "SALE-";
+
     private final SalePersistence salePersistence;
     private final ProductService productService;
+    private final AccessoryService accessoryService;
+    private final PromotionService promotionService;
+    private final WarrantyService warrantyService;
     private List<Sale> sales;
 
     /**
      * Creates a new SaleService, loading the currently stored sales and
      * using the given ProductService to validate and update stock when
-     * a new sale is registered.
+     * a new sale is registered. A SaleService created with this constructor
+     * does not support accessories.
      *
      * @param productService the service used to validate and reduce stock
      */
     public SaleService(ProductService productService) {
-        this.salePersistence = new SalePersistence();
-        this.productService = productService;
-        this.sales = salePersistence.load();
+        this(productService, null, new SalePersistence());
     }
 
     /**
-     * Registers a new sale after validating that it contains at least
-     * one product and that every product has enough stock available.
-     * If valid, the stock of each product is reduced automatically and
-     * the sale is persisted.
+     * Creates a new SaleService that supports selling products and
+     * accessories together. The sale persistence is injected so it can be
+     * configured to resolve accessories when loading stored sales.
+     *
+     * @param productService   the service used to validate and reduce product stock
+     * @param accessoryService the service used to validate and reduce accessory stock
+     * @param salePersistence  the persistence used to load and save sales
+     */
+    public SaleService(ProductService productService, AccessoryService accessoryService,
+                       SalePersistence salePersistence) {
+        this(productService, accessoryService, salePersistence, null);
+    }
+
+    /**
+     * Creates a new SaleService that supports accessories and applies the
+     * best active promotion to every sale it registers.
+     *
+     * @param productService   the service used to validate and reduce product stock
+     * @param accessoryService the service used to validate and reduce accessory stock
+     * @param salePersistence  the persistence used to load and save sales
+     * @param promotionService the service used to find the best promotion for a
+     *                         sale, or null to register sales without discounts
+     */
+    public SaleService(ProductService productService, AccessoryService accessoryService,
+                       SalePersistence salePersistence, PromotionService promotionService) {
+        this(productService, accessoryService, salePersistence, promotionService, null);
+    }
+
+    /**
+     * Creates a new SaleService that supports accessories, applies the best
+     * active promotion, and assigns warranties to the consoles of every sale
+     * it registers.
+     *
+     * @param productService   the service used to validate and reduce product stock
+     * @param accessoryService the service used to validate and reduce accessory stock
+     * @param salePersistence  the persistence used to load and save sales
+     * @param promotionService the service used to find the best promotion for a
+     *                         sale, or null to register sales without discounts
+     * @param warrantyService  the service used to assign warranties to consoles,
+     *                         or null to register sales without warranties
+     */
+    public SaleService(ProductService productService, AccessoryService accessoryService,
+                       SalePersistence salePersistence, PromotionService promotionService,
+                       WarrantyService warrantyService) {
+        this.productService = productService;
+        this.accessoryService = accessoryService;
+        this.salePersistence = salePersistence;
+        this.promotionService = promotionService;
+        this.warrantyService = warrantyService;
+        this.sales = salePersistence.load();
+        assignMissingIds();
+    }
+
+    /**
+     * Registers a new sale that includes only products. It follows the
+     * unified registration flow of
+     * {@link #registerSale(Client, Seller, List, List, List)}: every console
+     * receives a basic warranty and the best active promotion is applied.
      *
      * @param client   the client making the purchase
      * @param seller   the seller attending the sale
@@ -49,18 +120,179 @@ public class SaleService {
         if (products == null || products.isEmpty()) {
             return null;
         }
+        try {
+            return processSale(client, seller, products, null, null);
+        } catch (IOException e) {
+            throw new UncheckedIOException(e);
+        }
+    }
 
-        for (Product product : products) {
-            if (!productService.hasEnoughStock(product.getId(), 1)) {
+    /**
+     * Registers a new sale that includes products and accessories, without
+     * extended warranties. It follows the unified registration flow of
+     * {@link #registerSale(Client, Seller, List, List, List)}.
+     *
+     * @param client      the client making the purchase
+     * @param seller      the seller attending the sale
+     * @param products    the list of products included in the sale (may be empty)
+     * @param accessories the list of accessories included in the sale (may be empty)
+     * @return the registered Sale if successful, or null if the sale could
+     *         not be registered (no items or insufficient stock for any item)
+     * @throws IOException           if the accessory stock could not be persisted
+     * @throws IllegalStateException if accessories are given but this service
+     *                               was created without an AccessoryService
+     */
+    public Sale registerSale(Client client, Seller seller, List<Product> products,
+                             List<Accessory> accessories) throws IOException {
+        return registerSale(client, seller, products, accessories, null);
+    }
+
+    /**
+     * Registers a new sale with products, accessories, and optional extended
+     * warranties, following the unified registration flow:
+     * <ol>
+     *   <li>Validate that the sale has at least one item.</li>
+     *   <li>Validate the stock of every product and accessory (repeated items
+     *       count as several units).</li>
+     *   <li>Create the sale (with its id) and calculate its subtotal.</li>
+     *   <li>Apply the best active promotion, calculated only on the subtotal.</li>
+     *   <li>Assign a warranty to every console: extended if its id is in
+     *       {@code productIdsWithExtendedWarranty} (replacing the basic one),
+     *       basic otherwise, adding up the cost of the extended ones.</li>
+     *   <li>The final total is subtotal - discount + extended warranty cost
+     *       ({@link Sale#calculateFinalTotal()}).</li>
+     *   <li>Update the inventory through ProductService or AccessoryService,
+     *       depending on the type of each item.</li>
+     *   <li>Persist the sale (the warranties are persisted by WarrantyService
+     *       when they are assigned).</li>
+     * </ol>
+     * If any validation fails, nothing is changed.
+     *
+     * @param client                         the client making the purchase
+     * @param seller                         the seller attending the sale
+     * @param products                       the list of products included in the sale (may be empty)
+     * @param accessories                    the list of accessories included in the sale (may be empty)
+     * @param productIdsWithExtendedWarranty the ids of the consoles that must receive an
+     *                                       extended warranty (may be null or empty)
+     * @return the registered Sale if successful, or null if the sale could
+     *         not be registered (no items or insufficient stock for any item)
+     * @throws IOException              if the accessory stock could not be persisted
+     * @throws IllegalArgumentException if an extended warranty is requested for a
+     *                                  product that is not a console of the sale
+     * @throws IllegalStateException    if accessories or extended warranties are
+     *                                  given but this service does not support them
+     */
+    public Sale registerSale(Client client, Seller seller, List<Product> products,
+                             List<Accessory> accessories, List<String> productIdsWithExtendedWarranty)
+            throws IOException {
+        return processSale(client, seller, products, accessories, productIdsWithExtendedWarranty);
+    }
+
+    /**
+     * Registers a new sale from the ids of its items. Each id is resolved as
+     * a product first and, if no product has that id, as an accessory; then
+     * the sale follows the unified registration flow of
+     * {@link #registerSale(Client, Seller, List, List, List)}.
+     *
+     * @param client                         the client making the purchase
+     * @param seller                         the seller attending the sale
+     * @param itemIds                        the ids of the products and accessories sold;
+     *                                       an id repeated n times means n units
+     * @param productIdsWithExtendedWarranty the ids of the consoles that must receive an
+     *                                       extended warranty (may be null or empty)
+     * @return the registered Sale if successful, or null if the sale could
+     *         not be registered (no items or insufficient stock for any item)
+     * @throws IOException              if the accessory stock could not be persisted
+     * @throws IllegalArgumentException if an id matches no product or accessory,
+     *                                  or an extended warranty is requested for a
+     *                                  product that is not a console of the sale
+     */
+    public Sale registerSaleByItemIds(Client client, Seller seller, List<String> itemIds,
+                                      List<String> productIdsWithExtendedWarranty) throws IOException {
+        List<Product> products = new ArrayList<>();
+        List<Accessory> accessories = new ArrayList<>();
+        if (itemIds != null) {
+            for (String itemId : itemIds) {
+                Product product = productService.findById(itemId);
+                if (product != null) {
+                    products.add(product);
+                    continue;
+                }
+                Accessory accessory = accessoryService != null ? accessoryService.findById(itemId) : null;
+                if (accessory == null) {
+                    throw new IllegalArgumentException("No product or accessory found with id " + itemId + ".");
+                }
+                accessories.add(accessory);
+            }
+        }
+        return processSale(client, seller, products, accessories, productIdsWithExtendedWarranty);
+    }
+
+    /**
+     * Executes the unified sale registration flow described in
+     * {@link #registerSale(Client, Seller, List, List, List)}.
+     */
+    private Sale processSale(Client client, Seller seller, List<Product> products,
+                             List<Accessory> accessories, List<String> productIdsWithExtendedWarranty)
+            throws IOException {
+        List<Product> saleProducts = products == null ? new ArrayList<>() : new ArrayList<>(products);
+        List<Accessory> saleAccessories = accessories == null ? new ArrayList<>() : new ArrayList<>(accessories);
+        List<String> extendedIds = productIdsWithExtendedWarranty == null
+                ? new ArrayList<>() : new ArrayList<>(productIdsWithExtendedWarranty);
+
+        // 1. The sale must have at least one item.
+        if (saleProducts.isEmpty() && saleAccessories.isEmpty()) {
+            return null;
+        }
+        if (!saleAccessories.isEmpty() && accessoryService == null) {
+            throw new IllegalStateException("This SaleService was created without accessory support.");
+        }
+        if (!extendedIds.isEmpty() && warrantyService == null) {
+            throw new IllegalStateException("This SaleService was created without warranty support.");
+        }
+        for (String productId : extendedIds) {
+            if (!containsConsole(saleProducts, productId)) {
+                throw new IllegalArgumentException(
+                        "Extended warranty requested for " + productId + ", which is not a console in this sale.");
+            }
+        }
+
+        // 2. Validate the stock of every product and accessory.
+        Map<String, Integer> productUnits = countProductUnits(saleProducts);
+        Map<String, Integer> accessoryUnits = countAccessoryUnits(saleAccessories);
+        for (Map.Entry<String, Integer> entry : productUnits.entrySet()) {
+            if (!productService.hasEnoughStock(entry.getKey(), entry.getValue())) {
+                return null;
+            }
+        }
+        for (Map.Entry<String, Integer> entry : accessoryUnits.entrySet()) {
+            if (!accessoryService.hasEnoughStock(entry.getKey(), entry.getValue())) {
                 return null;
             }
         }
 
-        for (Product product : products) {
-            productService.reduceStock(product.getId(), 1);
+        // 3. Create the sale; its subtotal is calculateTotal().
+        Sale sale = new Sale(client, seller, saleProducts, saleAccessories);
+        sale.setId(nextSaleId());
+
+        // 4. Apply the best promotion, calculated only on the subtotal.
+        applyBestPromotion(sale);
+
+        // 5. Assign warranties to the consoles and add up the extended cost.
+        assignWarranties(sale, extendedIds);
+
+        // 6. The final total is subtotal - discount + warranty cost
+        //    (Sale.calculateFinalTotal()).
+
+        // 7. Update the inventory through the service of each item type.
+        for (Map.Entry<String, Integer> entry : productUnits.entrySet()) {
+            productService.reduceStock(entry.getKey(), entry.getValue());
+        }
+        for (Map.Entry<String, Integer> entry : accessoryUnits.entrySet()) {
+            accessoryService.reduceStock(entry.getKey(), entry.getValue());
         }
 
-        Sale sale = new Sale(client, seller, products);
+        // 8. Persist the sale.
         sales.add(sale);
         salePersistence.save(sales);
         return sale;
@@ -73,6 +305,21 @@ public class SaleService {
      */
     public List<Sale> listAll() {
         return new ArrayList<>(sales);
+    }
+
+    /**
+     * Finds a registered sale by its identifier.
+     *
+     * @param saleId the id of the sale to search for
+     * @return the sale with the given id, or null if none exists
+     */
+    public Sale findById(String saleId) {
+        for (Sale sale : sales) {
+            if (sale.getId() != null && sale.getId().equalsIgnoreCase(saleId)) {
+                return sale;
+            }
+        }
+        return null;
     }
 
     /**
@@ -105,5 +352,131 @@ public class SaleService {
             }
         }
         return result;
+    }
+
+    private Map<String, Integer> countProductUnits(List<Product> products) {
+        Map<String, Integer> units = new LinkedHashMap<>();
+        for (Product product : products) {
+            units.merge(product.getId(), 1, Integer::sum);
+        }
+        return units;
+    }
+
+    private Map<String, Integer> countAccessoryUnits(List<Accessory> accessories) {
+        Map<String, Integer> units = new LinkedHashMap<>();
+        for (Accessory accessory : accessories) {
+            units.merge(accessory.getId(), 1, Integer::sum);
+        }
+        return units;
+    }
+
+    /**
+     * Asks the PromotionService for the best promotion for the given sale
+     * and, if there is one, stores its name and discount in the sale. The
+     * discount is capped at the sale subtotal, so a misconfigured promotion
+     * can never produce a negative final total. Promotions are not
+     * cumulative: at most one promotion is applied.
+     *
+     * @param sale the sale to apply the promotion to
+     */
+    private void applyBestPromotion(Sale sale) {
+        if (promotionService == null) {
+            return;
+        }
+        Promotion bestPromotion = promotionService.findBestPromotionFor(sale);
+        if (bestPromotion == null) {
+            return;
+        }
+        double discount = Math.min(bestPromotion.calculateDiscount(sale), sale.calculateTotal());
+        sale.setAppliedPromotionName(bestPromotion.getName());
+        sale.setDiscountAmount(discount);
+    }
+
+    /**
+     * Generates the next available sale id, with the format SALE-n, where n
+     * is one more than the highest number already in use.
+     *
+     * @return the next sale id
+     */
+    private String nextSaleId() {
+        int highest = 0;
+        for (Sale sale : sales) {
+            String id = sale.getId();
+            if (id != null && id.startsWith(SALE_ID_PREFIX)) {
+                try {
+                    highest = Math.max(highest, Integer.parseInt(id.substring(SALE_ID_PREFIX.length())));
+                } catch (NumberFormatException e) {
+                    // Ids with another format do not affect the numbering.
+                }
+            }
+        }
+        return SALE_ID_PREFIX + (highest + 1);
+    }
+
+    /**
+     * Assigns an id to every loaded sale that does not have one (sales stored
+     * before sales had ids) and persists the change, so their ids stay the
+     * same in future executions.
+     */
+    private void assignMissingIds() {
+        boolean assigned = false;
+        for (Sale sale : sales) {
+            if (sale.getId() == null) {
+                sale.setId(nextSaleId());
+                assigned = true;
+            }
+        }
+        if (assigned) {
+            salePersistence.save(sales);
+        }
+    }
+
+    /**
+     * Assigns a warranty to every console of the given sale: an extended
+     * warranty if its id is in the given list, or a basic warranty otherwise.
+     * Video games and accessories do not receive warranties. The total cost
+     * of the extended warranties is stored in the sale.
+     *
+     * @param sale        the sale whose consoles receive warranties
+     * @param extendedIds the ids of the consoles with extended warranty (may be null)
+     */
+    private void assignWarranties(Sale sale, List<String> extendedIds) {
+        if (warrantyService == null) {
+            return;
+        }
+        double warrantyCost = 0.0;
+        for (Product product : sale.getProducts()) {
+            if (!(product instanceof Console)) {
+                continue;
+            }
+            if (containsId(extendedIds, product.getId())) {
+                ExtendedWarranty warranty = warrantyService.assignExtendedWarranty(product, sale, sale.getDate());
+                warrantyCost += warranty.getAdditionalCost();
+            } else {
+                warrantyService.assignBasicWarranty(product, sale, sale.getDate());
+            }
+        }
+        sale.setWarrantyCost(warrantyCost);
+    }
+
+    private boolean containsConsole(List<Product> products, String productId) {
+        for (Product product : products) {
+            if (product instanceof Console && product.getId().equalsIgnoreCase(productId)) {
+                return true;
+            }
+        }
+        return false;
+    }
+
+    private boolean containsId(List<String> ids, String productId) {
+        if (ids == null) {
+            return false;
+        }
+        for (String id : ids) {
+            if (id.equalsIgnoreCase(productId)) {
+                return true;
+            }
+        }
+        return false;
     }
 }

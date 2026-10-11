@@ -43,7 +43,7 @@ public class AccessoryService {
      * @return the newly registered Controller instance
      */
     public Controller registerController(String id, String title, double price,
-            int stock, Controller.ConnectionType connectionType) throws IOException {
+                                         int stock, Controller.ConnectionType connectionType) throws IOException {
         Controller controller = new Controller(id, title, price, stock, connectionType);
         accessories.add(controller);
         accessoryRepository.saveAll(accessories);
@@ -62,7 +62,7 @@ public class AccessoryService {
      * @return the newly registered Cable instance
      */
     public Cable registerCable(String id, String title, double price, int stock,
-            double lengthInMeters, String connectorType) throws IOException {
+                               double lengthInMeters, String connectorType) throws IOException {
         Cable cable = new Cable(id, title, price, stock, lengthInMeters, connectorType);
         accessories.add(cable);
         accessoryRepository.saveAll(accessories);
@@ -81,7 +81,7 @@ public class AccessoryService {
      * @return the newly registered Memory instance
      */
     public Memory registerMemory(String id, String title, double price, int stock,
-            int capacityInGB, Memory.MemoryType memoryType) throws IOException {
+                                 int capacityInGB, Memory.MemoryType memoryType) throws IOException {
         Memory memory = new Memory(id, title, price, stock, capacityInGB, memoryType);
         accessories.add(memory);
         accessoryRepository.saveAll(accessories);
@@ -199,6 +199,29 @@ public class AccessoryService {
             return false;
         }
         accessory.setStock(accessory.getStock() - amount);
+        accessoryRepository.saveAll(accessories);
+        return true;
+    }
+
+    /**
+     * Registers a console as compatible with the given accessory and persists
+     * the change. Only accessories that support console compatibility
+     * (Controller and Memory) can be updated; Cable accessories are rejected.
+     *
+     * @param accessoryId the id of the controller or memory to update
+     * @param consoleId the id of the console to register as compatible
+     * @return true if the compatibility was registered, false if the accessory
+     * does not exist or does not support console compatibility
+     */
+    public boolean addCompatibleConsole(String accessoryId, String consoleId) throws IOException {
+        Accessory accessory = findById(accessoryId);
+        if (accessory instanceof Controller controller) {
+            controller.addCompatibleConsole(consoleId);
+        } else if (accessory instanceof Memory memory) {
+            memory.addCompatibleConsole(consoleId);
+        } else {
+            return false;
+        }
         accessoryRepository.saveAll(accessories);
         return true;
     }
