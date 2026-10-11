@@ -353,3 +353,13 @@ modules.
 - **Response:** The methods existed as `calculateMonthlySalesTotal` and `calculateMonthlyReturnsTotal`; A6 requires `calculateMonthlySales(int month, int year)` and `calculateMonthlyReturns(int month, int year)`. The sales total already used `calculateFinalTotal()`, which includes discounts and extended warranties, and `ConsoleUI` already showed the three values.
 - **Decision:** Renamed both methods and their calls in `ConsoleUI` in the same commit (so every commit compiles), updated the JavaDoc to mention extended warranties, and updated the method names in `return-analysis.md` and `return-class-diagram.md`. `generateMonthlyBalance` keeps its signature.
 - **Related commit:** `fix: rename monthly balance methods in ReturnService`, `docs: update monthly balance method names in return docs`
+
+### A4 — Returning accessories
+- **Date:** 2026-10-11
+- **Tool:** Claude (Anthropic)
+- **Phase and branch:** Phase 4 – `fix/return-accessory-stock`
+- **Objective:** Allow accessories to be returned and restore their stock, since the return module only restored products through `ProductService.restoreStock`.
+- **Query:** Which classes must change so a return can include accessories, and how to restore the stock of each item through its own service.
+- **Response:** Add `AccessoryService.restoreStock(accessoryId, quantity)`; let `Return` hold returned accessories (new constructor, the old one delegates); in `ReturnService.registerReturn`, resolve each id as a product of the sale first and then as an accessory, count returnable units separately for products and accessories, and restore stock by item type; store the item ids in `ReturnRepository` and resolve accessories from the sale when loading; pass `AccessoryService` from `Main`; list accessories in the console return flow.
+- **Decision:** Accepted. Kept the signature `registerReturn(String saleId, List<String> productIds, String reason)`, where the ids are now item ids, and kept the previous constructors of `Return` and `ReturnService` so existing code still compiles. Tested: sold two controllers, returned one (stock restored), returning the same units again was rejected, a return with a video game and a controller refunded both, and the returns reloaded after restarting.
+- **Related commit:** `fix: support returning accessories and restoring their stock`, `fix: wire AccessoryService in returns and list accessories in ConsoleUI`, `docs: add A4 entry to developer 2 AI log`
