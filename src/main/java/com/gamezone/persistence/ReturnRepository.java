@@ -92,7 +92,9 @@ public class ReturnRepository {
     /**
      * Converts a Return into a single delimited line of text for storage, using
      * the ids of its original sale and returned items (products followed by
-     * accessories, in the same field).
+     * accessories, in the same field), followed by the refund amount and the
+     * amount refunded for cancelled warranties. Lines stored without the last
+     * field are loaded with a warranty refund of 0.
      *
      * @param r the return to convert
      * @return the text line representing the return
@@ -112,7 +114,8 @@ public class ReturnRepository {
                 + r.getOriginalSale().getId() + DELIMITER
                 + productIds + DELIMITER
                 + r.getReason().replace(DELIMITER, ",") + DELIMITER
-                + r.getRefundAmount();
+                + r.getRefundAmount() + DELIMITER
+                + r.getWarrantyRefund();
     }
 
     /**
@@ -176,7 +179,8 @@ public class ReturnRepository {
             return null;
         }
 
-        return new Return(id, date, sale, returnedProducts, returnedAccessories, reason);
+        double warrantyRefund = parts.length > 6 ? Double.parseDouble(parts[6]) : 0.0;
+        return new Return(id, date, sale, returnedProducts, returnedAccessories, reason, warrantyRefund);
     }
 
     private Product findProduct(Sale sale, String productId) {
