@@ -1,6 +1,7 @@
 package com.gamezone.service;
 
 import com.gamezone.model.Accessory;
+import com.gamezone.model.Console;
 import com.gamezone.model.Product;
 import com.gamezone.model.Return;
 import com.gamezone.model.Sale;
@@ -25,6 +26,7 @@ public class ReturnService {
     private final SaleService saleService;
     private final ProductService productService;
     private final AccessoryService accessoryService;
+    private final WarrantyService warrantyService;
     private List<Return> returns;
 
     /**
@@ -52,10 +54,30 @@ public class ReturnService {
      */
     public ReturnService(ReturnRepository returnRepository, SaleService saleService,
             ProductService productService, AccessoryService accessoryService) {
+        this(returnRepository, saleService, productService, accessoryService, null);
+    }
+
+    /**
+     * Creates a new ReturnService that also cancels the warranty of every
+     * returned console and refunds the cost of the cancelled extended
+     * warranties.
+     *
+     * @param returnRepository the repository used to persist returns
+     * @param saleService the service used to validate the original sale
+     * @param productService the service used to restore product stock
+     * @param accessoryService the service used to restore accessory stock, or
+     * null if accessories cannot be returned
+     * @param warrantyService the service used to cancel the warranties of
+     * returned consoles, or null if warranties are not managed
+     */
+    public ReturnService(ReturnRepository returnRepository, SaleService saleService,
+            ProductService productService, AccessoryService accessoryService,
+            WarrantyService warrantyService) {
         this.returnRepository = returnRepository;
         this.saleService = saleService;
         this.productService = productService;
         this.accessoryService = accessoryService;
+        this.warrantyService = warrantyService;
         this.returns = returnRepository.loadAll();
     }
 
@@ -65,8 +87,9 @@ public class ReturnService {
      * return actually belongs to the original sale. Each id is resolved as a
      * product of the sale first and, if no product matches, as an accessory of
      * the sale. On success, restores the stock of every returned item through
-     * ProductService or AccessoryService, depending on its type, and persists
-     * the new return.
+     * ProductService or AccessoryService, depending on its type, cancels the
+     * warranty of every returned console unit (adding the cost of cancelled
+     * extended warranties to the refund), and persists the new return.
      *
      * @param saleId the id of the original sale
      * @param productIds the ids of the items (products or accessories) being
@@ -75,8 +98,8 @@ public class ReturnService {
      * @return the newly registered Return
      * @throws IllegalArgumentException if the sale does not exist, the 30-day
      * window has expired (checked with {@link Sale#canBeReturned()}), no item
-     * is given, an item does not belong to the original sale, or more units of
-     * an item are requested than remain returnable
+     * is given, the reason is empty, an item does not belong to the original
+     * sale, or more units of an item are requested than remain returnable
      */
     public Return registerReturn(String saleId, List<String> productIds, String reason) {
         Sale sale = saleService.findById(saleId);
@@ -89,6 +112,9 @@ public class ReturnService {
         }
         if (productIds == null || productIds.isEmpty()) {
             throw new IllegalArgumentException("Select at least one item to return.");
+        }
+        if (reason == null || reason.isBlank()) {
+            throw new IllegalArgumentException("The return reason cannot be empty.");
         }
 
         Map<String, Integer> returnableUnits = countReturnableUnits(sale);
@@ -118,13 +144,24 @@ public class ReturnService {
             }
         }
 
+        // All validations passed: cancel the warranty of each returned console unit.
+        double warrantyRefund = 0.0;
+        if (warrantyService != null) {
+            for (Product product : returnedProducts) {
+                if (product instanceof Console) {
+                    warrantyRefund += warrantyService.cancelWarranties(product.getId(), sale.getId());
+                }
+            }
+        }
+
         Return newReturn = new Return(
                 nextReturnId(),
                 LocalDate.now(),
                 sale,
                 returnedProducts,
                 returnedAccessories,
-                reason
+                reason,
+                warrantyRefund
         );
 
         for (Product product : returnedProducts) {

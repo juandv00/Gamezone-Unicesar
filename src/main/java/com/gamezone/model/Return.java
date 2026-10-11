@@ -19,6 +19,7 @@ public class Return {
     private List<Product> returnedProducts;
     private List<Accessory> returnedAccessories;
     private String reason;
+    private double warrantyRefund;
     private double refundAmount;
 
     /**
@@ -55,6 +56,28 @@ public class Return {
      */
     public Return(String id, LocalDate date, Sale originalSale, List<Product> returnedProducts,
                   List<Accessory> returnedAccessories, String reason) {
+        this(id, date, originalSale, returnedProducts, returnedAccessories, reason, 0.0);
+    }
+
+    /**
+     * Creates a new Return that also refunds the cost of the warranties
+     * cancelled because consoles were returned (the additional cost of the
+     * extended warranties; basic warranties have no cost).
+     *
+     * @param id                  unique identifier of the return
+     * @param date                date on which the return is registered
+     * @param originalSale        sale the returned items belong to
+     * @param returnedProducts    products being returned (may be empty)
+     * @param returnedAccessories accessories being returned (may be empty)
+     * @param reason              reason given by the customer for the return
+     * @param warrantyRefund      amount refunded for cancelled warranties
+     * @throws IllegalArgumentException if the id or reason is blank, the date
+     *                                  or original sale is null, there are no
+     *                                  returned products or accessories, or the
+     *                                  warranty refund is negative
+     */
+    public Return(String id, LocalDate date, Sale originalSale, List<Product> returnedProducts,
+                  List<Accessory> returnedAccessories, String reason, double warrantyRefund) {
         if (id == null || id.isBlank()) {
             throw new IllegalArgumentException("Return id cannot be empty.");
         }
@@ -72,12 +95,16 @@ public class Return {
         if (reason == null || reason.isBlank()) {
             throw new IllegalArgumentException("The return reason cannot be empty.");
         }
+        if (warrantyRefund < 0) {
+            throw new IllegalArgumentException("The warranty refund cannot be negative.");
+        }
         this.id = id;
         this.date = date;
         this.originalSale = originalSale;
         this.returnedProducts = new ArrayList<>(products);
         this.returnedAccessories = new ArrayList<>(accessories);
         this.reason = reason;
+        this.warrantyRefund = warrantyRefund;
         calculateRefundAmount();
     }
 
@@ -110,6 +137,15 @@ public class Return {
         return reason;
     }
 
+    /**
+     * Returns the amount refunded for the warranties cancelled in this return.
+     *
+     * @return the warranty refund, or 0 if no extended warranty was cancelled
+     */
+    public double getWarrantyRefund() {
+        return warrantyRefund;
+    }
+
     public double getRefundAmount() {
         return refundAmount;
     }
@@ -119,7 +155,8 @@ public class Return {
      * and returns it. The refund of each returned product or accessory is
      * proportional to the discount of the original sale:
      * {@code price * (1 - discount / subtotal)}, so the customer never gets
-     * back more than what was actually paid for the item.
+     * back more than what was actually paid for the item. The cost of the
+     * warranties cancelled because consoles were returned is added on top.
      *
      * @return the calculated refund amount
      */
@@ -131,6 +168,7 @@ public class Return {
         for (Accessory accessory : returnedAccessories) {
             total += refundFor(accessory.getPrice());
         }
+        total += warrantyRefund;
         this.refundAmount = total;
         return this.refundAmount;
     }
@@ -182,6 +220,9 @@ public class Return {
         }
         for (Accessory accessory : returnedAccessories) {
             appendItemLine(sb, accessory.getTitle() + " (accessory)", accessory.getPrice());
+        }
+        if (warrantyRefund > 0) {
+            sb.append("Cancelled extended warranties: +").append(formatAmount(warrantyRefund)).append("\n");
         }
         sb.append("Reason: ").append(reason).append("\n");
         sb.append("Refund amount: ").append(formatAmount(refundAmount)).append("\n");
