@@ -225,4 +225,25 @@ public class AccessoryService {
         accessoryRepository.saveAll(accessories);
         return true;
     }
+
+    /**
+     * Increases the stock of a given accessory by the specified quantity and
+     * persists the change, used when accessories are returned. It is the
+     * counterpart of {@link #reduceStock(String, int)} and is equivalent to
+     * ProductService.restoreStock for products.
+     *
+     * @param accessoryId the id of the accessory being returned
+     * @param quantity the quantity to add to the stock
+     * @return true if the stock was restored, false if the accessory does not
+     * exist or the quantity is not positive
+     */
+    public boolean restoreStock(String accessoryId, int quantity) {
+        Accessory accessory = findById(accessoryId);
+        if (accessory == null || quantity <= 0) {
+            return false;
+        }
+        accessory.setStock(accessory.getStock() + quantity);
+        accessoryRepository.saveAll(accessories);
+        return true;
+    }
 }

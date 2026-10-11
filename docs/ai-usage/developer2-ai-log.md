@@ -353,3 +353,33 @@ modules.
 - **Response:** The methods existed as `calculateMonthlySalesTotal` and `calculateMonthlyReturnsTotal`; A6 requires `calculateMonthlySales(int month, int year)` and `calculateMonthlyReturns(int month, int year)`. The sales total already used `calculateFinalTotal()`, which includes discounts and extended warranties, and `ConsoleUI` already showed the three values.
 - **Decision:** Renamed both methods and their calls in `ConsoleUI` in the same commit (so every commit compiles), updated the JavaDoc to mention extended warranties, and updated the method names in `return-analysis.md` and `return-class-diagram.md`. `generateMonthlyBalance` keeps its signature.
 - **Related commit:** `fix: rename monthly balance methods in ReturnService`, `docs: update monthly balance method names in return docs`
+
+### A4 — Returning accessories
+- **Date:** 2026-10-11
+- **Tool:** Claude (Anthropic)
+- **Phase and branch:** Phase 4 – `fix/return-accessory-stock`
+- **Objective:** Allow accessories to be returned and restore their stock, since the return module only restored products through `ProductService.restoreStock`.
+- **Query:** Which classes must change so a return can include accessories, and how to restore the stock of each item through its own service.
+- **Response:** Add `AccessoryService.restoreStock(accessoryId, quantity)`; let `Return` hold returned accessories (new constructor, the old one delegates); in `ReturnService.registerReturn`, resolve each id as a product of the sale first and then as an accessory, count returnable units separately for products and accessories, and restore stock by item type; store the item ids in `ReturnRepository` and resolve accessories from the sale when loading; pass `AccessoryService` from `Main`; list accessories in the console return flow.
+- **Decision:** Accepted. Kept the signature `registerReturn(String saleId, List<String> productIds, String reason)`, where the ids are now item ids, and kept the previous constructors of `Return` and `ReturnService` so existing code still compiles. Tested: sold two controllers, returned one (stock restored), returning the same units again was rejected, a return with a video game and a controller refunded both, and the returns reloaded after restarting.
+- **Related commit:** `fix: support returning accessories and restoring their stock`, `fix: wire AccessoryService in returns and list accessories in ConsoleUI`, `docs: add A4 entry to developer 2 AI log`
+
+### A7 — Warranty cancellation when a console is returned
+- **Date:** 2026-10-11
+- **Tool:** Claude (Anthropic)
+- **Phase and branch:** Phase 4 – `feature/return-warranty-cancellation`
+- **Objective:** Make sure a returned console does not keep an active warranty, and refund the cost of its extended warranty.
+- **Query:** How to cancel the warranty of each returned console and include its cost in the return refund, given that A5 already changed the refund calculation.
+- **Response:** Add `WarrantyService.cancelWarranties(productId, saleId)`, which removes the warranty and returns its refundable cost (0 for basic, the additional cost for extended). `ReturnService.registerReturn` calls it for every returned console unit after all validations pass, and passes the total to a new `Return` constructor that adds it to the refund and shows it in the receipt. `ReturnRepository` stores that amount as an optional last field, and `Main` passes `WarrantyService` to `ReturnService`.
+- **Decision:** Accepted. If a sale has several units of the same console, each unit has its own warranty, so `cancelWarranties` cancels one warranty per call (one call per returned unit); otherwise returning one console would leave the other units without warranty. The reason is validated before cancelling, so a rejected return never removes a warranty. Tested: a sale with two PS5 (extended) and a Switch (basic); returning one PS5 refunded its discounted price plus 250,000 and kept the other PS5's warranty; returning the Switch cancelled its basic warranty with no extra refund; a return with an empty reason was rejected without cancelling anything; returns reloaded after restarting.
+- **Related commit:** `feat: add cancelWarranties to WarrantyService`, `feat: include cancelled warranty refund in Return`, `feat: cancel warranties of returned consoles in ReturnService`, `docs: add A7 entry to developer 2 AI log`
+
+### Refactor — Remove the persistence-to-service dependency in returns
+- **Date:** 2026-10-11
+- **Tool:** Claude (Anthropic)
+- **Phase and branch:** Phase 5 – `refactor/return-repository-dependencies`
+- **Objective:** Respect the dependency direction required by the workshop (ui → service → persistence → model): `ReturnRepository` (persistence) depended on `SaleService` and `ProductService` (service) to resolve sales and products when loading returns.
+- **Query:** How to load returns without making `ReturnRepository` depend on the service layer, following the same approach used for warranties in A2.
+- **Response:** Add a `ReturnRecord` record with the stored data as ids (return id, date, sale id, item ids, reason, warranty refund). `ReturnRepository` keeps `saveAll(List<Return>)`, but `loadAll()` now returns `List<ReturnRecord>` and it has no constructor parameters. `ReturnService` resolves each record in its constructor (`resolveReturns`): the sale through `SaleService`, and each item id as a product of the sale (or `ProductService`) and then as an accessory of the sale. `Main` creates `new ReturnRepository()`. `return-class-diagram.md` is updated to the current design.
+- **Decision:** Accepted. The file format does not change, so existing `returns.csv` files still load, including lines without the warranty refund field. Tested: a sale with a PS5 (extended warranty), a video game, and a controller; returned the PS5 and the controller (refund with discount plus 250,000 for the warranty, stock and warranty updated), restarted the application and the return reloaded with the same values; an old line with six fields also loaded. The results are the same as before the change.
+- **Related commit:** `refactor: add ReturnRecord for stored returns`, `refactor: resolve stored returns in ReturnService instead of ReturnRepository`, `docs: update return class diagram and developer 2 AI log`
