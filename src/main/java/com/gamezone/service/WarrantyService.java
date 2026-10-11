@@ -16,7 +16,8 @@ import java.util.List;
 /**
  * Contains the business rules for managing product warranties at GameZone
  * Unicesar, such as assigning basic and extended warranties to consoles,
- * querying warranty validity, and listing warranties expiring soon.
+ * querying warranty validity, listing warranties expiring soon, and
+ * cancelling the warranty of a returned console.
  */
 public class WarrantyService {
  
@@ -151,6 +152,32 @@ public class WarrantyService {
         return null;
     }
  
+    /**
+     * Cancels the warranty of one returned unit of a console in a specific
+     * sale: the warranty is removed from the system and the change is saved.
+     * A returned console cannot keep an active warranty. If the sale included
+     * several units of the same console, each unit has its own warranty, so
+     * this method cancels one warranty per call; ReturnService calls it once
+     * for every returned unit.
+     *
+     * @param productId the id of the returned console
+     * @param saleId    the id of the original sale
+     * @return the refundable cost of the cancelled warranty: 0 for a basic
+     *         warranty, its additional cost for an extended warranty, or 0 if
+     *         the product has no warranty in that sale
+     */
+    public double cancelWarranties(String productId, String saleId) {
+        for (Warranty warranty : warranties) {
+            if (warranty.getProduct().getId().equalsIgnoreCase(productId)
+                    && warranty.getSale().getId().equalsIgnoreCase(saleId)) {
+                warranties.remove(warranty);
+                warrantyRepository.saveAll(warranties);
+                return warranty.getAdditionalCost();
+            }
+        }
+        return 0.0;
+    }
+
     /**
      * Returns all warranties currently registered.
      *
