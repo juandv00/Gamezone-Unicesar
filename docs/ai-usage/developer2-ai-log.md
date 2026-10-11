@@ -343,3 +343,13 @@ modules.
 - **Response:** Use a small record (`WarrantyRecord`) with the stored fields; `loadAll()` returns records, and `WarrantyService` receives `SalePersistence` and `ProductService` by constructor to resolve the sale and product of each record, skipping the ones that cannot be found.
 - **Decision:** Accepted. After pushing the record and the service, the project did not compile because `Main` still used the old constructors; the review also found an outdated class JavaDoc and unused imports in `WarrantyRepository`, and the class diagram still showed the old dependency. I fixed `Main`, the JavaDoc, the imports, and the diagram in separate commits, and tested that warranties are saved as ids and reloaded after restarting.
 - **Related commit:** `fix: add WarrantyRecord to hold warranty identifiers`, `fix: resolve warranty references in WarrantyService from stored ids`, `fix: wire WarrantyService with SalePersistence and ProductService in Main`
+
+### A6 — Monthly balance report
+- **Date:** 2026-09-27
+- **Tool:** Claude (Anthropic)
+- **Phase and branch:** Phase 4 – `fix/monthly-balance-report`
+- **Objective:** Align the monthly balance methods with the names required by Requirement 5 and make sure the sales total uses the final total of each sale.
+- **Query:** Which changes A6 needs, given that `ReturnService` already had methods for the monthly sales and returns totals.
+- **Response:** The methods existed as `calculateMonthlySalesTotal` and `calculateMonthlyReturnsTotal`; A6 requires `calculateMonthlySales(int month, int year)` and `calculateMonthlyReturns(int month, int year)`. The sales total already used `calculateFinalTotal()`, which includes discounts and extended warranties, and `ConsoleUI` already showed the three values.
+- **Decision:** Renamed both methods and their calls in `ConsoleUI` in the same commit (so every commit compiles), updated the JavaDoc to mention extended warranties, and updated the method names in `return-analysis.md` and `return-class-diagram.md`. `generateMonthlyBalance` keeps its signature.
+- **Related commit:** `fix: rename monthly balance methods in ReturnService`, `docs: update monthly balance method names in return docs`

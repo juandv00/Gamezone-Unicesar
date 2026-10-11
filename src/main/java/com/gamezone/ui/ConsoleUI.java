@@ -1146,8 +1146,8 @@ public class ConsoleUI {
             return;
         }
         try {
-            double sales = returnService.calculateMonthlySalesTotal(month, year);
-            double refunds = returnService.calculateMonthlyReturnsTotal(month, year);
+            double sales = returnService.calculateMonthlySales(month, year);
+            double refunds = returnService.calculateMonthlyReturns(month, year);
             double balance = returnService.generateMonthlyBalance(month, year);
             System.out.println("\n===== Monthly balance " + String.format("%02d/%d", month, year) + " =====");
             System.out.println("Total sales:   " + formatAmount(sales));
