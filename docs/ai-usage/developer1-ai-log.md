@@ -118,3 +118,17 @@ and warranties, plus adjustment A1.
 - **Response:** The refund of each item is `price × (1 − discount / subtotal)`, where the discount and subtotal come from the original sale (`getDiscountAmount()` and `calculateTotal()`); if the subtotal is 0 the factor is 1. The receipt shows, for each item, the list price, the proportional discount, and the refunded amount.
 - **Decision:** Accepted. The calculation applies to products and accessories (A4 was already merged). The extended warranty cost is not part of the subtotal, so it does not change the factor. Tested: a sale with subtotal 1,000,000 and discount 100,000; returning items of 200,000 and 300,000 refunds 180,000 and 270,000; a sale without discount refunds the list price.
 - **Related commit:** `fix: refund returned items proportionally to the sale discount`
+
+
+
+## Requirement 6 — Validations and Exceptions
+
+### Exception hierarchy and validators
+- **Date:** 2026-10-11
+- **Tool:** Claude (Anthropic)
+- **Phase and branch:** Requirement 6 – `feature/exception-handling`
+- **Objective:** Create the custom exception hierarchy (`com.gamezone.exceptions`) and the three validators (`com.gamezone.validation`) defined by the specification.
+- **Query:** How to implement `GameZoneException` as an abstract unchecked root with an error code, its four subclasses with Spanish messages, and static validators for products, people, and sales that only depend on the model and the exceptions.
+- **Response:** `GameZoneException` extends `RuntimeException`, stores a private error code, and has two protected constructors (message, and message with error code). Each subclass passes its own code: `ResourceNotFoundException(resourceType, resourceId)` builds "<Tipo> con identificador <id> no existe en el sistema."; `InvalidDataException(fieldName, problem)` builds "El campo '<campo>' no es válido: <problema>"; `BusinessRuleException(message)`; and `PersistenceException(message, cause)` keeps the original exception with `initCause`. The validators are final classes with a private constructor and static methods that throw these exceptions.
+- **Decision:** Accepted, with three additions to the specification: `PersonValidator.validateSellerData` (sellers have an employee code and a shift but no email, so `validatePersonData` only validates the email when it is not null); an overload of `SaleValidator.validateSaleData` that also receives the accessories, because adjustment A3 allows sales with only accessories; and `validateStockAvailability` also rejects a quantity that is not positive. The error code constants are private so the classes have no public attributes. Every class compiled on its own before committing.
+- **Related commit:** `feat: add GameZoneException root exception`, `feat: add ResourceNotFoundException`, `feat: add BusinessRuleException`, `feat: add InvalidDataException`, `feat: add PersistenceException`, `feat: add ProductValidator`, `feat: add PersonValidator`, `feat: add SaleValidator`
