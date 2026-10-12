@@ -31,9 +31,13 @@ com.gamezone
 │                #   Promotion, PercentageDiscount, CategoryDiscount,
 │                #   BulkPurchaseDiscount, Return, Warranty,
 │                #   BasicWarranty, ExtendedWarranty)
+├── exceptions   # Custom exception hierarchy (GameZoneException and its
+│                #   four subclasses), usable from any layer
+├── validation   # Validators called by the services (ProductValidator,
+│                #   PersonValidator, SaleValidator)
 ├── persistence  # File-based read/write for each module (stores ids,
 │                #   not objects, for warranties and returns)
-├── service      # Business rules and validations
+├── service      # Business rules
 ├── ui           # Console-based user interface (ConsoleUI)
 └── Main.java    # Application entry point
 ```
@@ -73,8 +77,10 @@ mvn clean compile
 java -cp target/classes com.gamezone.Main
 ```
 
-The application starts a text menu. Data loaded from `data/` on
-startup is automatically saved back to disk after each operation.
+The application starts a text menu in Spanish. Data loaded from `data/`
+on startup is automatically saved back to disk after each operation.
+If the data files cannot be read, the application shows a message and
+does not start.
 
 ## Functional operations
 
@@ -138,10 +144,52 @@ The main menu is organized into seven modules:
 4. List the warranties expiring soon (within a number of days chosen by
    the user)
 
+## Validation and error handling
+
+The system distinguishes four kinds of errors, each with its own
+exception (package `com.gamezone.exceptions`) and its own message in the
+console:
+
+| Exception | When it is thrown | Message shown to the user |
+|---|---|---|
+| `ResourceNotFoundException` | A product, client, seller, or sale searched by id does not exist. | *No se encontró el recurso solicitado: …* |
+| `BusinessRuleException` | A business rule is violated: insufficient stock, a duplicated person id, a sale without items, among others. | *No se puede completar la operación: …* |
+| `InvalidDataException` | A value has the wrong format or range: an empty field, a price that is not positive, a negative stock, an invalid email. | *Los datos ingresados no son válidos: …* |
+| `PersistenceException` | A data file cannot be read or written, or contains a corrupted line. | *Ocurrió un problema al acceder a los datos del sistema. Contacte al administrador.* |
+
+All of them extend the abstract class `GameZoneException`, which extends
+`RuntimeException` and stores an error code.
+
+- **Validators** (package `com.gamezone.validation`): `ProductValidator`,
+  `PersonValidator`, and `SaleValidator` group the checks of each module
+  in static methods. The services call them before executing an
+  operation, so a rejected operation never changes any data. Validators
+  do not access services or persistence classes.
+- **Services:** `ProductService`, `PersonService`, and `SaleService`
+  delegate their checks to the validators and throw the typed
+  exceptions. Their `findById` methods still return `null` when nothing
+  is found; the new `getProductById`, `getClientById`, `getSellerById`,
+  and `getSaleById` methods throw `ResourceNotFoundException` instead.
+- **Persistence:** `ProductPersistence`, `PersonPersistence`, and
+  `SalePersistence` turn every `IOException` into a
+  `PersistenceException` that names the file and the operation, keeping
+  the original exception as its cause.
+- **User interface:** every menu operation runs through one handler in
+  `ConsoleUI` that catches each exception type separately. The user never
+  sees a technical message or a stack trace.
+
 ## Business rules
 
+**Products and people**
+- A product needs an id and a title, a price greater than zero, and a
+  stock that is not negative.
+- A client needs an id, a name, a phone, and a valid email; a seller
+  needs an id, a name, a phone, an employee code, and a shift.
+- Two people (clients or sellers) cannot have the same id.
+
 **Sales and stock**
-- A sale must include at least one item (a product or an accessory).
+- A sale must include a client, a seller, and at least one item (a
+  product or an accessory).
 - A sale is registered in this order: validate the items and their
   stock, create the sale and calculate its subtotal, apply the best
   promotion on the subtotal, assign the warranties of the consoles,
@@ -231,6 +279,8 @@ See the [docs/](docs) folder for:
 - `accessory-analysis.md` — design analysis of the accessory module.
 - `integration-analysis.md` — the integration of the four modules
   (Requirement 5): each adjustment, its cause, and the solution applied.
+- `exception-analysis.md` — design analysis of the exception and
+  validation layers (Requirement 6).
 - `hierarchy-diagram.md`, `class-diagram.md` — the base system's UML
   diagrams, written in Mermaid.
 - `layers-diagram.md` — the four layers of the integrated system and
@@ -245,4 +295,7 @@ See the [docs/](docs) folder for:
   module, written in Mermaid.
 - `integrated-class-diagram.md` — a single class diagram of the
   integrated system, with the four layers and every module.
+- `exception-class-diagram.md` — the class diagram of the exception
+  hierarchy, the validators, and how the services and the console use
+  them, written in Mermaid.
 - `ai-usage/` — each team member's AI usage log.

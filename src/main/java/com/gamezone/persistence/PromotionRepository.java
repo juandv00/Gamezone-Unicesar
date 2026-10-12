@@ -37,7 +37,7 @@ public class PromotionRepository {
                 bw.newLine();
             }
         } catch (IOException e) {
-            System.out.println("Error saving promotions: " + e.getMessage());
+            System.out.println("Error al guardar las promociones: " + e.getMessage());
         }
     }
 
@@ -63,7 +63,7 @@ public class PromotionRepository {
                 }
             }
         } catch (IOException e) {
-            System.out.println("Error loading promotions: " + e.getMessage());
+            System.out.println("Error al cargar las promociones: " + e.getMessage());
         }
         return promotions;
     }
@@ -131,7 +131,7 @@ public class PromotionRepository {
                 return new BulkPurchaseDiscount(id, name, startDate, endDate, minimumQuantity, percentage);
             }
         } catch (RuntimeException e) {
-            System.out.println("Skipping malformed promotion line: " + line);
+            System.out.println("Se omitió una línea inválida de promoción: " + line);
         }
         return null;
     }

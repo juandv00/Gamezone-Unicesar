@@ -50,6 +50,6 @@ public abstract class Person {
 
     @Override
     public String toString() {
-        return "Person{" + "id=" + id + ", name=" + name + ", phone=" + phone + '}';
+        return "Identificación: " + id + " | Nombre: " + name + " | Teléfono: " + phone;
     }
 }

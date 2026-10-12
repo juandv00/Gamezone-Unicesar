@@ -29,7 +29,7 @@ public class ExtendedWarranty extends Warranty {
 
     @Override
     public String getWarrantyType() {
-        return "Extended Warranty";
+        return "Garantía extendida";
     }
 
     @Override

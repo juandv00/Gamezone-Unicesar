@@ -1,5 +1,7 @@
 package com.gamezone;
 
+import com.gamezone.exceptions.GameZoneException;
+import com.gamezone.exceptions.PersistenceException;
 import com.gamezone.persistence.AccessoryRepository;
 import com.gamezone.persistence.PromotionRepository;
 import com.gamezone.persistence.ReturnRepository;
@@ -19,6 +21,8 @@ import com.gamezone.ui.ConsoleUI;
  * of the modules (products, people, accessories, promotions, sales, returns,
  * and warranties) and starts the console-based user interface, which loads
  * previously stored data automatically when the application starts.
+ * If the stored data cannot be loaded, the application shows a clear
+ * message instead of a stack trace and does not start.
  */
 public class Main {
 
@@ -28,8 +32,28 @@ public class Main {
      * @param args command-line arguments (not used)
      */
     public static void main(String[] args) {
-        System.out.println("GameZone Unicesar - System starting...");
+        System.out.println("GameZone Unicesar - Iniciando el sistema...");
+        ConsoleUI consoleUI;
+        try {
+            consoleUI = createConsoleUI();
+        } catch (PersistenceException e) {
+            System.out.println("No fue posible cargar los datos del sistema. Contacte al administrador.");
+            return;
+        } catch (GameZoneException e) {
+            System.out.println("No fue posible iniciar el sistema: " + e.getMessage());
+            return;
+        }
+        consoleUI.run();
+    }
 
+    /**
+     * Creates every repository and service in dependency order, loading the
+     * stored data, and the console user interface that uses them.
+     *
+     * @return the console user interface, ready to run
+     * @throws PersistenceException if a data file cannot be read
+     */
+    private static ConsoleUI createConsoleUI() {
         ProductService productService = new ProductService();
         PersonService personService = new PersonService();
 
@@ -50,8 +74,7 @@ public class Main {
         ReturnService returnService = new ReturnService(returnRepository, saleService, productService,
                 accessoryService, warrantyService);
 
-        ConsoleUI consoleUI = new ConsoleUI(productService, personService, saleService,
+        return new ConsoleUI(productService, personService, saleService,
                 accessoryService, promotionService, returnService, warrantyService);
-        consoleUI.run();
     }
 }

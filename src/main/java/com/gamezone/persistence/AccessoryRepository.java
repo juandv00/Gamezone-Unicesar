@@ -38,7 +38,7 @@ public class AccessoryRepository {
                 bw.newLine();
             }
         } catch (IOException e) {
-            System.out.println("Error saving accessories: " + e.getMessage());
+            System.out.println("Error al guardar los accesorios: " + e.getMessage());
         }
     }
 
@@ -64,7 +64,7 @@ public class AccessoryRepository {
                 }
             }
         } catch (IOException e) {
-            System.out.println("Error loading accessories: " + e.getMessage());
+            System.out.println("Error al cargar los accesorios: " + e.getMessage());
         }
         return accessories;
     }

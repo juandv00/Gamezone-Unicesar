@@ -41,7 +41,7 @@ public class ReturnRepository {
                 bw.newLine();
             }
         } catch (IOException e) {
-            System.out.println("Error saving returns: " + e.getMessage());
+            System.out.println("Error al guardar las devoluciones: " + e.getMessage());
         }
     }
 
@@ -67,7 +67,7 @@ public class ReturnRepository {
                 }
             }
         } catch (IOException e) {
-            System.out.println("Error loading returns: " + e.getMessage());
+            System.out.println("Error al cargar las devoluciones: " + e.getMessage());
         }
         return returns;
     }
@@ -111,7 +111,7 @@ public class ReturnRepository {
         try {
             return parseLine(line);
         } catch (RuntimeException e) {
-            System.out.println("Skipping malformed return line: " + line);
+            System.out.println("Se omitió una línea inválida de devolución: " + line);
             return null;
         }
     }

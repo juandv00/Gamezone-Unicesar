@@ -81,10 +81,10 @@ public class Sale {
     public Sale(Client client, Seller seller, List<Product> products,
                 List<Accessory> accessories, LocalDate date) {
         if (products == null) {
-            throw new IllegalArgumentException("Products list cannot be null.");
+            throw new IllegalArgumentException("La lista de productos no puede ser nula.");
         }
         if (accessories == null) {
-            throw new IllegalArgumentException("Accessories list cannot be null.");
+            throw new IllegalArgumentException("La lista de accesorios no puede ser nula.");
         }
         this.date = date;
         this.client = client;
@@ -111,7 +111,7 @@ public class Sale {
      */
     public void setId(String id) {
         if (id == null || id.isBlank()) {
-            throw new IllegalArgumentException("Sale id cannot be empty.");
+            throw new IllegalArgumentException("El identificador de la venta no puede estar vacío.");
         }
         this.id = id;
     }
@@ -179,7 +179,7 @@ public class Sale {
      */
     public void setDiscountAmount(double discountAmount) {
         if (discountAmount < 0) {
-            throw new IllegalArgumentException("Discount amount cannot be negative.");
+            throw new IllegalArgumentException("El descuento no puede ser negativo.");
         }
         this.discountAmount = discountAmount;
     }
@@ -222,7 +222,7 @@ public class Sale {
      */
     public void setWarrantyCost(double warrantyCost) {
         if (warrantyCost < 0) {
-            throw new IllegalArgumentException("Warranty cost cannot be negative.");
+            throw new IllegalArgumentException("El costo de las garantías no puede ser negativo.");
         }
         this.warrantyCost = warrantyCost;
     }
@@ -269,31 +269,31 @@ public class Sale {
      */
     public String generateReceipt() {
         StringBuilder receipt = new StringBuilder();
-        receipt.append("===== GameZone Unicesar - Receipt =====\n");
+        receipt.append("===== GameZone Unicesar - Recibo =====\n");
         if (id != null) {
-            receipt.append("Sale ID: ").append(id).append("\n");
+            receipt.append("Venta: ").append(id).append("\n");
         }
-        receipt.append("Date: ").append(date).append("\n");
-        receipt.append("Client: ").append(client.getName()).append("\n");
-        receipt.append("Seller: ").append(seller.getName()).append("\n");
-        receipt.append("Items:\n");
+        receipt.append("Fecha: ").append(date).append("\n");
+        receipt.append("Cliente: ").append(client.getName()).append("\n");
+        receipt.append("Vendedor: ").append(seller.getName()).append("\n");
+        receipt.append("Ítems:\n");
         for (Product product : products) {
             receipt.append("  - ").append(product.getTitle())
                     .append(": ").append(formatAmount(product.getPrice())).append("\n");
         }
         for (Accessory accessory : accessories) {
             receipt.append("  - ").append(accessory.getTitle())
-                    .append(" (accessory): ").append(formatAmount(accessory.getPrice())).append("\n");
+                    .append(" (accesorio): ").append(formatAmount(accessory.getPrice())).append("\n");
         }
         receipt.append("Subtotal: ").append(formatAmount(calculateTotal())).append("\n");
         if (hasDiscount()) {
-            receipt.append("Discount (").append(appliedPromotionName).append("): -")
+            receipt.append("Descuento (").append(appliedPromotionName).append("): -")
                     .append(formatAmount(discountAmount)).append("\n");
         } else {
-            receipt.append("Discount: none\n");
+            receipt.append("Descuento: ninguno\n");
         }
         if (warrantyCost > 0) {
-            receipt.append("Extended warranties: +").append(formatAmount(warrantyCost)).append("\n");
+            receipt.append("Garantías extendidas: +").append(formatAmount(warrantyCost)).append("\n");
         }
         receipt.append("Total: ").append(formatAmount(calculateFinalTotal())).append("\n");
         receipt.append("=======================================");
@@ -307,12 +307,12 @@ public class Sale {
     @Override
     public String toString() {
         String discount = hasDiscount()
-                ? ", discount=$" + discountAmount + " (" + appliedPromotionName + ")"
+                ? " | Descuento: " + formatAmount(discountAmount) + " (" + appliedPromotionName + ")"
                 : "";
-        String warranty = warrantyCost > 0 ? ", warranties=$" + warrantyCost : "";
-        String idText = id != null ? "id=" + id + ", " : "";
-        return "Sale{" + idText + "date=" + date + ", client=" + client.getName() +
-                ", seller=" + seller.getName() + discount + warranty +
-                ", total=$" + calculateFinalTotal() + "}";
+        String warranty = warrantyCost > 0 ? " | Garantías: " + formatAmount(warrantyCost) : "";
+        String idText = id != null ? id + " | " : "";
+        return "Venta " + idText + "Fecha: " + date + " | Cliente: " + client.getName()
+                + " | Vendedor: " + seller.getName() + discount + warranty
+                + " | Total: " + formatAmount(calculateFinalTotal());
     }
 }

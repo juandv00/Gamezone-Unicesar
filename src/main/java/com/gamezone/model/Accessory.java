@@ -1,5 +1,6 @@
 package com.gamezone.model;
 
+import com.gamezone.exceptions.InvalidDataException;
 import java.util.Objects;
 
 /**
@@ -26,13 +27,14 @@ public abstract class Accessory {
      * @param title display title of the accessory
      * @param price unit price of the accessory
      * @param stock initial quantity available in inventory
+     * @throws InvalidDataException if the price or the stock is negative
      */
     public Accessory(String id, String title, double price, int stock) {
         if (price < 0) {
-            throw new IllegalArgumentException("Price cannot be negative");
+            throw new InvalidDataException("precio", "no puede ser negativo.");
         }
         if (stock < 0) {
-            throw new IllegalArgumentException("Stock cannot be negative");
+            throw new InvalidDataException("stock", "no puede ser negativo.");
         }
         this.id = id;
         this.title = title;

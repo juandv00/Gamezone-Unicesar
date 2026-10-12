@@ -84,9 +84,10 @@ public class Controller extends Accessory {
 
     @Override
     public String getDescription() {
-        return getTitle() + " - Connection: " + connectionType +
-                ", Compatible consoles: " + compatibleConsoleIds.size() +
-                ", Price: $" + getPrice() +
+        String connection = connectionType == ConnectionType.WIRELESS ? "inalámbrica" : "cableada";
+        return getTitle() + " - Conexión: " + connection +
+                ", Consolas compatibles: " + compatibleConsoleIds.size() +
+                ", Precio: $" + getPrice() +
                 ", Stock: " + getStock();
     }
 

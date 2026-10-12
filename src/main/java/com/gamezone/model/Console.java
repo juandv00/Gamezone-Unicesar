@@ -56,10 +56,10 @@ public class Console extends Product {
 
     @Override
     public String getDescription() {
-        return getTitle() + " - Brand: " + brand +
-                ", Model: " + model +
-                ", Generation: " + generation +
-                ", Price: $" + getPrice() +
+        return getTitle() + " - Marca: " + brand +
+                ", Modelo: " + model +
+                ", Generación: " + generation +
+                ", Precio: $" + getPrice() +
                 ", Stock: " + getStock();
     }
 

@@ -39,6 +39,6 @@ public class PercentageDiscount extends Promotion {
 
     @Override
     public String toString() {
-        return "PercentageDiscount{" + super.toString() + ", percentage=" + percentage + "}";
+        return super.toString() + " | Descuento del " + percentage + "% sobre el subtotal";
     }
 }

@@ -465,3 +465,26 @@ for Requirement 4 before approving them.
 - **Response:** An analysis with every adjustment, the class names that differ from the specification (`SalePersistence` for `SaleRepository`, `ConsoleUI` for `ConsoleMenu`), the incidents, and a table of replaced decisions; a single Mermaid class diagram with the four layers and every module; a layers diagram with all the classes; and a README with the integrated operations and business rules.
 - **Decision:** Accepted after checking each class member against the code and validating both diagrams with the Mermaid parser. Corrected one point of the first draft: our Requirement 4 version had already avoided the circular dependency of A2 by using `SalePersistence`, so the analysis explains what A2 actually changed. Before writing the verification section, I ran the full scenario of the presentation with the real application (sale with a console, a video game, and an accessory; partial return of the console and the accessory; monthly balance) and documented the actual values.
 - **Related commit:** `docs: add integration analysis`, `docs: add integrated class diagram`, `docs: update layers diagram and README for the integrated system`, `docs: add Requirement 5 phase 4 and A8 entries to leader AI log`
+
+
+## Requirement 6 — Validations and Exceptions (entries in the required format)
+
+### Planning and design of the exception and validation layers
+- **Date:** 2026-10-11
+- **Tool:** Claude (Anthropic)
+- **Phase and branch:** Requirement 6 – `feature/exception-handling` (analysis before coding)
+- **Objective:** Answer the five guiding questions, draw the class diagram, and decide the order of work, since the three members share one branch.
+- **Query:** Asked to compare the specification with the real code (which uses `ProductPersistence`, `PersonPersistence`, `SalePersistence`, and `ConsoleUI` instead of the names of the specification) and to define the exact signatures and the decisions the specification leaves open.
+- **Response:** A design where validators are static classes that depend only on the model and the exceptions; services keep `findById` returning null and add `get...ById` methods that throw `ResourceNotFoundException`; and `ConsoleUI` handles every operation in one method with a `try` and one `catch` per exception type. Order: my documentation, then Developer 1 (exceptions and validators), then Developer 2 (services and persistence), then my changes to `ConsoleUI`, `Main`, and `README.md`.
+- **Decision:** Accepted. With the team we decided to refactor only the three modules of the specification and to translate every message shown by the console to Spanish, as the restrictions require. The documentation was written before the code and checked against the final code; the diagram was validated with the Mermaid parser.
+- **Related commit:** `docs: add exception and validation analysis`, `docs: add exception class diagram`
+
+### Differentiated error handling in ConsoleUI and Main
+- **Date:** 2026-10-12
+- **Tool:** Claude (Anthropic)
+- **Phase and branch:** Requirement 6 – `feature/exception-handling`
+- **Objective:** Replace the generic `catch (IllegalArgumentException e)` blocks of `ConsoleUI` with differentiated handling, show a clear message when the data cannot be loaded, and show every message in Spanish.
+- **Query:** Whether to use one `try` with multiple `catch` clauses, cascading `catch`, or a single `catch (GameZoneException e)`, and how to avoid repeating it in every operation.
+- **Response:** A private `executeOperation(Runnable)` with one `catch` per custom exception, a clause for the `IllegalArgumentException`/`IllegalStateException` of the modules outside the scope, and a final `catch (RuntimeException e)`; every submenu option runs through it. `Main` creates the objects in `createConsoleUI()` and catches `PersistenceException` at startup. The checked `IOException` of `AccessoryService` is converted into a `PersistenceException`. The model constructors throw `InvalidDataException` for negative prices or stock.
+- **Decision:** Accepted. The catch blocks repeated in each operation were reduced to one handler. The lookups of `registerSale`, `registerReturn`, and the warranty query now use the new `get...ById` methods. All the console text, receipts, certificates, and messages of the other modules were translated to Spanish; the accessory type filter accepts Spanish names and the extended warranty question accepts "s". Verified: the same input run on `develop` and on the branch produced identical data files and the same values for the 33 operations of the menu, and each type of error showed its own message.
+- **Related commit:** `refactor: handle custom exceptions by type in ConsoleUI`, `refactor: show a clear message when stored data cannot be loaded in Main`, `refactor: throw InvalidDataException for invalid product and accessory data`, `feat: show console menu messages in Spanish`, `feat: show receipts, certificates and descriptions in Spanish`, `feat: show messages of the other modules in Spanish`, `docs: describe the exception and validation layers in README`

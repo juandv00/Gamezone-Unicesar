@@ -28,7 +28,7 @@ public class BasicWarranty extends Warranty {
 
     @Override
     public String getWarrantyType() {
-        return "Basic Warranty";
+        return "Garantía básica";
     }
 
     @Override

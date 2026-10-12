@@ -30,16 +30,16 @@ public abstract class Warranty {
      */
     public Warranty(String id, Product product, Sale sale, LocalDate startDate) {
         if (id == null || id.isBlank()) {
-            throw new IllegalArgumentException("Warranty id cannot be empty.");
+            throw new IllegalArgumentException("El identificador de la garantía no puede estar vacío.");
         }
         if (product == null) {
-            throw new IllegalArgumentException("A warranty must reference an existing product.");
+            throw new IllegalArgumentException("La garantía debe referirse a un producto existente.");
         }
         if (sale == null) {
-            throw new IllegalArgumentException("A warranty must reference an existing sale.");
+            throw new IllegalArgumentException("La garantía debe referirse a una venta existente.");
         }
         if (startDate == null) {
-            throw new IllegalArgumentException("Warranty start date cannot be null.");
+            throw new IllegalArgumentException("La fecha de inicio de la garantía es obligatoria.");
         }
         this.id = id;
         this.product = product;
@@ -74,16 +74,16 @@ public abstract class Warranty {
      */
     public String generateWarrantyCertificate() {
         StringBuilder sb = new StringBuilder();
-        sb.append("===== GameZone Unicesar - Warranty Certificate =====\n");
-        sb.append("Warranty ID: ").append(id).append("\n");
-        sb.append("Type: ").append(getWarrantyType()).append("\n");
-        sb.append("Product: ").append(product.getId())
+        sb.append("===== GameZone Unicesar - Certificado de garantía =====\n");
+        sb.append("Garantía: ").append(id).append("\n");
+        sb.append("Tipo: ").append(getWarrantyType()).append("\n");
+        sb.append("Producto: ").append(product.getId())
                 .append(" - ").append(product.getTitle()).append("\n");
-        sb.append("Sale ID: ").append(sale.getId()).append("\n");
-        sb.append("Start date: ").append(startDate).append("\n");
-        sb.append("End date: ").append(endDate).append("\n");
-        sb.append("Additional cost: ").append(formatAmount(getAdditionalCost())).append("\n");
-        sb.append("======================================================");
+        sb.append("Venta: ").append(sale.getId()).append("\n");
+        sb.append("Fecha de inicio: ").append(startDate).append("\n");
+        sb.append("Fecha de fin: ").append(endDate).append("\n");
+        sb.append("Costo adicional: ").append(formatAmount(getAdditionalCost())).append("\n");
+        sb.append("========================================================");
         return sb.toString();
     }
 
