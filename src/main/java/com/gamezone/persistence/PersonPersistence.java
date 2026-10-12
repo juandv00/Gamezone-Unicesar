@@ -1,5 +1,6 @@
 package com.gamezone.persistence;
 
+import com.gamezone.exceptions.PersistenceException;
 import com.gamezone.model.Client;
 import com.gamezone.model.Person;
 import com.gamezone.model.Seller;
@@ -9,7 +10,9 @@ import java.util.List;
 
 /**
  * Handles saving and loading Person data (clients and sellers) to and from a
- * file, so that this information persists between application runs.
+ * file, so that this information persists between application runs. Any
+ * error while reading or writing the file is reported as a
+ * {@link PersistenceException} that names the file and the operation.
  */
 public class PersonPersistence {
 
@@ -21,6 +24,7 @@ public class PersonPersistence {
      * previously stored content.
      *
      * @param people the list of people to persist
+     * @throws PersistenceException if the file cannot be written
      */
     public void save(List<Person> people) {
         try (BufferedWriter bw = new BufferedWriter(new FileWriter(FILE_PATH))) {
@@ -29,7 +33,8 @@ public class PersonPersistence {
                 bw.newLine();
             }
         } catch (IOException e) {
-            System.out.println("Error saving people: " + e.getMessage());
+            throw new PersistenceException("Error de escritura en el archivo " + FILE_PATH
+                    + " al guardar las personas.", e);
         }
     }
 
@@ -38,6 +43,8 @@ public class PersonPersistence {
      *
      * @return the list of people found, or an empty list if the file does not
      * exist yet
+     * @throws PersistenceException if the file cannot be read or contains a
+     * line with an invalid format
      */
     public List<Person> load() {
         List<Person> people = new ArrayList<>();
@@ -48,13 +55,14 @@ public class PersonPersistence {
         try (BufferedReader br = new BufferedReader(new FileReader(file))) {
             String line;
             while ((line = br.readLine()) != null) {
-                Person person = fromLine(line);
+                Person person = parseLine(line);
                 if (person != null) {
                     people.add(person);
                 }
             }
         } catch (IOException e) {
-            System.out.println("Error loading people: " + e.getMessage());
+            throw new PersistenceException("Error de lectura en el archivo " + FILE_PATH
+                    + " al cargar las personas.", e);
         }
         return people;
     }
@@ -76,6 +84,23 @@ public class PersonPersistence {
                     + seller.getEmployeeCode() + DELIMITER + seller.getShift();
         }
         return "";
+    }
+
+    /**
+     * Parses a stored line, reporting a line with an invalid value as a
+     * PersistenceException (the file is corrupted).
+     *
+     * @param line the text line to parse
+     * @return the reconstructed Person, or null if the line is incomplete
+     * @throws PersistenceException if the line has an invalid value
+     */
+    private Person parseLine(String line) {
+        try {
+            return fromLine(line);
+        } catch (RuntimeException e) {
+            throw new PersistenceException("Error de lectura en el archivo " + FILE_PATH
+                    + ": la línea \"" + line + "\" tiene un formato inválido.", e);
+        }
     }
 
     /**
