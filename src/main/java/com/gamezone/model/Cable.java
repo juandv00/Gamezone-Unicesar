@@ -1,5 +1,7 @@
 package com.gamezone.model;
 
+import com.gamezone.exceptions.InvalidDataException;
+
 /**
  * Represents a cable accessory sold at GameZone Unicesar.
  * A cable is a specific type of Accessory characterized by its
@@ -23,12 +25,14 @@ public class Cable extends Accessory {
      * @param stock          initial quantity available in inventory
      * @param lengthInMeters length of the cable, in meters
      * @param connectorType  connector type of the cable (e.g. HDMI, USB, optical)
+     * @throws InvalidDataException if the length is not positive, or the price
+     *                              or the stock is negative
      */
     public Cable(String id, String title, double price, int stock,
                  double lengthInMeters, String connectorType) {
         super(id, title, price, stock);
         if (lengthInMeters <= 0) {
-            throw new IllegalArgumentException("Length must be greater than zero");
+            throw new InvalidDataException("longitud", "debe ser mayor que cero.");
         }
         this.lengthInMeters = lengthInMeters;
         this.connectorType = connectorType;

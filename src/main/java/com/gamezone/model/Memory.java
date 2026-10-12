@@ -1,5 +1,6 @@
 package com.gamezone.model;
 
+import com.gamezone.exceptions.InvalidDataException;
 import java.util.ArrayList;
 import java.util.List;
 
@@ -36,12 +37,14 @@ public class Memory extends Accessory {
      * @param stock        initial quantity available in inventory
      * @param capacityInGB storage capacity of the memory, in gigabytes
      * @param memoryType   type of the memory (SD, microSD, internal card)
+     * @throws InvalidDataException if the capacity is not positive, or the
+     *                              price or the stock is negative
      */
     public Memory(String id, String title, double price, int stock,
                   int capacityInGB, MemoryType memoryType) {
         super(id, title, price, stock);
         if (capacityInGB <= 0) {
-            throw new IllegalArgumentException("Capacity must be greater than zero");
+            throw new InvalidDataException("capacidad", "debe ser mayor que cero.");
         }
         this.capacityInGB = capacityInGB;
         this.memoryType = memoryType;
