@@ -1,5 +1,9 @@
 package com.gamezone.service;
 
+import com.gamezone.exceptions.BusinessRuleException;
+import com.gamezone.exceptions.InvalidDataException;
+import com.gamezone.exceptions.PersistenceException;
+import com.gamezone.exceptions.ResourceNotFoundException;
 import com.gamezone.model.Accessory;
 import com.gamezone.model.Client;
 import com.gamezone.model.Console;
@@ -9,8 +13,9 @@ import com.gamezone.model.Promotion;
 import com.gamezone.model.Sale;
 import com.gamezone.model.Seller;
 import com.gamezone.persistence.SalePersistence;
+import com.gamezone.validation.ProductValidator;
+import com.gamezone.validation.SaleValidator;
 import java.io.IOException;
-import java.io.UncheckedIOException;
 import java.util.ArrayList;
 import java.util.LinkedHashMap;
 import java.util.List;
@@ -24,7 +29,10 @@ import java.util.Map;
  * their stock, create the sale, apply the best active promotion on the
  * subtotal, assign the console warranties (basic by default, or extended if
  * requested), update the inventory of products and accessories, and
- * persist the sale.
+ * persist the sale. The data and rules of a sale are checked by
+ * {@link SaleValidator} and {@link ProductValidator}, which throw the custom
+ * exceptions of the system when something is not valid; if any validation
+ * fails, nothing is changed.
  */
 public class SaleService {
 
@@ -112,19 +120,15 @@ public class SaleService {
      * @param client   the client making the purchase
      * @param seller   the seller attending the sale
      * @param products the list of products included in the sale
-     * @return the registered Sale if successful, or null if the sale
-     *         could not be registered (empty product list or insufficient
-     *         stock for any product)
+     * @return the registered Sale
+     * @throws InvalidDataException      if the client or the seller is missing
+     * @throws BusinessRuleException     if the product list is empty or a
+     *                                   product does not have enough stock
+     * @throws ResourceNotFoundException if a product is not registered
      */
     public Sale registerSale(Client client, Seller seller, List<Product> products) {
-        if (products == null || products.isEmpty()) {
-            return null;
-        }
-        try {
-            return processSale(client, seller, products, null, null);
-        } catch (IOException e) {
-            throw new UncheckedIOException(e);
-        }
+        SaleValidator.validateSaleData(client, seller, products);
+        return processSale(client, seller, products, null, null);
     }
 
     /**
@@ -136,14 +140,16 @@ public class SaleService {
      * @param seller      the seller attending the sale
      * @param products    the list of products included in the sale (may be empty)
      * @param accessories the list of accessories included in the sale (may be empty)
-     * @return the registered Sale if successful, or null if the sale could
-     *         not be registered (no items or insufficient stock for any item)
-     * @throws IOException           if the accessory stock could not be persisted
+     * @return the registered Sale
+     * @throws InvalidDataException  if the client or the seller is missing
+     * @throws BusinessRuleException if the sale has no items or an item does
+     *                               not have enough stock
+     * @throws PersistenceException  if the sale or the stock cannot be saved
      * @throws IllegalStateException if accessories are given but this service
      *                               was created without an AccessoryService
      */
     public Sale registerSale(Client client, Seller seller, List<Product> products,
-                             List<Accessory> accessories) throws IOException {
+                             List<Accessory> accessories) {
         return registerSale(client, seller, products, accessories, null);
     }
 
@@ -166,7 +172,8 @@ public class SaleService {
      *   <li>Persist the sale (the warranties are persisted by WarrantyService
      *       when they are assigned).</li>
      * </ol>
-     * If any validation fails, nothing is changed.
+     * If any validation fails, a custom exception is thrown and nothing is
+     * changed.
      *
      * @param client                         the client making the purchase
      * @param seller                         the seller attending the sale
@@ -174,17 +181,19 @@ public class SaleService {
      * @param accessories                    the list of accessories included in the sale (may be empty)
      * @param productIdsWithExtendedWarranty the ids of the consoles that must receive an
      *                                       extended warranty (may be null or empty)
-     * @return the registered Sale if successful, or null if the sale could
-     *         not be registered (no items or insufficient stock for any item)
-     * @throws IOException              if the accessory stock could not be persisted
-     * @throws IllegalArgumentException if an extended warranty is requested for a
-     *                                  product that is not a console of the sale
-     * @throws IllegalStateException    if accessories or extended warranties are
-     *                                  given but this service does not support them
+     * @return the registered Sale
+     * @throws InvalidDataException      if the client or the seller is missing
+     * @throws BusinessRuleException     if the sale has no items, an item does not
+     *                                   have enough stock, or an extended warranty
+     *                                   is requested for a product that is not a
+     *                                   console of the sale
+     * @throws ResourceNotFoundException if a product is not registered
+     * @throws PersistenceException      if the sale or the stock cannot be saved
+     * @throws IllegalStateException     if accessories or extended warranties are
+     *                                   given but this service does not support them
      */
     public Sale registerSale(Client client, Seller seller, List<Product> products,
-                             List<Accessory> accessories, List<String> productIdsWithExtendedWarranty)
-            throws IOException {
+                             List<Accessory> accessories, List<String> productIdsWithExtendedWarranty) {
         return processSale(client, seller, products, accessories, productIdsWithExtendedWarranty);
     }
 
@@ -200,15 +209,17 @@ public class SaleService {
      *                                       an id repeated n times means n units
      * @param productIdsWithExtendedWarranty the ids of the consoles that must receive an
      *                                       extended warranty (may be null or empty)
-     * @return the registered Sale if successful, or null if the sale could
-     *         not be registered (no items or insufficient stock for any item)
-     * @throws IOException              if the accessory stock could not be persisted
-     * @throws IllegalArgumentException if an id matches no product or accessory,
-     *                                  or an extended warranty is requested for a
-     *                                  product that is not a console of the sale
+     * @return the registered Sale
+     * @throws ResourceNotFoundException if an id matches no product or accessory
+     * @throws InvalidDataException      if the client or the seller is missing
+     * @throws BusinessRuleException     if the sale has no items, an item does not
+     *                                   have enough stock, or an extended warranty
+     *                                   is requested for a product that is not a
+     *                                   console of the sale
+     * @throws PersistenceException      if the sale or the stock cannot be saved
      */
     public Sale registerSaleByItemIds(Client client, Seller seller, List<String> itemIds,
-                                      List<String> productIdsWithExtendedWarranty) throws IOException {
+                                      List<String> productIdsWithExtendedWarranty) {
         List<Product> products = new ArrayList<>();
         List<Accessory> accessories = new ArrayList<>();
         if (itemIds != null) {
@@ -220,7 +231,7 @@ public class SaleService {
                 }
                 Accessory accessory = accessoryService != null ? accessoryService.findById(itemId) : null;
                 if (accessory == null) {
-                    throw new IllegalArgumentException("No product or accessory found with id " + itemId + ".");
+                    throw new ResourceNotFoundException("Producto o accesorio", itemId);
                 }
                 accessories.add(accessory);
             }
@@ -233,17 +244,14 @@ public class SaleService {
      * {@link #registerSale(Client, Seller, List, List, List)}.
      */
     private Sale processSale(Client client, Seller seller, List<Product> products,
-                             List<Accessory> accessories, List<String> productIdsWithExtendedWarranty)
-            throws IOException {
+                             List<Accessory> accessories, List<String> productIdsWithExtendedWarranty) {
         List<Product> saleProducts = products == null ? new ArrayList<>() : new ArrayList<>(products);
         List<Accessory> saleAccessories = accessories == null ? new ArrayList<>() : new ArrayList<>(accessories);
         List<String> extendedIds = productIdsWithExtendedWarranty == null
                 ? new ArrayList<>() : new ArrayList<>(productIdsWithExtendedWarranty);
 
-        // 1. The sale must have at least one item.
-        if (saleProducts.isEmpty() && saleAccessories.isEmpty()) {
-            return null;
-        }
+        // 1. The sale must have a client, a seller, and at least one item.
+        SaleValidator.validateSaleData(client, seller, saleProducts, saleAccessories);
         if (!saleAccessories.isEmpty() && accessoryService == null) {
             throw new IllegalStateException("This SaleService was created without accessory support.");
         }
@@ -252,8 +260,8 @@ public class SaleService {
         }
         for (String productId : extendedIds) {
             if (!containsConsole(saleProducts, productId)) {
-                throw new IllegalArgumentException(
-                        "Extended warranty requested for " + productId + ", which is not a console in this sale.");
+                throw new BusinessRuleException("La garantía extendida solo se puede asignar a las consolas"
+                        + " de la venta, y " + productId + " no es una de ellas.");
             }
         }
 
@@ -261,13 +269,15 @@ public class SaleService {
         Map<String, Integer> productUnits = countProductUnits(saleProducts);
         Map<String, Integer> accessoryUnits = countAccessoryUnits(saleAccessories);
         for (Map.Entry<String, Integer> entry : productUnits.entrySet()) {
-            if (!productService.hasEnoughStock(entry.getKey(), entry.getValue())) {
-                return null;
-            }
+            Product product = productService.getProductById(entry.getKey());
+            ProductValidator.validateStockAvailability(product, entry.getValue());
         }
         for (Map.Entry<String, Integer> entry : accessoryUnits.entrySet()) {
             if (!accessoryService.hasEnoughStock(entry.getKey(), entry.getValue())) {
-                return null;
+                Accessory accessory = accessoryService.findById(entry.getKey());
+                String name = accessory != null ? accessory.getTitle() : entry.getKey();
+                throw new BusinessRuleException("Stock insuficiente para el accesorio " + name
+                        + ": solicitadas " + entry.getValue() + ".");
             }
         }
 
@@ -288,8 +298,13 @@ public class SaleService {
         for (Map.Entry<String, Integer> entry : productUnits.entrySet()) {
             productService.reduceStock(entry.getKey(), entry.getValue());
         }
-        for (Map.Entry<String, Integer> entry : accessoryUnits.entrySet()) {
-            accessoryService.reduceStock(entry.getKey(), entry.getValue());
+        try {
+            for (Map.Entry<String, Integer> entry : accessoryUnits.entrySet()) {
+                accessoryService.reduceStock(entry.getKey(), entry.getValue());
+            }
+        } catch (IOException e) {
+            throw new PersistenceException("Error de escritura al guardar el stock de los accesorios"
+                    + " de la venta " + sale.getId() + ".", e);
         }
 
         // 8. Persist the sale.
@@ -320,6 +335,21 @@ public class SaleService {
             }
         }
         return null;
+    }
+
+    /**
+     * Finds a registered sale by its identifier, failing if it does not
+     * exist. Unlike {@link #findById(String)}, it is meant for operations
+     * that cannot continue without the sale.
+     *
+     * @param saleId the id of the sale to search for
+     * @return the sale with the given id
+     * @throws ResourceNotFoundException if no sale has the given id
+     */
+    public Sale getSaleById(String saleId) {
+        Sale sale = findById(saleId);
+        SaleValidator.validateSaleExists(sale, saleId);
+        return sale;
     }
 
     /**

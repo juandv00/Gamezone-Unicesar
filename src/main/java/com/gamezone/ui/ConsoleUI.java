@@ -484,7 +484,7 @@ public class ConsoleUI {
                     printSaleWarranties(sale);
                 }
             }
-        } catch (IOException | IllegalArgumentException | IllegalStateException e) {
+        } catch (  IllegalArgumentException | IllegalStateException e) {
             System.out.println("Could not register sale: " + e.getMessage());
         }
     }
