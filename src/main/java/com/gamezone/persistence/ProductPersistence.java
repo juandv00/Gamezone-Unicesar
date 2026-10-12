@@ -1,5 +1,6 @@
 package com.gamezone.persistence;
 
+import com.gamezone.exceptions.PersistenceException;
 import com.gamezone.model.Console;
 import com.gamezone.model.Product;
 import com.gamezone.model.VideoGame;
@@ -11,6 +12,8 @@ import java.util.List;
 /**
  * Handles saving and loading Product data to and from a file,
  * so that inventory information persists between application runs.
+ * Any error while reading or writing the file is reported as a
+ * {@link PersistenceException} that names the file and the operation.
  */
 public class ProductPersistence {
 
@@ -22,6 +25,7 @@ public class ProductPersistence {
      * any previously stored content.
      *
      * @param products the list of products to persist
+     * @throws PersistenceException if the file cannot be written
      */
     public void save(List<Product> products) {
         try (BufferedWriter writer = new BufferedWriter(new FileWriter(FILE_PATH))) {
@@ -30,7 +34,8 @@ public class ProductPersistence {
                 writer.newLine();
             }
         } catch (IOException e) {
-            System.out.println("Error saving products: " + e.getMessage());
+            throw new PersistenceException("Error de escritura en el archivo " + FILE_PATH
+                    + " al guardar los productos.", e);
         }
     }
 
@@ -39,6 +44,8 @@ public class ProductPersistence {
      *
      * @return the list of products found, or an empty list if the file
      *         does not exist yet
+     * @throws PersistenceException if the file cannot be read or contains a
+     *                              line with an invalid format
      */
     public List<Product> load() {
         List<Product> products = new ArrayList<>();
@@ -49,13 +56,14 @@ public class ProductPersistence {
         try (BufferedReader reader = new BufferedReader(new FileReader(file))) {
             String line;
             while ((line = reader.readLine()) != null) {
-                Product product = fromLine(line);
+                Product product = parseLine(line);
                 if (product != null) {
                     products.add(product);
                 }
             }
         } catch (IOException e) {
-            System.out.println("Error loading products: " + e.getMessage());
+            throw new PersistenceException("Error de lectura en el archivo " + FILE_PATH
+                    + " al cargar los productos.", e);
         }
         return products;
     }
@@ -79,6 +87,23 @@ public class ProductPersistence {
                     console.getModel() + DELIMITER + console.getGeneration();
         }
         return "";
+    }
+
+    /**
+     * Parses a stored line, reporting a line with an invalid number or value
+     * as a PersistenceException (the file is corrupted).
+     *
+     * @param line the text line to parse
+     * @return the reconstructed Product, or null if the line is incomplete
+     * @throws PersistenceException if the line has an invalid value
+     */
+    private Product parseLine(String line) {
+        try {
+            return fromLine(line);
+        } catch (RuntimeException e) {
+            throw new PersistenceException("Error de lectura en el archivo " + FILE_PATH
+                    + ": la línea \"" + line + "\" tiene un formato inválido.", e);
+        }
     }
 
     /**
