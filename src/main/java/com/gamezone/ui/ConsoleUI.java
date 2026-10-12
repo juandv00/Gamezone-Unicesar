@@ -1,12 +1,15 @@
 package com.gamezone.ui;
 
+import com.gamezone.exceptions.BusinessRuleException;
+import com.gamezone.exceptions.InvalidDataException;
+import com.gamezone.exceptions.PersistenceException;
+import com.gamezone.exceptions.ResourceNotFoundException;
 import com.gamezone.model.Accessory;
 import com.gamezone.model.Cable;
 import com.gamezone.model.Client;
 import com.gamezone.model.Console;
 import com.gamezone.model.Controller;
 import com.gamezone.model.Memory;
-import com.gamezone.model.Person;
 import com.gamezone.model.Product;
 import com.gamezone.model.Promotion;
 import com.gamezone.model.Return;
@@ -33,7 +36,11 @@ import java.util.Scanner;
  * Provides the console-based user interface for GameZone Unicesar,
  * allowing the user to manage products, people, accessories, sales,
  * promotions, returns, and warranties through a text menu that delegates
- * all operations to the corresponding services.
+ * all operations to the corresponding services. Every operation of the
+ * submenus runs through {@link #executeOperation(Runnable)}, which catches
+ * the custom exceptions by type and shows a different message to the user
+ * for each category of error, so the user never sees a technical message
+ * or a stack trace.
  */
 public class ConsoleUI {
 
@@ -199,6 +206,36 @@ public class ConsoleUI {
         }
     }
 
+    /**
+     * Runs one operation of a submenu and handles its errors. The custom
+     * exceptions are caught by their specific type, from the most specific
+     * categories to the most general, and each category shows a different
+     * message: a resource that was not found, a business rule that was
+     * violated, invalid input data, or a problem accessing the data files
+     * (whose technical details are never shown). The modules that still use
+     * the standard Java exceptions are handled as business rule errors, and
+     * any unexpected error shows a general message instead of a stack trace.
+     *
+     * @param operation the operation to run
+     */
+    private void executeOperation(Runnable operation) {
+        try {
+            operation.run();
+        } catch (ResourceNotFoundException e) {
+            System.out.println("No se encontró el recurso solicitado: " + e.getMessage());
+        } catch (BusinessRuleException e) {
+            System.out.println("No se puede completar la operación: " + e.getMessage());
+        } catch (InvalidDataException e) {
+            System.out.println("Los datos ingresados no son válidos: " + e.getMessage());
+        } catch (PersistenceException e) {
+            System.out.println("Ocurrió un problema al acceder a los datos del sistema. Contacte al administrador.");
+        } catch (IllegalArgumentException | IllegalStateException e) {
+            System.out.println("No se puede completar la operación: " + e.getMessage());
+        } catch (RuntimeException e) {
+            System.out.println("Ocurrió un error inesperado. Contacte al administrador.");
+        }
+    }
+
     // ===================== PRODUCT MENU =====================
 
     /**
@@ -216,9 +253,9 @@ public class ConsoleUI {
             System.out.print("Select an option: ");
             int option = readOption();
             switch (option) {
-                case 1 -> registerVideoGame();
-                case 2 -> registerConsole();
-                case 3 -> listProducts();
+                case 1 -> executeOperation(this::registerVideoGame);
+                case 2 -> executeOperation(this::registerConsole);
+                case 3 -> executeOperation(this::listProducts);
                 case 0 -> back = true;
                 default -> System.out.println("Invalid option. Please try again.");
             }
@@ -240,13 +277,10 @@ public class ConsoleUI {
         System.out.print("Age rating: ");
         String ageRating = scanner.nextLine().trim();
 
-        try {
-            VideoGame videoGame = new VideoGame(data.id(), data.title(), data.price(), data.stock(), platform, genre, ageRating);
-            productService.registerProduct(videoGame);
-            System.out.println("Video game registered successfully.");
-        } catch (IllegalArgumentException e) {
-            System.out.println("Could not register video game: " + e.getMessage());
-        }
+        VideoGame videoGame = new VideoGame(data.id(), data.title(), data.price(), data.stock(),
+                platform, genre, ageRating);
+        productService.registerProduct(videoGame);
+        System.out.println("Video game registered successfully.");
     }
 
     /**
@@ -264,13 +298,10 @@ public class ConsoleUI {
         System.out.print("Generation: ");
         String generation = scanner.nextLine().trim();
 
-        try {
-            Console console = new Console(data.id(), data.title(), data.price(), data.stock(), brand, model, generation);
-            productService.registerProduct(console);
-            System.out.println("Console registered successfully.");
-        } catch (IllegalArgumentException e) {
-            System.out.println("Could not register console: " + e.getMessage());
-        }
+        Console console = new Console(data.id(), data.title(), data.price(), data.stock(),
+                brand, model, generation);
+        productService.registerProduct(console);
+        System.out.println("Console registered successfully.");
     }
 
     /**
@@ -331,9 +362,9 @@ public class ConsoleUI {
             System.out.print("Select an option: ");
             int option = readOption();
             switch (option) {
-                case 1 -> registerClient();
-                case 2 -> listClients();
-                case 3 -> listSellers();
+                case 1 -> executeOperation(this::registerClient);
+                case 2 -> executeOperation(this::listClients);
+                case 3 -> executeOperation(this::listSellers);
                 case 0 -> back = true;
                 default -> System.out.println("Invalid option. Please try again.");
             }
@@ -353,12 +384,8 @@ public class ConsoleUI {
         System.out.print("Email: ");
         String email = scanner.nextLine().trim();
 
-        try {
-            personService.registerClient(id, name, phone, email);
-            System.out.println("Client registered successfully.");
-        } catch (IllegalArgumentException e) {
-            System.out.println("Could not register client: " + e.getMessage());
-        }
+        personService.registerClient(id, name, phone, email);
+        System.out.println("Client registered successfully.");
     }
 
     /**
@@ -410,11 +437,11 @@ public class ConsoleUI {
             System.out.print("Select an option: ");
             int option = readOption();
             switch (option) {
-                case 1 -> registerSale();
-                case 2 -> listAllSales();
-                case 3 -> listSalesByClient();
-                case 4 -> listSalesBySeller();
-                case 5 -> viewSaleReceipt();
+                case 1 -> executeOperation(this::registerSale);
+                case 2 -> executeOperation(this::listAllSales);
+                case 3 -> executeOperation(this::listSalesByClient);
+                case 4 -> executeOperation(this::listSalesBySeller);
+                case 5 -> executeOperation(this::viewSaleReceipt);
                 case 0 -> back = true;
                 default -> System.out.println("Invalid option. Please try again.");
             }
@@ -431,20 +458,10 @@ public class ConsoleUI {
      */
     private void registerSale() {
         System.out.print("Client id: ");
-        String clientId = scanner.nextLine().trim();
-        Person clientPerson = personService.findById(clientId);
-        if (!(clientPerson instanceof Client client)) {
-            System.out.println("No client found with that id.");
-            return;
-        }
+        Client client = personService.getClientById(scanner.nextLine().trim());
 
         System.out.print("Seller id: ");
-        String sellerId = scanner.nextLine().trim();
-        Person sellerPerson = personService.findById(sellerId);
-        if (!(sellerPerson instanceof Seller seller)) {
-            System.out.println("No seller found with that id.");
-            return;
-        }
+        Seller seller = personService.getSellerById(scanner.nextLine().trim());
 
         List<String> itemIds = new ArrayList<>();
         List<Product> products = new ArrayList<>();
@@ -473,19 +490,11 @@ public class ConsoleUI {
         }
 
         List<String> extendedIds = warrantyService != null ? askExtendedWarranties(products) : new ArrayList<>();
-        try {
-            Sale sale = saleService.registerSaleByItemIds(client, seller, itemIds, extendedIds);
-            if (sale == null) {
-                System.out.println("Sale could not be registered (no items, or insufficient stock).");
-            } else {
-                System.out.println("Sale registered successfully.");
-                System.out.println(sale.generateReceipt());
-                if (warrantyService != null) {
-                    printSaleWarranties(sale);
-                }
-            }
-        } catch (  IllegalArgumentException | IllegalStateException e) {
-            System.out.println("Could not register sale: " + e.getMessage());
+        Sale sale = saleService.registerSaleByItemIds(client, seller, itemIds, extendedIds);
+        System.out.println("Sale registered successfully.");
+        System.out.println(sale.generateReceipt());
+        if (warrantyService != null) {
+            printSaleWarranties(sale);
         }
     }
 
@@ -634,14 +643,14 @@ public class ConsoleUI {
             System.out.print("Select an option: ");
             int option = readOption();
             switch (option) {
-                case 1 -> registerController();
-                case 2 -> registerCable();
-                case 3 -> registerMemory();
-                case 4 -> listAccessories();
-                case 5 -> listAccessoriesByType();
-                case 6 -> listAccessoriesCompatibleWithConsole();
-                case 7 -> addCompatibleConsole();
-                case 8 -> updateAccessoryStock();
+                case 1 -> executeOperation(this::registerController);
+                case 2 -> executeOperation(this::registerCable);
+                case 3 -> executeOperation(this::registerMemory);
+                case 4 -> executeOperation(this::listAccessories);
+                case 5 -> executeOperation(this::listAccessoriesByType);
+                case 6 -> executeOperation(this::listAccessoriesCompatibleWithConsole);
+                case 7 -> executeOperation(this::addCompatibleConsole);
+                case 8 -> executeOperation(this::updateAccessoryStock);
                 case 0 -> back = true;
                 default -> System.out.println("Invalid option. Please try again.");
             }
@@ -673,8 +682,8 @@ public class ConsoleUI {
                     data.id(), data.title(), data.price(), data.stock(), connectionType);
             System.out.println("Controller registered successfully.");
             readCompatibleConsoles(controller.getId());
-        } catch (IllegalArgumentException | IOException e) {
-            System.out.println("Could not register controller: " + e.getMessage());
+        } catch (IOException e) {
+            throw accessoryFileError(e);
         }
     }
 
@@ -701,8 +710,8 @@ public class ConsoleUI {
             accessoryService.registerCable(data.id(), data.title(), data.price(), data.stock(),
                     length, connectorType);
             System.out.println("Cable registered successfully.");
-        } catch (IllegalArgumentException | IOException e) {
-            System.out.println("Could not register cable: " + e.getMessage());
+        } catch (IOException e) {
+            throw accessoryFileError(e);
         }
     }
 
@@ -740,8 +749,8 @@ public class ConsoleUI {
                     data.id(), data.title(), data.price(), data.stock(), capacity, memoryType);
             System.out.println("Memory registered successfully.");
             readCompatibleConsoles(memory.getId());
-        } catch (IllegalArgumentException | IOException e) {
-            System.out.println("Could not register memory: " + e.getMessage());
+        } catch (IOException e) {
+            throw accessoryFileError(e);
         }
     }
 
@@ -817,7 +826,7 @@ public class ConsoleUI {
                 System.out.println("Only controllers and memories support console compatibility.");
             }
         } catch (IOException e) {
-            System.out.println("Could not save compatibility: " + e.getMessage());
+            throw accessoryFileError(e);
         }
     }
 
@@ -892,8 +901,20 @@ public class ConsoleUI {
             accessoryService.updateStock(accessoryId, stock);
             System.out.println("Stock updated successfully.");
         } catch (IOException e) {
-            System.out.println("Could not update stock: " + e.getMessage());
+            throw accessoryFileError(e);
         }
+    }
+
+    /**
+     * Converts an error of the accessory file, which AccessoryService reports
+     * as a checked IOException, into a PersistenceException, so it is handled
+     * like any other persistence error by {@link #executeOperation(Runnable)}.
+     *
+     * @param cause the original error
+     * @return the exception to throw
+     */
+    private PersistenceException accessoryFileError(IOException cause) {
+        return new PersistenceException("Error de escritura en el archivo de accesorios.", cause);
     }
 
     /**
@@ -938,10 +959,12 @@ public class ConsoleUI {
             System.out.print("Select an option: ");
             int option = readOption();
             switch (option) {
-                case 1 -> viewWarrantyOfProduct();
-                case 2 -> printWarranties(warrantyService.listAllWarranties(), "No warranties registered yet.");
-                case 3 -> printWarranties(warrantyService.listActiveWarranties(), "No warranties are active today.");
-                case 4 -> listWarrantiesExpiringSoon();
+                case 1 -> executeOperation(this::viewWarrantyOfProduct);
+                case 2 -> executeOperation(() -> printWarranties(warrantyService.listAllWarranties(),
+                        "No warranties registered yet."));
+                case 3 -> executeOperation(() -> printWarranties(warrantyService.listActiveWarranties(),
+                        "No warranties are active today."));
+                case 4 -> executeOperation(this::listWarrantiesExpiringSoon);
                 case 0 -> back = true;
                 default -> System.out.println("Invalid option. Please try again.");
             }
@@ -954,11 +977,7 @@ public class ConsoleUI {
      */
     private void viewWarrantyOfProduct() {
         System.out.print("Sale id (e.g. SALE-1): ");
-        Sale sale = saleService.findById(scanner.nextLine().trim());
-        if (sale == null) {
-            System.out.println("No sale found with that id.");
-            return;
-        }
+        Sale sale = saleService.getSaleById(scanner.nextLine().trim());
         System.out.print("Product id: ");
         String productId = scanner.nextLine().trim();
         Product product = null;
@@ -1047,11 +1066,12 @@ public class ConsoleUI {
             System.out.print("Select an option: ");
             int option = readOption();
             switch (option) {
-                case 1 -> registerReturn();
-                case 2 -> printReturns(returnService.viewAllReturns(), "No returns registered yet.");
-                case 3 -> listReturnsByClient();
-                case 4 -> listReturnsBySale();
-                case 5 -> showMonthlyBalance();
+                case 1 -> executeOperation(this::registerReturn);
+                case 2 -> executeOperation(() -> printReturns(returnService.viewAllReturns(),
+                        "No returns registered yet."));
+                case 3 -> executeOperation(this::listReturnsByClient);
+                case 4 -> executeOperation(this::listReturnsBySale);
+                case 5 -> executeOperation(this::showMonthlyBalance);
                 case 0 -> back = true;
                 default -> System.out.println("Invalid option. Please try again.");
             }
@@ -1068,11 +1088,7 @@ public class ConsoleUI {
     private void registerReturn() {
         System.out.print("Sale id (e.g. SALE-1): ");
         String saleId = scanner.nextLine().trim();
-        Sale sale = saleService.findById(saleId);
-        if (sale == null) {
-            System.out.println("No sale found with that id.");
-            return;
-        }
+        Sale sale = saleService.getSaleById(saleId);
         if (!sale.canBeReturned()) {
             System.out.println("This sale can no longer be returned: more than 30 days have passed since "
                     + sale.getDate() + ".");
@@ -1108,13 +1124,9 @@ public class ConsoleUI {
         System.out.print("Reason for the return: ");
         String reason = scanner.nextLine().trim();
 
-        try {
-            Return registeredReturn = returnService.registerReturn(saleId, itemIds, reason);
-            System.out.println("Return registered successfully.");
-            System.out.println(registeredReturn.generateReturnReceipt());
-        } catch (IllegalArgumentException | IllegalStateException e) {
-            System.out.println("Could not register return: " + e.getMessage());
-        }
+        Return registeredReturn = returnService.registerReturn(sale.getId(), itemIds, reason);
+        System.out.println("Return registered successfully.");
+        System.out.println(registeredReturn.generateReturnReceipt());
     }
 
     /**
@@ -1149,17 +1161,13 @@ public class ConsoleUI {
             System.out.println("Invalid year.");
             return;
         }
-        try {
-            double sales = returnService.calculateMonthlySales(month, year);
-            double refunds = returnService.calculateMonthlyReturns(month, year);
-            double balance = returnService.generateMonthlyBalance(month, year);
-            System.out.println("\n===== Monthly balance " + String.format("%02d/%d", month, year) + " =====");
-            System.out.println("Total sales:   " + formatAmount(sales));
-            System.out.println("Total returns: " + formatAmount(refunds));
-            System.out.println("Net balance:   " + formatAmount(balance));
-        } catch (IllegalArgumentException e) {
-            System.out.println("Could not generate the balance: " + e.getMessage());
-        }
+        double sales = returnService.calculateMonthlySales(month, year);
+        double refunds = returnService.calculateMonthlyReturns(month, year);
+        double balance = returnService.generateMonthlyBalance(month, year);
+        System.out.println("\n===== Monthly balance " + String.format("%02d/%d", month, year) + " =====");
+        System.out.println("Total sales:   " + formatAmount(sales));
+        System.out.println("Total returns: " + formatAmount(refunds));
+        System.out.println("Net balance:   " + formatAmount(balance));
     }
 
     /**
@@ -1220,13 +1228,13 @@ public class ConsoleUI {
             System.out.print("Select an option: ");
             int option = readOption();
             switch (option) {
-                case 1 -> registerPercentagePromotion();
-                case 2 -> registerCategoryPromotion();
-                case 3 -> registerBulkPurchasePromotion();
-                case 4 -> printPromotions(promotionService.listAllPromotions(),
-                        "No promotions registered yet.");
-                case 5 -> printPromotions(promotionService.listActivePromotions(),
-                        "No promotions are active today.");
+                case 1 -> executeOperation(this::registerPercentagePromotion);
+                case 2 -> executeOperation(this::registerCategoryPromotion);
+                case 3 -> executeOperation(this::registerBulkPurchasePromotion);
+                case 4 -> executeOperation(() -> printPromotions(promotionService.listAllPromotions(),
+                        "No promotions registered yet."));
+                case 5 -> executeOperation(() -> printPromotions(promotionService.listActivePromotions(),
+                        "No promotions are active today."));
                 case 0 -> back = true;
                 default -> System.out.println("Invalid option. Please try again.");
             }
@@ -1246,13 +1254,9 @@ public class ConsoleUI {
         if (percentage == null) {
             return;
         }
-        try {
-            promotionService.registerPercentageDiscount(data.id(), data.name(),
-                    data.startDate(), data.endDate(), percentage);
-            System.out.println("Percentage promotion registered successfully.");
-        } catch (IllegalArgumentException e) {
-            System.out.println("Could not register promotion: " + e.getMessage());
-        }
+        promotionService.registerPercentageDiscount(data.id(), data.name(),
+                data.startDate(), data.endDate(), percentage);
+        System.out.println("Percentage promotion registered successfully.");
     }
 
     /**
@@ -1279,13 +1283,9 @@ public class ConsoleUI {
             System.out.println("Invalid category.");
             return;
         }
-        try {
-            promotionService.registerCategoryDiscount(data.id(), data.name(),
-                    data.startDate(), data.endDate(), percentage, targetCategory);
-            System.out.println("Category promotion registered successfully.");
-        } catch (IllegalArgumentException e) {
-            System.out.println("Could not register promotion: " + e.getMessage());
-        }
+        promotionService.registerCategoryDiscount(data.id(), data.name(),
+                data.startDate(), data.endDate(), percentage, targetCategory);
+        System.out.println("Category promotion registered successfully.");
     }
 
     /**
@@ -1307,13 +1307,9 @@ public class ConsoleUI {
         if (percentage == null) {
             return;
         }
-        try {
-            promotionService.registerBulkPurchaseDiscount(data.id(), data.name(),
-                    data.startDate(), data.endDate(), minimumQuantity, percentage);
-            System.out.println("Bulk purchase promotion registered successfully.");
-        } catch (IllegalArgumentException e) {
-            System.out.println("Could not register promotion: " + e.getMessage());
-        }
+        promotionService.registerBulkPurchaseDiscount(data.id(), data.name(),
+                data.startDate(), data.endDate(), minimumQuantity, percentage);
+        System.out.println("Bulk purchase promotion registered successfully.");
     }
 
     /**
