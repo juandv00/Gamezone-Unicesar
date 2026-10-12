@@ -40,7 +40,7 @@ public class WarrantyRepository {
                 bw.newLine();
             }
         } catch (IOException e) {
-            System.out.println("Error saving warranties: " + e.getMessage());
+            System.out.println("Error al guardar las garantías: " + e.getMessage());
         }
     }
 
@@ -65,7 +65,7 @@ public class WarrantyRepository {
                 }
             }
         } catch (IOException e) {
-            System.out.println("Error loading warranties: " + e.getMessage());
+            System.out.println("Error al cargar las garantías: " + e.getMessage());
         }
         return records;
     }
@@ -90,7 +90,7 @@ public class WarrantyRepository {
             return new WarrantyRecord(parts[0], parts[1], parts[2], parts[3],
                     LocalDate.parse(parts[4]));
         } catch (RuntimeException e) {
-            System.out.println("Skipping malformed warranty line: " + line);
+            System.out.println("Se omitió una línea inválida de garantía: " + line);
             return null;
         }
     }

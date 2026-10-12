@@ -73,7 +73,7 @@ public class PromotionService {
                 || targetCategory.equalsIgnoreCase("CONSOLE")
                 || targetCategory.equalsIgnoreCase("ACCESSORY"))) {
             throw new IllegalArgumentException(
-                    "The target category must be VIDEOGAME, CONSOLE, or ACCESSORY.");
+                    "La categoría objetivo debe ser VIDEOGAME, CONSOLE o ACCESSORY.");
         }
         ensureIdIsAvailable(id);
         CategoryDiscount promotion = new CategoryDiscount(id, name, startDate, endDate, percentage, targetCategory);
@@ -178,7 +178,7 @@ public class PromotionService {
      */
     private void ensureIdIsAvailable(String id) {
         if (findById(id) != null) {
-            throw new IllegalArgumentException("A promotion with id " + id + " already exists.");
+            throw new IllegalArgumentException("Ya existe una promoción con el identificador " + id + ".");
         }
     }
 }
