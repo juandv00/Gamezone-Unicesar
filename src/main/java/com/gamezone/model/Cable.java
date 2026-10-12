@@ -61,9 +61,9 @@ public class Cable extends Accessory {
 
     @Override
     public String getDescription() {
-        return getTitle() + " - Length: " + lengthInMeters + "m" +
-                ", Connector: " + connectorType +
-                ", Price: $" + getPrice() +
+        return getTitle() + " - Longitud: " + lengthInMeters + "m" +
+                ", Conector: " + connectorType +
+                ", Precio: $" + getPrice() +
                 ", Stock: " + getStock();
     }
 

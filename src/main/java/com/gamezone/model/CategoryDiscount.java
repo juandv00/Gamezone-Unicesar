@@ -82,7 +82,6 @@ public class CategoryDiscount extends Promotion {
 
     @Override
     public String toString() {
-        return "CategoryDiscount{" + super.toString() +
-                ", percentage=" + percentage + ", targetCategory='" + targetCategory + "'}";
+        return super.toString() + " | Descuento del " + percentage + "% en la categoría " + targetCategory;
     }
 }

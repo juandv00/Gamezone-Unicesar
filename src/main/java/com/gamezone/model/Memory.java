@@ -105,10 +105,10 @@ public class Memory extends Accessory {
 
     @Override
     public String getDescription() {
-        return getTitle() + " - Capacity: " + capacityInGB + "GB" +
-                ", Type: " + memoryType +
-                ", Compatible consoles: " + compatibleConsoleIds.size() +
-                ", Price: $" + getPrice() +
+        return getTitle() + " - Capacidad: " + capacityInGB + "GB" +
+                ", Tipo: " + memoryType +
+                ", Consolas compatibles: " + compatibleConsoleIds.size() +
+                ", Precio: $" + getPrice() +
                 ", Stock: " + getStock();
     }
 

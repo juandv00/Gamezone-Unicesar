@@ -43,6 +43,6 @@ public class Seller extends Person {
 
     @Override
     public String toString() {
-        return super.toString() + "Seller{" + "employeeCode=" + employeeCode + ", shift=" + shift + '}';
+        return super.toString() + " | Código: " + employeeCode + " | Turno: " + shift;
     }
 }

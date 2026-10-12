@@ -79,24 +79,24 @@ public class Return {
     public Return(String id, LocalDate date, Sale originalSale, List<Product> returnedProducts,
                   List<Accessory> returnedAccessories, String reason, double warrantyRefund) {
         if (id == null || id.isBlank()) {
-            throw new IllegalArgumentException("Return id cannot be empty.");
+            throw new IllegalArgumentException("El identificador de la devolución no puede estar vacío.");
         }
         if (date == null) {
-            throw new IllegalArgumentException("Return date cannot be null.");
+            throw new IllegalArgumentException("La fecha de la devolución es obligatoria.");
         }
         if (originalSale == null) {
-            throw new IllegalArgumentException("A return must reference an existing sale.");
+            throw new IllegalArgumentException("La devolución debe referirse a una venta existente.");
         }
         List<Product> products = returnedProducts == null ? new ArrayList<>() : returnedProducts;
         List<Accessory> accessories = returnedAccessories == null ? new ArrayList<>() : returnedAccessories;
         if (products.isEmpty() && accessories.isEmpty()) {
-            throw new IllegalArgumentException("A return must include at least one product or accessory.");
+            throw new IllegalArgumentException("La devolución debe incluir al menos un producto o accesorio.");
         }
         if (reason == null || reason.isBlank()) {
-            throw new IllegalArgumentException("The return reason cannot be empty.");
+            throw new IllegalArgumentException("El motivo de la devolución no puede estar vacío.");
         }
         if (warrantyRefund < 0) {
-            throw new IllegalArgumentException("The warranty refund cannot be negative.");
+            throw new IllegalArgumentException("El reembolso por garantías no puede ser negativo.");
         }
         this.id = id;
         this.date = date;
@@ -209,24 +209,24 @@ public class Return {
      */
     public String generateReturnReceipt() {
         StringBuilder sb = new StringBuilder();
-        sb.append("===== GameZone Unicesar - Return Receipt =====\n");
-        sb.append("Return ID: ").append(id).append("\n");
-        sb.append("Date: ").append(date).append("\n");
-        sb.append("Original sale: ").append(originalSale.getId())
+        sb.append("===== GameZone Unicesar - Recibo de devolución =====\n");
+        sb.append("Devolución: ").append(id).append("\n");
+        sb.append("Fecha: ").append(date).append("\n");
+        sb.append("Venta original: ").append(originalSale.getId())
                 .append(" (").append(originalSale.getDate()).append(")\n");
-        sb.append("Returned items:\n");
+        sb.append("Ítems devueltos:\n");
         for (Product product : returnedProducts) {
             appendItemLine(sb, product.getTitle(), product.getPrice());
         }
         for (Accessory accessory : returnedAccessories) {
-            appendItemLine(sb, accessory.getTitle() + " (accessory)", accessory.getPrice());
+            appendItemLine(sb, accessory.getTitle() + " (accesorio)", accessory.getPrice());
         }
         if (warrantyRefund > 0) {
-            sb.append("Cancelled extended warranties: +").append(formatAmount(warrantyRefund)).append("\n");
+            sb.append("Garantías extendidas anuladas: +").append(formatAmount(warrantyRefund)).append("\n");
         }
-        sb.append("Reason: ").append(reason).append("\n");
-        sb.append("Refund amount: ").append(formatAmount(refundAmount)).append("\n");
-        sb.append("==============================================");
+        sb.append("Motivo: ").append(reason).append("\n");
+        sb.append("Monto reembolsado: ").append(formatAmount(refundAmount)).append("\n");
+        sb.append("===================================================");
         return sb.toString();
     }
 
@@ -241,9 +241,9 @@ public class Return {
     private void appendItemLine(StringBuilder sb, String title, double listPrice) {
         double refund = refundFor(listPrice);
         sb.append("  - ").append(title)
-                .append(": list price ").append(formatAmount(listPrice))
-                .append(", discount -").append(formatAmount(listPrice - refund))
-                .append(", refund ").append(formatAmount(refund)).append("\n");
+                .append(": precio de lista ").append(formatAmount(listPrice))
+                .append(", descuento -").append(formatAmount(listPrice - refund))
+                .append(", reembolso ").append(formatAmount(refund)).append("\n");
     }
 
     private String formatAmount(double amount) {
