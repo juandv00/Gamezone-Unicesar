@@ -132,3 +132,30 @@ and warranties, plus adjustment A1.
 - **Response:** `GameZoneException` extends `RuntimeException`, stores a private error code, and has two protected constructors (message, and message with error code). Each subclass passes its own code: `ResourceNotFoundException(resourceType, resourceId)` builds "<Tipo> con identificador <id> no existe en el sistema."; `InvalidDataException(fieldName, problem)` builds "El campo '<campo>' no es válido: <problema>"; `BusinessRuleException(message)`; and `PersistenceException(message, cause)` keeps the original exception with `initCause`. The validators are final classes with a private constructor and static methods that throw these exceptions.
 - **Decision:** Accepted, with three additions to the specification: `PersonValidator.validateSellerData` (sellers have an employee code and a shift but no email, so `validatePersonData` only validates the email when it is not null); an overload of `SaleValidator.validateSaleData` that also receives the accessories, because adjustment A3 allows sales with only accessories; and `validateStockAvailability` also rejects a quantity that is not positive. The error code constants are private so the classes have no public attributes. Every class compiled on its own before committing.
 - **Related commit:** `feat: add GameZoneException root exception`, `feat: add ResourceNotFoundException`, `feat: add BusinessRuleException`, `feat: add InvalidDataException`, `feat: add PersistenceException`, `feat: add ProductValidator`, `feat: add PersonValidator`, `feat: add SaleValidator`
+
+
+
+## Requirement 7 — GRASP Audit and Correction
+
+### Phase 1 — Audit
+
+#### Audit of my code against the nine GRASP patterns
+- **Date:** 2026-10-16
+- **Tool:** Claude (Anthropic)
+- **Phase and branch:** Requirement 7, Phase 1 – `feature/grasp-audit`
+- **Objective:** Audit the product module, the accessory, promotion, and warranty hierarchies, `Return` with `Sale.canBeReturned`, and the `exceptions` and `validation` packages against the nine GRASP patterns, with evidence from commit `9dc5282`.
+- **Query:** Went through my classes with Claude pattern by pattern, asking for each pattern where it applies in my code, which fragments could break it, and what concrete consequence each one would have.
+- **Response:** Six findings: stock read and written outside `Product` (Information Expert), the paid ratio calculated by `Return` with `Sale` data (Information Expert), categories decided with `instanceof` in `CategoryDiscount` (Polymorphism), compatibility duplicated in `Controller` and `Memory` (Polymorphism), type conditionals in `ProductPersistence` (Polymorphism), and the money format copied in `Return` and `Warranty` (Pure Fabrication). Creator, Controller, Low Coupling, High Cohesion, and Indirection were found correctly applied, with examples.
+- **Decision:** I opened every cited fragment in the IDE on commit `9dc5282` to confirm the line numbers and that the problem is real, and kept only the findings I can explain with their consequence. I classified `ProductService` creating its own `ProductPersistence` as correct (Creator: it is the only class that uses it closely). I marked the findings whose fix needs code of other members and reported them to the Technical Leader.
+- **Related commit:** `docs: add scope to developer1 audit`, `docs: add information expert and creator findings to developer1 audit`, `docs: add controller, coupling and cohesion verdicts to developer1 audit`, `docs: add polymorphism findings to developer1 audit`, `docs: add pure fabrication, indirection and protected variations to developer1 audit`
+
+#### Guiding question 3
+- **Date:** 2026-10-16
+- **Tool:** Claude (Anthropic)
+- **Phase and branch:** Requirement 7, Phase 1 – `feature/grasp-audit`
+- **Objective:** Write the team's answer to guiding question 3 (code that breaks more than one pattern).
+- **Query:** Asked how other teams usually register a fragment that breaks Polymorphism and Protected Variations at the same time, and how to choose the pattern that guides the correction.
+- **Response:** Register it once under the pattern that describes the fix (replacing a type conditional with an operation per type is Polymorphism) and mention the other pattern next to it; the other section points to the same ID.
+- **Decision:** I applied the rule to my own findings (V-03 and V-05) and wrote the answer with those examples; it matches how the consolidation registered them.
+- **Related commit:** `docs: answer guiding question 3 in grasp analysis`
+
