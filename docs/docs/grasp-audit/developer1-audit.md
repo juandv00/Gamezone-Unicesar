@@ -110,5 +110,56 @@ category of error; `ProductPersistence` only reads and writes the products
 file. The largest class I audited, `Return` (257 lines), only stores a
 return, calculates its refund, and builds its receipt.
 
+## Polymorphism
+
+**Verdict: violation** (V-03, V-04, V-05).
+
+Where it is applied correctly:
+- `Promotion.calculateDiscount(Sale)` is abstract (line 84) and each
+  subclass implements its own rule, so `PromotionService` evaluates every
+  promotion without knowing its type.
+- `Warranty` declares `getDurationInMonths()`, `getWarrantyType()`, and
+  `getAdditionalCost()` (lines 51-55); the end date and the certificate
+  work for both subclasses.
+- `Product.getDescription()` and `Accessory.getDescription()` /
+  `getType()` are implemented by each subclass.
+
+### V-03
+| Field | Content |
+|---|---|
+| ID | V-03 |
+| Pattern | Polymorphism (also Protected Variations) |
+| Module | Promotions (Req 2, adjustment A1) |
+| Evidence | `CategoryDiscount.matchesCategory`, lines 56-64: `if ("VIDEOGAME".equalsIgnoreCase(targetCategory)) { return product instanceof VideoGame; } if ("CONSOLE"...) { return product instanceof Console; }` · `CategoryDiscount.calculateDiscount`, lines 69-79: a separate branch for `"ACCESSORY"` |
+| Explanation | The category of an item is decided by asking for its concrete class with `instanceof` and comparing it with text literals. The category is something that varies by type, so each type should answer it through a polymorphic operation. |
+| Consequence | Adding a new product type (for example, a collectible) requires changing `CategoryDiscount` and adding another branch; if someone forgets it, the new items never receive category discounts. The list of valid categories is also repeated in `PromotionService` (Developer 2). |
+| Proposed solution | Apply Polymorphism: add an abstract `getCategory()` to `Product` and a `getCategory()` to `Accessory`, implemented by each subclass ("VIDEOGAME", "CONSOLE", "ACCESSORY"). `CategoryDiscount` compares `getCategory()` with its target for products and accessories alike, and exposes the list of supported categories so that it is defined in one place. |
+| Other member's code | Yes. `PromotionService.registerCategoryDiscount` (Developer 2) would use the list of supported categories. Reported to the Technical Leader. |
+
+### V-04
+| Field | Content |
+|---|---|
+| ID | V-04 |
+| Pattern | Polymorphism |
+| Module | Accessories (Req 1) |
+| Evidence | `Controller`, lines 22, 54-78 and `Memory`, lines 26, 75-99: the same attribute `compatibleConsoleIds` and the same methods `getCompatibleConsoleIds`, `addCompatibleConsole`, and `isCompatibleWith` are written twice. `Accessory` has no operation for compatibility. |
+| Explanation | "Compatible with consoles" is a behavior shared by two accessory types, but the hierarchy has no type that represents it. The code that uses accessories can only find out whether an accessory supports compatibility by asking `instanceof Controller` or `instanceof Memory`. |
+| Consequence | The duplicated code must be changed in two places. A new accessory type with compatibility (for example, a headset) would require copying the code again and changing every class that checks the type. |
+| Proposed solution | Apply Polymorphism: create an abstract class `ConsoleCompatibleAccessory` (extends `Accessory`) with the list and the three methods; `Controller` and `Memory` extend it. The rest of the system asks for that type only. |
+| Other member's code | Yes. The type checks are in `AccessoryService` (Developer 2) and `ConsoleUI` (Technical Leader). Reported to the Technical Leader. |
+
+### V-05
+| Field | Content |
+|---|---|
+| ID | V-05 |
+| Pattern | Polymorphism (also Protected Variations) |
+| Module | Products (Workshop 1) |
+| Evidence | `ProductPersistence.toLine`, lines 77-90: `if (product instanceof VideoGame videoGame) {...} else if (product instanceof Console console) {...}` · `ProductPersistence.fromLine`, lines 126-131: `if (type.equals("VIDEOGAME")) {...} else if (type.equals("CONSOLE")) {...}` |
+| Explanation | The format of each product type is selected with a chain of conditionals on the type, in both directions. |
+| Consequence | Every new product type requires editing both chains; a type that is added to one chain but not to the other is silently skipped (`toLine` returns an empty line). |
+| Proposed solution | Apply Polymorphism through Pure Fabrication: keep the file format in the persistence layer (it does not belong to the model), but register one format object per product type (keyed by class to write and by type code to read), so adding a type means registering a format instead of editing conditionals. |
+| Other member's code | No. |
+
+
 
 
