@@ -75,4 +75,40 @@ Where it is applied correctly:
 - `Controller` and `Memory` create their own list of compatible consoles
   (`new ArrayList<>()`), because they contain it.
 
+## Controller
+
+**Verdict: correct.**
+
+`ProductService` is the first object after the user interface that
+receives the product operations (`registerProduct`, `reduceStock`,
+`findById`). It coordinates the validator and the persistence class, and it
+does not contain any console code. My model classes, validators, and
+exceptions do not receive system events, so for them the pattern does not
+apply.
+
+## Low Coupling
+
+**Verdict: correct.**
+
+- The model classes only depend on other model classes and on the
+  `exceptions` package.
+- The validators depend only on the model and the exceptions; they never
+  call services or persistence classes (`ProductValidator`, lines 3-6).
+- `ProductService` depends only on `Product`, `ProductPersistence`, and
+  `ProductValidator`.
+- The promotion subclasses only know `Sale`, `Product`, and `Accessory`,
+  which they need to calculate the discount.
+
+## High Cohesion
+
+**Verdict: correct.**
+
+Each class has one responsibility: the product, accessory, promotion, and
+warranty classes hold their data and their own calculations; each
+validator checks the rules of one module; each exception represents one
+category of error; `ProductPersistence` only reads and writes the products
+file. The largest class I audited, `Return` (257 lines), only stores a
+return, calculates its refund, and builds its receipt.
+
+
 
