@@ -160,6 +160,58 @@ Where it is applied correctly:
 | Proposed solution | Apply Polymorphism through Pure Fabrication: keep the file format in the persistence layer (it does not belong to the model), but register one format object per product type (keyed by class to write and by type code to read), so adding a type means registering a format instead of editing conditionals. |
 | Other member's code | No. |
 
+## Pure Fabrication
+
+**Verdict: violation** (V-06).
+
+Where it is applied correctly: `ProductPersistence` and the three
+validators are fabricated classes that keep file access and validation
+rules out of the domain classes.
+
+### V-06
+| Field | Content |
+|---|---|
+| ID | V-06 |
+| Pattern | Pure Fabrication |
+| Module | Returns (Req 3) and Warranties (Req 4) |
+| Evidence | `Return.formatAmount`, lines 249-251 and `Warranty.formatAmount`, lines 90-92: the same method `String.format(Locale.US, "$%,.2f", amount)` |
+| Explanation | Formatting money for display is not a responsibility of the domain: it does not belong to a return or to a warranty. Each class wrote its own copy because there is no class responsible for it. |
+| Consequence | Changing the currency format (for example, to Colombian pesos without decimals) requires finding every copy; if one is missed, receipts and certificates show different formats. |
+| Proposed solution | Apply Pure Fabrication: one class responsible for formatting amounts, used by every class that prints money. |
+| Other member's code | Yes. `Sale` and `ConsoleUI` (Technical Leader) have the same method. Reported to the Technical Leader. |
+
+## Indirection
+
+**Verdict: correct.**
+
+- `ProductService` is the intermediary between the user interface and
+  `ProductPersistence`; the interface never reads the products file.
+- The validators sit between the services and the business rules: a
+  service does not need to know how a rule is checked.
+- The exception hierarchy lets the lower layers report an error without
+  knowing how the user interface will show it.
+
+## Protected Variations
+
+**Verdict: violation** — covered by V-03 and V-05, registered under
+Polymorphism because that is the pattern that guides their correction.
+
+Where it is applied correctly: `GameZoneException` is the stable
+interface for every error; a new category of error is a new subclass, and
+the code that catches `GameZoneException` does not change.
+
+## Problems reported to the Technical Leader
+
+1. V-01 also affects `ProductService.restoreStock` (Technical Leader) and
+   the stock methods of `AccessoryService` (Developer 2).
+2. V-02 requires a new method in `Sale` (Technical Leader).
+3. V-03: `PromotionService.registerCategoryDiscount` (Developer 2)
+   repeats the list of categories.
+4. V-04: `AccessoryService` (Developer 2) and `ConsoleUI` (Technical
+   Leader) check `instanceof Controller` / `instanceof Memory`.
+5. V-06: `Sale` and `ConsoleUI` (Technical Leader) repeat the money
+   format.
+
 
 
 
