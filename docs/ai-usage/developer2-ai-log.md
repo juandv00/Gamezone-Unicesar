@@ -395,3 +395,27 @@ modules.
 - **Response:** The persistence classes throw `PersistenceException("Error de lectura/escritura en el archivo <ruta> ...", e)` instead of printing the error, and a new private `parseLine` reports a corrupted line the same way. `ProductService.registerProduct` calls `validateProductData`; `reduceStock` and `restoreStock` use the new `getProductById` and the stock validation. `PersonService` calls `validatePersonData`, `validateSellerData`, and `validateUniquePerson`, and adds `getClientById` and `getSellerById`. `SaleService` calls `validateSaleData` and `validateStockAvailability`, throws `BusinessRuleException` or `ResourceNotFoundException` instead of returning null, adds `getSaleById`, and wraps the `IOException` of the accessory stock in a `PersistenceException`.
 - **Decision:** Accepted. The `findById` methods still return null, because `ReturnService`, `WarrantyService`, and the sale item lookup depend on it; the lookups that must fail were added as new `get...ById` methods. Removing `throws IOException` from `SaleService` made the `catch (IOException ...)` in `ConsoleUI.registerSale` a compile error, so I removed `IOException` from that catch in the same commit (the only caller). Tested: valid sales, returns, and registrations produce the same data files as before; a sale without stock, a duplicated client, an invalid email, and an unknown sale are rejected with the new exceptions; a corrupted `products.txt` is reported as a `PersistenceException`.
 - **Related commit:** `refactor: report file errors as PersistenceException in ProductPersistence`, `refactor: report file errors as PersistenceException in PersonPersistence`, `refactor: report file errors as PersistenceException in SalePersistence`, `refactor: delegate product validations to ProductValidator`, `refactor: delegate person validations to PersonValidator`, `refactor: use SaleValidator and typed exceptions in SaleService`
+
+## Requirement 7 — GRASP Audit and Correction
+
+### Phase 1 — Audit
+
+#### Audit of my code against the nine GRASP patterns
+- **Date:** 2026-10-16
+- **Tool:** Claude (Anthropic)
+- **Phase and branch:** Requirement 7, Phase 1 – `feature/grasp-audit`
+- **Objective:** Audit the person module, the repositories and services of accessories, promotions, returns, and warranties, and my use of exceptions and validators in Requirement 6, against the nine GRASP patterns, with evidence from commit `9dc5282`.
+- **Query:** Went through my repositories and services with Claude pattern by pattern, asking for each pattern where it applies in my code, which fragments could break it, and what concrete consequence each one would have.
+- **Response:** Five findings: accessory stock read and written by `AccessoryService` (Information Expert), type conditionals in four repositories and in `WarrantyService.resolveWarranties` (Polymorphism), `instanceof Controller`/`Memory` in `AccessoryService` (Polymorphism), `instanceof Console` in `WarrantyService` and `ReturnService` (Polymorphism), and the list of categories repeated in `PromotionService` (Protected Variations). Creator, Controller, Low Coupling, High Cohesion, Pure Fabrication, and Indirection were found correctly applied, with examples such as `ReturnRecord` and `WarrantyRecord`.
+- **Decision:** I opened every cited fragment in the IDE on commit `9dc5282` to confirm the line numbers, and grouped the type conditionals of my four repositories into one finding because they have the same cause and the same fix. I kept the monthly balance in `ReturnService` as correct for High Cohesion, because adjustment A6 placed it there and it only uses the returns the class manages. I reported to the Technical Leader the four findings that need classes of Developer 1.
+- **Related commit:** `docs: add scope to developer2 audit`, `docs: add information expert and creator findings to developer2 audit`, `docs: add controller, coupling and cohesion verdicts to developer2 audit`, `docs: add polymorphism findings to developer2 audit`, `docs: add pure fabrication, indirection and protected variations to developer2 audit`
+
+#### Guiding question 4
+- **Date:** 2026-10-16
+- **Tool:** Claude (Anthropic)
+- **Phase and branch:** Requirement 7, Phase 1 – `feature/grasp-audit`
+- **Objective:** Write the team's answer to guiding question 4 (how to prove that the refactor does not change the behavior).
+- **Query:** Asked for ways to compare the behavior of a console program before and after a refactor, and what evidence is usually kept.
+- **Response:** Run a fixed input script with the 33 menu operations and a script of error cases on `develop` before the first correction and on the branch after the corrections, from the same data folder, and compare the screen output line by line and the data files byte by byte.
+- **Decision:** I chose the scripted comparison because the team already used it in Requirement 6, and wrote the answer listing the operations and the error cases we will run.
+- **Related commit:** `docs: answer guiding question 4 in grasp analysis`
