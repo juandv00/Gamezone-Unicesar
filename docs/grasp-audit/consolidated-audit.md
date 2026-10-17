@@ -170,3 +170,47 @@ finding had to be returned to its author.
 | Source reports | leader-audit V-05, developer1-audit V-06 |
 | Responsible | **Technical Leader**: creates `CurrencyFormatter` and changes `Sale` and `ConsoleUI`. **Developer 1**: `Return` and `Warranty`. |
 
+## Boundary findings
+
+Six of the nine violations involve the code of more than one member. In
+each case both members reported the problem from their side (or one
+member reported it and the other's code was checked during the
+consolidation), it was registered once, and the correction was split by
+ownership:
+
+| Violation | Origin of the problem | Correction split |
+|---|---|---|
+| V-01 | `Product`/`Accessory` (Developer 1) lack stock operations, so three classes of three members manipulate the stock | Developer 1 adds the operations first; then Developer 2 and the Technical Leader use them |
+| V-02 | `Return` (Developer 1) calculates with `Sale` data (Technical Leader) | The Technical Leader adds `Sale.calculatePaidRatio()` first; then Developer 1 uses it |
+| V-03 | `CategoryDiscount` (Developer 1) and `PromotionService` (Developer 2) both know the categories | Developer 1 adds `getCategory()` and `isSupportedCategory`; then Developer 2 uses it |
+| V-04 | The accessory hierarchy (Developer 1) lacks a type for compatibility, so `AccessoryService` (Developer 2) and `ConsoleUI` (Technical Leader) check concrete classes | Developer 1 creates `ConsoleCompatibleAccessory`; then the others use it |
+| V-05 | `Product` (Developer 1) does not answer warranty eligibility, so the services of Developer 2 and the leader check `instanceof Console` | Developer 1 adds `isWarrantyEligible()`; then the others use it |
+| V-09 | No class formats money, so classes of the leader and of Developer 1 copied the same method | The Technical Leader creates `CurrencyFormatter`; then Developer 1 uses it |
+
+Rule applied: the member who owns the class that must offer the new
+operation (or the new class) goes first, and the members who use it go
+after. Each member changes only their own code.
+
+## Out-of-scope findings
+
+These are functional defects found during the audit. Fixing them would
+change what the user observes, so they are not corrected in Requirement 7
+and are left for a later requirement.
+
+| ID | Defect | Evidence | Why it is out of scope |
+|---|---|---|---|
+| O-01 | Two products can be registered with the same id; after that, `findById` always returns the first one, so the second product can never be sold or returned. | `ProductService.registerProduct`, lines 40-45: no uniqueness check (people are checked in `PersonService`, and accessories in the console menu). | Rejecting duplicated ids would make an operation that works today fail. |
+| O-02 | Returns match accessory ids ignoring upper and lower case, but product ids are case sensitive: returning `ctrl-1` works, returning `ps5` fails. | `ReturnService.findAccessoryById` line 275 (`equalsIgnoreCase`) and `findProductById` line 291 (`equals`). | Making both behave the same would change which inputs are accepted. |
+| O-03 | A corrupted line in `data/accessories.csv` stops the application with a stack trace at startup (`NumberFormatException`), and the accessory, promotion, return, and warranty repositories print a message and continue when a file cannot be written, instead of reporting a `PersistenceException` as the Requirement 6 repositories do. | `AccessoryRepository.fromLine` lines 116-117 (no error handling); `AccessoryRepository.saveAll` line 41, `PromotionRepository.saveAll` line 40, and the same in `ReturnRepository` and `WarrantyRepository`. Verified by adding a cable line whose price is `abc` to the file. | Handling these errors changes the messages shown to the user. |
+
+## Order of the corrections (Phase 2)
+
+1. **Technical Leader (preparation):** "before" diagram, non-regression
+   strategy and reference result, `Sale.calculatePaidRatio()` (V-02), and
+   `CurrencyFormatter` used in `Sale` and `ConsoleUI` (V-09).
+2. **Developer 1:** V-01, V-02, V-03, V-04, V-05, V-06, and V-09 (his
+   parts). He adds every operation and class that the others need.
+3. **Developer 2:** his parts of V-01, V-03, V-04, V-05, and V-07.
+4. **Technical Leader:** his parts of V-01, V-04, and V-05, then V-08
+   (the `ConsoleUI` split, last because it touches the largest file),
+   the "after" diagram, the final verification, and the README.
