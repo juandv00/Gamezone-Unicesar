@@ -106,3 +106,17 @@ The out-of-scope defects of the audit keep their current behavior and are
 part of the reference: a duplicated product id is accepted (O-01, scenario
 `errors`), and the accessories repository prints its error and continues
 (O-03, scenario `nowrite`).
+
+## Changes
+
+One row per change. The Commit / PR column names the commit and the Pull
+Request that contains it: each member opened one Pull Request from
+`feature/grasp-refactor` to `develop` with their corrections, and the
+Pull Request of Developer 1 also contains the preparation of the
+Technical Leader.
+
+| Class | Change | Violation ID | Pattern applied | Commit / PR | Responsible |
+|---|---|---|---|---|---|
+| `Sale` | New method `calculatePaidRatio()`: the fraction of the subtotal paid after the discount (1 when the subtotal is 0) | V-02 | Information Expert | `refactor: add paid ratio calculation to Sale (V-02)` / PR of Developer 1 | Technical Leader |
+| `CurrencyFormatter` (new, `com.gamezone.util`) | New class with the static method `format(double)` (`$%,.2f`, US locale) | V-09 | Pure Fabrication | `refactor: format amounts with CurrencyFormatter in Sale and ConsoleUI (V-09)` / PR of Developer 1 | Technical Leader |
+| `Sale`, `ConsoleUI` | Private `formatAmount` removed; the receipts and the menu use `CurrencyFormatter.format` | V-09 | Pure Fabrication | `refactor: format amounts with CurrencyFormatter in Sale and ConsoleUI (V-09)` / PR of Developer 1 | Technical Leader |
