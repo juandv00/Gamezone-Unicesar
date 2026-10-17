@@ -69,12 +69,63 @@ public abstract class Product {
     }
 
     /**
+     * Indicates whether this product has at least the given number of units
+     * in stock.
+     *
+     * @param amount the number of units requested
+     * @return true if the stock covers the requested amount
+     */
+    public boolean hasEnoughStock(int amount) {
+        return stock >= amount;
+    }
+
+    /**
+     * Removes the given number of units from the stock of this product. The
+     * caller is responsible for checking first that there is enough stock.
+     *
+     * @param amount the number of units to remove
+     */
+    public void decreaseStock(int amount) {
+        stock -= amount;
+    }
+
+    /**
+     * Adds the given number of units to the stock of this product, for
+     * example when a sold unit is returned.
+     *
+     * @param amount the number of units to add
+     */
+    public void increaseStock(int amount) {
+        stock += amount;
+    }
+
+    /**
      * Returns a full description of the product, combining common
      * attributes with the particular characteristics of each subclass.
      *
      * @return a descriptive string of the product
      */
     public abstract String getDescription();
+
+    /**
+     * Returns the category of this product used by the category promotions
+     * (for example "VIDEOGAME" or "CONSOLE"). Each product type answers its
+     * own category, so no other class needs to check the concrete class.
+     *
+     * @return the category code of this product
+     */
+    public abstract String getCategory();
+
+    /**
+     * Indicates whether this product receives a warranty when it is sold.
+     * By default a product does not; the product types that do receive one
+     * override this method, so the services never check the concrete class.
+     *
+     * @return false for products without warranty
+     */
+    public boolean isWarrantyEligible() {
+        return false;
+    }
 
     @Override
     public String toString() {

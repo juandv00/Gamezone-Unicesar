@@ -7,18 +7,85 @@ import com.gamezone.model.VideoGame;
 
 import java.io.*;
 import java.util.ArrayList;
+import java.util.HashMap;
 import java.util.List;
+import java.util.Map;
+import java.util.function.Function;
 
 /**
  * Handles saving and loading Product data to and from a file,
  * so that inventory information persists between application runs.
  * Any error while reading or writing the file is reported as a
  * {@link PersistenceException} that names the file and the operation.
+ * <p>
+ * The format of each product type is registered once in the constructor: a
+ * writer for its class and a reader for its type code. Saving and loading
+ * look up the registered format instead of checking the type with a chain
+ * of conditionals, so a new product type only needs a new registration.
  */
 public class ProductPersistence {
 
     private static final String FILE_PATH = "data/products.txt";
     private static final String DELIMITER = ";";
+
+    private final Map<Class<? extends Product>, Function<Product, String>> writers = new HashMap<>();
+    private final Map<String, ProductReader> readers = new HashMap<>();
+
+    /**
+     * Rebuilds a product of one type from the fields of a stored line.
+     */
+    @FunctionalInterface
+    private interface ProductReader {
+
+        /**
+         * Creates the product from its common fields and the stored line.
+         *
+         * @param id    the product id
+         * @param title the product title
+         * @param price the unit price
+         * @param stock the units in stock
+         * @param parts every field of the stored line
+         * @return the reconstructed product
+         */
+        Product read(String id, String title, double price, int stock, String[] parts);
+    }
+
+    /**
+     * Creates the persistence handler and registers the file format of each
+     * product type (video games and consoles).
+     */
+    public ProductPersistence() {
+        registerFormat(VideoGame.class, "VIDEOGAME",
+                videoGame -> videoGame.getPlatform() + DELIMITER + videoGame.getGenre() + DELIMITER
+                        + videoGame.getAgeRating(),
+                (id, title, price, stock, parts) -> new VideoGame(id, title, price, stock,
+                        parts[5], parts[6], parts[7]));
+        registerFormat(Console.class, "CONSOLE",
+                console -> console.getBrand() + DELIMITER + console.getModel() + DELIMITER
+                        + console.getGeneration(),
+                (id, title, price, stock, parts) -> new Console(id, title, price, stock,
+                        parts[5], parts[6], parts[7]));
+    }
+
+    /**
+     * Registers how a product type is written to and read from the file.
+     * Every line starts with the type code followed by the common fields
+     * (id, title, price, stock) and then the fields of the type.
+     *
+     * @param type           the class of the product type
+     * @param code           the type code stored at the start of the line
+     * @param specificFields builds the fields of the type, already delimited
+     * @param reader         rebuilds a product of the type from a line
+     * @param <T>            the product type
+     */
+    private <T extends Product> void registerFormat(Class<T> type, String code,
+                                                    Function<T, String> specificFields,
+                                                    ProductReader reader) {
+        writers.put(type, product -> code + DELIMITER + product.getId() + DELIMITER
+                + product.getTitle() + DELIMITER + product.getPrice() + DELIMITER
+                + product.getStock() + DELIMITER + specificFields.apply(type.cast(product)));
+        readers.put(code, reader);
+    }
 
     /**
      * Saves the given list of products to the data file, overwriting
@@ -75,18 +142,11 @@ public class ProductPersistence {
      * @return the text line representing the product
      */
     private String toLine(Product product) {
-        if (product instanceof VideoGame videoGame) {
-            return "VIDEOGAME" + DELIMITER + videoGame.getId() + DELIMITER +
-                    videoGame.getTitle() + DELIMITER + videoGame.getPrice() + DELIMITER +
-                    videoGame.getStock() + DELIMITER + videoGame.getPlatform() + DELIMITER +
-                    videoGame.getGenre() + DELIMITER + videoGame.getAgeRating();
-        } else if (product instanceof Console console) {
-            return "CONSOLE" + DELIMITER + console.getId() + DELIMITER +
-                    console.getTitle() + DELIMITER + console.getPrice() + DELIMITER +
-                    console.getStock() + DELIMITER + console.getBrand() + DELIMITER +
-                    console.getModel() + DELIMITER + console.getGeneration();
+        Function<Product, String> writer = writers.get(product.getClass());
+        if (writer == null) {
+            return "";
         }
-        return "";
+        return writer.apply(product);
     }
 
     /**
@@ -123,11 +183,10 @@ public class ProductPersistence {
         double price = Double.parseDouble(parts[3]);
         int stock = Integer.parseInt(parts[4]);
 
-        if (type.equals("VIDEOGAME")) {
-            return new VideoGame(id, title, price, stock, parts[5], parts[6], parts[7]);
-        } else if (type.equals("CONSOLE")) {
-            return new Console(id, title, price, stock, parts[5], parts[6], parts[7]);
+        ProductReader reader = readers.get(type);
+        if (reader == null) {
+            return null;
         }
-        return null;
+        return reader.read(id, title, price, stock, parts);
     }
 }

@@ -55,7 +55,7 @@ public final class ProductValidator {
         if (requestedQuantity <= 0) {
             throw new InvalidDataException("cantidad", "debe ser mayor que cero.");
         }
-        if (product.getStock() < requestedQuantity) {
+        if (!product.hasEnoughStock(requestedQuantity)) {
             throw new BusinessRuleException("Stock insuficiente para " + product.getTitle()
                     + ": disponibles " + product.getStock() + ", solicitadas " + requestedQuantity + ".");
         }

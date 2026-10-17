@@ -63,6 +63,16 @@ public class VideoGame extends Product {
                 ", Stock: " + getStock();
     }
 
+    /**
+     * Returns the category of video games used by the category promotions.
+     *
+     * @return "VIDEOGAME"
+     */
+    @Override
+    public String getCategory() {
+        return "VIDEOGAME";
+    }
+
     @Override
     public String toString() {
         return "VideoGame{" + getDescription() + "}";

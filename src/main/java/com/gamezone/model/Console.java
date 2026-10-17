@@ -63,6 +63,26 @@ public class Console extends Product {
                 ", Stock: " + getStock();
     }
 
+    /**
+     * Returns the category of consoles used by the category promotions.
+     *
+     * @return "CONSOLE"
+     */
+    @Override
+    public String getCategory() {
+        return "CONSOLE";
+    }
+
+    /**
+     * Indicates that consoles receive a warranty when they are sold.
+     *
+     * @return true, since every console receives a warranty
+     */
+    @Override
+    public boolean isWarrantyEligible() {
+        return true;
+    }
+
     @Override
     public String toString() {
         return "Console{" + getDescription() + "}";
