@@ -22,3 +22,41 @@ Requirement 6.
 | Exceptions and validations (Req 6) | `ProductService`, `PersonService`, `SaleService` | The calls to the validators, the typed exceptions, and the methods `getProductById`, `getClientById`, `getSellerById`, `getSaleById` |
 | Exceptions and validations (Req 6) | `ProductPersistence`, `PersonPersistence`, `SalePersistence` | The `PersistenceException` handling and `parseLine` |
 
+## Information Expert
+
+**Verdict: violation** (V-01).
+
+Where it is applied correctly:
+- `ReturnService.calculateMonthlyReturns` (lines 369-378) asks each
+  `Return` for its refund (`getRefundAmount()`) instead of calculating it.
+- `PromotionService.findBestPromotionFor` (lines 141-156) asks each
+  promotion for its own discount (`calculateDiscount(sale)`).
+- `WarrantyService.listActiveWarranties` (lines 195-204) asks each
+  warranty whether it is active (`isActive(today)`).
+
+### V-01
+| Field | Content |
+|---|---|
+| ID | V-01 |
+| Pattern | Information Expert |
+| Module | Accessories (Req 1, adjustment A4) |
+| Evidence | `AccessoryService.hasEnoughStock`, line 184: `return accessory != null && accessory.getStock() >= amount;` · `AccessoryService.reduceStock`, lines 198 and 201: `accessory.getStock() < amount` and `accessory.setStock(accessory.getStock() - amount);` · `AccessoryService.restoreStock`, line 245: `accessory.setStock(accessory.getStock() + quantity);` |
+| Explanation | The stock belongs to `Accessory`, but the service reads it and writes it back to check and change it. The class that has the information does not do the work. |
+| Consequence | The stock rule is repeated in three methods of this class and, in the same way, in `ProductService`. A change in the rule must be repeated everywhere. |
+| Proposed solution | Apply Information Expert: `Accessory` offers `hasEnoughStock`, `decreaseStock`, and `increaseStock`, and the service calls them. |
+| Other member's code | Yes. `Accessory` is Developer 1's class; the methods must be added there first. Reported to the Technical Leader. |
+
+## Creator
+
+**Verdict: correct.**
+
+- `PersonService.registerClient` creates the `Client` (line 50) and
+  `registerSeller` creates the `Seller` (line 71): the service has the
+  data to initialize them and keeps the list where they are stored.
+- `WarrantyService` creates `BasicWarranty` and `ExtendedWarranty`
+  (lines 101 and 119) and records them in its list.
+- `ReturnService.registerReturn` creates the `Return` (lines 204-212)
+  with the sale and the items it has just validated.
+- `PromotionService` and `AccessoryService` create each promotion and
+  accessory they register.
+
