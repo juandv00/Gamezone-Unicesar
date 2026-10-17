@@ -55,7 +55,7 @@ public class BulkPurchaseDiscount extends Promotion {
 
     @Override
     public String toString() {
-        return "BulkPurchaseDiscount{" + super.toString() +
-                ", minimumQuantity=" + minimumQuantity + ", percentage=" + percentage + "}";
+        return super.toString() + " | Descuento del " + percentage + "% desde " + minimumQuantity
+                + " productos";
     }
 }

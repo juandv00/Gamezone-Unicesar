@@ -1,9 +1,9 @@
 package com.gamezone.model;
 
+import com.gamezone.util.CurrencyFormatter;
 import java.time.LocalDate;
 import java.util.ArrayList;
 import java.util.List;
-import java.util.Locale;
 
 /**
  * Represents a sale transaction at GameZone Unicesar.
@@ -81,10 +81,10 @@ public class Sale {
     public Sale(Client client, Seller seller, List<Product> products,
                 List<Accessory> accessories, LocalDate date) {
         if (products == null) {
-            throw new IllegalArgumentException("Products list cannot be null.");
+            throw new IllegalArgumentException("La lista de productos no puede ser nula.");
         }
         if (accessories == null) {
-            throw new IllegalArgumentException("Accessories list cannot be null.");
+            throw new IllegalArgumentException("La lista de accesorios no puede ser nula.");
         }
         this.date = date;
         this.client = client;
@@ -111,7 +111,7 @@ public class Sale {
      */
     public void setId(String id) {
         if (id == null || id.isBlank()) {
-            throw new IllegalArgumentException("Sale id cannot be empty.");
+            throw new IllegalArgumentException("El identificador de la venta no puede estar vacío.");
         }
         this.id = id;
     }
@@ -179,7 +179,7 @@ public class Sale {
      */
     public void setDiscountAmount(double discountAmount) {
         if (discountAmount < 0) {
-            throw new IllegalArgumentException("Discount amount cannot be negative.");
+            throw new IllegalArgumentException("El descuento no puede ser negativo.");
         }
         this.discountAmount = discountAmount;
     }
@@ -222,7 +222,7 @@ public class Sale {
      */
     public void setWarrantyCost(double warrantyCost) {
         if (warrantyCost < 0) {
-            throw new IllegalArgumentException("Warranty cost cannot be negative.");
+            throw new IllegalArgumentException("El costo de las garantías no puede ser negativo.");
         }
         this.warrantyCost = warrantyCost;
     }
@@ -236,6 +236,22 @@ public class Sale {
      */
     public double calculateFinalTotal() {
         return calculateTotal() - discountAmount + warrantyCost;
+    }
+
+    /**
+     * Calculates the fraction of the subtotal that the client actually paid
+     * after the promotion discount, for example 0.9 when a 10% discount was
+     * applied. Returns 1 when the subtotal is zero, so a sale without items
+     * never causes a division by zero.
+     *
+     * @return the paid ratio of the sale, between 0 and 1
+     */
+    public double calculatePaidRatio() {
+        double subtotal = calculateTotal();
+        if (subtotal <= 0) {
+            return 1.0;
+        }
+        return 1.0 - discountAmount / subtotal;
     }
 
     /**
@@ -269,50 +285,46 @@ public class Sale {
      */
     public String generateReceipt() {
         StringBuilder receipt = new StringBuilder();
-        receipt.append("===== GameZone Unicesar - Receipt =====\n");
+        receipt.append("===== GameZone Unicesar - Recibo =====\n");
         if (id != null) {
-            receipt.append("Sale ID: ").append(id).append("\n");
+            receipt.append("Venta: ").append(id).append("\n");
         }
-        receipt.append("Date: ").append(date).append("\n");
-        receipt.append("Client: ").append(client.getName()).append("\n");
-        receipt.append("Seller: ").append(seller.getName()).append("\n");
-        receipt.append("Items:\n");
+        receipt.append("Fecha: ").append(date).append("\n");
+        receipt.append("Cliente: ").append(client.getName()).append("\n");
+        receipt.append("Vendedor: ").append(seller.getName()).append("\n");
+        receipt.append("Ítems:\n");
         for (Product product : products) {
             receipt.append("  - ").append(product.getTitle())
-                    .append(": ").append(formatAmount(product.getPrice())).append("\n");
+                    .append(": ").append(CurrencyFormatter.format(product.getPrice())).append("\n");
         }
         for (Accessory accessory : accessories) {
             receipt.append("  - ").append(accessory.getTitle())
-                    .append(" (accessory): ").append(formatAmount(accessory.getPrice())).append("\n");
+                    .append(" (accesorio): ").append(CurrencyFormatter.format(accessory.getPrice())).append("\n");
         }
-        receipt.append("Subtotal: ").append(formatAmount(calculateTotal())).append("\n");
+        receipt.append("Subtotal: ").append(CurrencyFormatter.format(calculateTotal())).append("\n");
         if (hasDiscount()) {
-            receipt.append("Discount (").append(appliedPromotionName).append("): -")
-                    .append(formatAmount(discountAmount)).append("\n");
+            receipt.append("Descuento (").append(appliedPromotionName).append("): -")
+                    .append(CurrencyFormatter.format(discountAmount)).append("\n");
         } else {
-            receipt.append("Discount: none\n");
+            receipt.append("Descuento: ninguno\n");
         }
         if (warrantyCost > 0) {
-            receipt.append("Extended warranties: +").append(formatAmount(warrantyCost)).append("\n");
+            receipt.append("Garantías extendidas: +").append(CurrencyFormatter.format(warrantyCost)).append("\n");
         }
-        receipt.append("Total: ").append(formatAmount(calculateFinalTotal())).append("\n");
+        receipt.append("Total: ").append(CurrencyFormatter.format(calculateFinalTotal())).append("\n");
         receipt.append("=======================================");
         return receipt.toString();
-    }
-
-    private String formatAmount(double amount) {
-        return String.format(Locale.US, "$%,.2f", amount);
     }
 
     @Override
     public String toString() {
         String discount = hasDiscount()
-                ? ", discount=$" + discountAmount + " (" + appliedPromotionName + ")"
+                ? " | Descuento: " + CurrencyFormatter.format(discountAmount) + " (" + appliedPromotionName + ")"
                 : "";
-        String warranty = warrantyCost > 0 ? ", warranties=$" + warrantyCost : "";
-        String idText = id != null ? "id=" + id + ", " : "";
-        return "Sale{" + idText + "date=" + date + ", client=" + client.getName() +
-                ", seller=" + seller.getName() + discount + warranty +
-                ", total=$" + calculateFinalTotal() + "}";
+        String warranty = warrantyCost > 0 ? " | Garantías: " + CurrencyFormatter.format(warrantyCost) : "";
+        String idText = id != null ? id + " | " : "";
+        return "Venta " + idText + "Fecha: " + date + " | Cliente: " + client.getName()
+                + " | Vendedor: " + seller.getName() + discount + warranty
+                + " | Total: " + CurrencyFormatter.format(calculateFinalTotal());
     }
 }

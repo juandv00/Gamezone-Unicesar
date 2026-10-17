@@ -1,7 +1,6 @@
 package com.gamezone.service;
- 
+
 import com.gamezone.model.BasicWarranty;
-import com.gamezone.model.Console;
 import com.gamezone.model.ExtendedWarranty;
 import com.gamezone.model.Product;
 import com.gamezone.model.Sale;
@@ -12,7 +11,7 @@ import com.gamezone.persistence.WarrantyRepository;
 import java.time.LocalDate;
 import java.util.ArrayList;
 import java.util.List;
- 
+
 /**
  * Contains the business rules for managing product warranties at GameZone
  * Unicesar, such as assigning basic and extended warranties to consoles,
@@ -20,14 +19,14 @@ import java.util.List;
  * cancelling the warranty of a returned console.
  */
 public class WarrantyService {
- 
+
     private static final String WARRANTY_ID_PREFIX = "WAR-";
- 
+
     private final WarrantyRepository warrantyRepository;
     private final SalePersistence salePersistence;
     private final ProductService productService;
     private List<Warranty> warranties;
- 
+
     /**
      * Creates a new WarrantyService, loading the stored warranty records and
      * resolving their sale and product references from the identifiers.
@@ -37,13 +36,13 @@ public class WarrantyService {
      * @param productService     used to resolve the product of each record
      */
     public WarrantyService(WarrantyRepository warrantyRepository,
-            SalePersistence salePersistence, ProductService productService) {
+                           SalePersistence salePersistence, ProductService productService) {
         this.warrantyRepository = warrantyRepository;
         this.salePersistence = salePersistence;
         this.productService = productService;
         this.warranties = resolveWarranties(warrantyRepository.loadAll());
     }
- 
+
     /**
      * Builds the warranties from the stored records, skipping the records
      * whose sale or product can no longer be found.
@@ -60,15 +59,14 @@ public class WarrantyService {
             if (sale == null || product == null) {
                 continue;
             }
-            if (record.type().equals("BASIC")) {
-                resolved.add(new BasicWarranty(record.id(), product, sale, record.startDate()));
-            } else {
-                resolved.add(new ExtendedWarranty(record.id(), product, sale, record.startDate()));
+            Warranty warranty = warrantyRepository.toWarranty(record, product, sale);
+            if (warranty != null) {
+                resolved.add(warranty);
             }
         }
         return resolved;
     }
- 
+
     /**
      * Finds a sale by id in the given list, ignoring case and skipping
      * sales without an id.
@@ -85,7 +83,7 @@ public class WarrantyService {
         }
         return null;
     }
- 
+
     /**
      * Creates and persists an automatic basic warranty for the given
      * console and sale.
@@ -97,13 +95,13 @@ public class WarrantyService {
      * @throws IllegalArgumentException if the product is not a Console
      */
     public BasicWarranty assignBasicWarranty(Product product, Sale sale, LocalDate startDate) {
-        validateConsole(product);
+        validateWarrantyEligible(product);
         BasicWarranty warranty = new BasicWarranty(nextWarrantyId(), product, sale, startDate);
         warranties.add(warranty);
         warrantyRepository.saveAll(warranties);
         return warranty;
     }
- 
+
     /**
      * Creates and persists an extended warranty for the given console and
      * sale, requested optionally by the seller at the time of sale.
@@ -115,26 +113,26 @@ public class WarrantyService {
      * @throws IllegalArgumentException if the product is not a Console
      */
     public ExtendedWarranty assignExtendedWarranty(Product product, Sale sale, LocalDate startDate) {
-        validateConsole(product);
+        validateWarrantyEligible(product);
         ExtendedWarranty warranty = new ExtendedWarranty(nextWarrantyId(), product, sale, startDate);
         warranties.add(warranty);
         warrantyRepository.saveAll(warranties);
         return warranty;
     }
- 
+
     /**
-     * Ensures the given product is a Console, since only consoles are
-     * eligible for warranties.
+     * Ensures the given product receives warranties. The product answers it
+     * itself; today only consoles do.
      *
      * @param product the product to validate
-     * @throws IllegalArgumentException if the product is not a Console
+     * @throws IllegalArgumentException if the product does not receive warranties
      */
-    private void validateConsole(Product product) {
-        if (!(product instanceof Console)) {
-            throw new IllegalArgumentException("Warranties can only be assigned to consoles.");
+    private void validateWarrantyEligible(Product product) {
+        if (!product.isWarrantyEligible()) {
+            throw new IllegalArgumentException("Solo se pueden asignar garantías a las consolas.");
         }
     }
- 
+
     /**
      * Finds the warranty associated with a specific product within a
      * specific sale.
@@ -151,7 +149,7 @@ public class WarrantyService {
         }
         return null;
     }
- 
+
     /**
      * Cancels the warranty of one returned unit of a console in a specific
      * sale: the warranty is removed from the system and the change is saved.
@@ -186,7 +184,7 @@ public class WarrantyService {
     public List<Warranty> listAllWarranties() {
         return new ArrayList<>(warranties);
     }
- 
+
     /**
      * Returns the warranties that are currently active, based on today's date.
      *
@@ -202,7 +200,7 @@ public class WarrantyService {
         }
         return active;
     }
- 
+
     /**
      * Returns the warranties that are active today and whose end date
      * falls on or before today plus the given number of days.
@@ -213,7 +211,7 @@ public class WarrantyService {
      */
     public List<Warranty> listWarrantiesExpiringSoon(int daysAhead) {
         if (daysAhead < 0) {
-            throw new IllegalArgumentException("The number of days ahead cannot be negative.");
+            throw new IllegalArgumentException("El número de días no puede ser negativo.");
         }
         List<Warranty> expiringSoon = new ArrayList<>();
         LocalDate today = LocalDate.now();
@@ -225,7 +223,7 @@ public class WarrantyService {
         }
         return expiringSoon;
     }
- 
+
     /**
      * Generates the next available warranty id, with the format WAR-n,
      * where n is one more than the highest number already in use.

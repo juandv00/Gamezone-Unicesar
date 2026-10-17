@@ -1,7 +1,6 @@
 package com.gamezone.service;
 
 import com.gamezone.model.Accessory;
-import com.gamezone.model.Console;
 import com.gamezone.model.Product;
 import com.gamezone.model.Return;
 import com.gamezone.model.Sale;
@@ -39,7 +38,7 @@ public class ReturnService {
      * @param productService the service used to restore stock
      */
     public ReturnService(ReturnRepository returnRepository, SaleService saleService,
-            ProductService productService) {
+                         ProductService productService) {
         this(returnRepository, saleService, productService, null);
     }
 
@@ -54,7 +53,7 @@ public class ReturnService {
      * null if accessories cannot be returned
      */
     public ReturnService(ReturnRepository returnRepository, SaleService saleService,
-            ProductService productService, AccessoryService accessoryService) {
+                         ProductService productService, AccessoryService accessoryService) {
         this(returnRepository, saleService, productService, accessoryService, null);
     }
 
@@ -72,8 +71,8 @@ public class ReturnService {
      * returned consoles, or null if warranties are not managed
      */
     public ReturnService(ReturnRepository returnRepository, SaleService saleService,
-            ProductService productService, AccessoryService accessoryService,
-            WarrantyService warrantyService) {
+                         ProductService productService, AccessoryService accessoryService,
+                         WarrantyService warrantyService) {
         this.returnRepository = returnRepository;
         this.saleService = saleService;
         this.productService = productService;
@@ -122,7 +121,7 @@ public class ReturnService {
                 resolved.add(new Return(record.id(), record.date(), sale, returnedProducts,
                         returnedAccessories, record.reason(), record.warrantyRefund()));
             } catch (IllegalArgumentException e) {
-                System.out.println("Skipping invalid stored return: " + record.id());
+                System.out.println("Se omitió una devolución guardada inválida: " + record.id());
             }
         }
         return resolved;
@@ -151,17 +150,17 @@ public class ReturnService {
     public Return registerReturn(String saleId, List<String> productIds, String reason) {
         Sale sale = saleService.findById(saleId);
         if (sale == null) {
-            throw new IllegalArgumentException("The sale " + saleId + " does not exist.");
+            throw new IllegalArgumentException("La venta " + saleId + " no existe.");
         }
         if (!sale.canBeReturned()) {
             throw new IllegalArgumentException(
-                    "The return cannot be processed: more than 30 days have passed since the sale.");
+                    "No se puede registrar la devolución: pasaron más de 30 días desde la venta.");
         }
         if (productIds == null || productIds.isEmpty()) {
-            throw new IllegalArgumentException("Select at least one item to return.");
+            throw new IllegalArgumentException("Seleccione al menos un ítem para devolver.");
         }
         if (reason == null || reason.isBlank()) {
-            throw new IllegalArgumentException("The return reason cannot be empty.");
+            throw new IllegalArgumentException("El motivo de la devolución no puede estar vacío.");
         }
 
         Map<String, Integer> returnableUnits = countReturnableUnits(sale);
@@ -172,7 +171,7 @@ public class ReturnService {
             Accessory accessory = product == null ? findAccessoryById(sale.getAccessories(), itemId) : null;
             if (product == null && accessory == null) {
                 throw new IllegalArgumentException(
-                        "The item " + itemId + " does not belong to sale " + sale.getId() + ".");
+                        "El ítem " + itemId + " no pertenece a la venta " + sale.getId() + ".");
             }
             if (accessory != null && accessoryService == null) {
                 throw new IllegalStateException("This ReturnService was created without accessory support.");
@@ -181,7 +180,7 @@ public class ReturnService {
             int remaining = returnableUnits.getOrDefault(key, 0);
             if (remaining <= 0) {
                 throw new IllegalArgumentException(
-                        "All units of item " + itemId + " from this sale have already been returned.");
+                        "Todas las unidades del ítem " + itemId + " de esta venta ya fueron devueltas.");
             }
             returnableUnits.put(key, remaining - 1);
             if (product != null) {
@@ -195,7 +194,7 @@ public class ReturnService {
         double warrantyRefund = 0.0;
         if (warrantyService != null) {
             for (Product product : returnedProducts) {
-                if (product instanceof Console) {
+                if (product.isWarrantyEligible()) {
                     warrantyRefund += warrantyService.cancelWarranties(product.getId(), sale.getId());
                 }
             }
@@ -415,7 +414,7 @@ public class ReturnService {
 
     private void validateMonth(int month) {
         if (month < 1 || month > 12) {
-            throw new IllegalArgumentException("The month must be between 1 and 12.");
+            throw new IllegalArgumentException("El mes debe estar entre 1 y 12.");
         }
     }
 }

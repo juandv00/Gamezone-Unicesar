@@ -383,3 +383,61 @@ modules.
 - **Response:** Add a `ReturnRecord` record with the stored data as ids (return id, date, sale id, item ids, reason, warranty refund). `ReturnRepository` keeps `saveAll(List<Return>)`, but `loadAll()` now returns `List<ReturnRecord>` and it has no constructor parameters. `ReturnService` resolves each record in its constructor (`resolveReturns`): the sale through `SaleService`, and each item id as a product of the sale (or `ProductService`) and then as an accessory of the sale. `Main` creates `new ReturnRepository()`. `return-class-diagram.md` is updated to the current design.
 - **Decision:** Accepted. The file format does not change, so existing `returns.csv` files still load, including lines without the warranty refund field. Tested: a sale with a PS5 (extended warranty), a video game, and a controller; returned the PS5 and the controller (refund with discount plus 250,000 for the warranty, stock and warranty updated), restarted the application and the return reloaded with the same values; an old line with six fields also loaded. The results are the same as before the change.
 - **Related commit:** `refactor: add ReturnRecord for stored returns`, `refactor: resolve stored returns in ReturnService instead of ReturnRepository`, `docs: update return class diagram and developer 2 AI log`
+
+## Requirement 6 — Validations and Exceptions
+
+### Refactor of the services and persistence classes
+- **Date:** 2026-10-11
+- **Tool:** Claude (Anthropic)
+- **Phase and branch:** Requirement 6 – `feature/exception-handling`
+- **Objective:** Make `ProductService`, `PersonService`, and `SaleService` delegate their validations to the validators and throw typed exceptions, and make `ProductPersistence`, `PersonPersistence`, and `SalePersistence` (the specification's repositories) report file errors as `PersistenceException`.
+- **Query:** How to replace the inline `IllegalArgumentException` checks with validator calls without changing the behavior of the menu, and how to turn `IOException` into `PersistenceException` with the file and the operation in the message.
+- **Response:** The persistence classes throw `PersistenceException("Error de lectura/escritura en el archivo <ruta> ...", e)` instead of printing the error, and a new private `parseLine` reports a corrupted line the same way. `ProductService.registerProduct` calls `validateProductData`; `reduceStock` and `restoreStock` use the new `getProductById` and the stock validation. `PersonService` calls `validatePersonData`, `validateSellerData`, and `validateUniquePerson`, and adds `getClientById` and `getSellerById`. `SaleService` calls `validateSaleData` and `validateStockAvailability`, throws `BusinessRuleException` or `ResourceNotFoundException` instead of returning null, adds `getSaleById`, and wraps the `IOException` of the accessory stock in a `PersistenceException`.
+- **Decision:** Accepted. The `findById` methods still return null, because `ReturnService`, `WarrantyService`, and the sale item lookup depend on it; the lookups that must fail were added as new `get...ById` methods. Removing `throws IOException` from `SaleService` made the `catch (IOException ...)` in `ConsoleUI.registerSale` a compile error, so I removed `IOException` from that catch in the same commit (the only caller). Tested: valid sales, returns, and registrations produce the same data files as before; a sale without stock, a duplicated client, an invalid email, and an unknown sale are rejected with the new exceptions; a corrupted `products.txt` is reported as a `PersistenceException`.
+- **Related commit:** `refactor: report file errors as PersistenceException in ProductPersistence`, `refactor: report file errors as PersistenceException in PersonPersistence`, `refactor: report file errors as PersistenceException in SalePersistence`, `refactor: delegate product validations to ProductValidator`, `refactor: delegate person validations to PersonValidator`, `refactor: use SaleValidator and typed exceptions in SaleService`
+
+## Requirement 7 — GRASP Audit and Correction
+
+### Phase 1 — Audit
+
+#### Audit of my code against the nine GRASP patterns
+- **Date:** 2026-10-16
+- **Tool:** Claude (Anthropic)
+- **Phase and branch:** Requirement 7, Phase 1 – `feature/grasp-audit`
+- **Objective:** Audit the person module, the repositories and services of accessories, promotions, returns, and warranties, and my use of exceptions and validators in Requirement 6, against the nine GRASP patterns, with evidence from commit `9dc5282`.
+- **Query:** Went through my repositories and services with Claude pattern by pattern, asking for each pattern where it applies in my code, which fragments could break it, and what concrete consequence each one would have.
+- **Response:** Five findings: accessory stock read and written by `AccessoryService` (Information Expert), type conditionals in four repositories and in `WarrantyService.resolveWarranties` (Polymorphism), `instanceof Controller`/`Memory` in `AccessoryService` (Polymorphism), `instanceof Console` in `WarrantyService` and `ReturnService` (Polymorphism), and the list of categories repeated in `PromotionService` (Protected Variations). Creator, Controller, Low Coupling, High Cohesion, Pure Fabrication, and Indirection were found correctly applied, with examples such as `ReturnRecord` and `WarrantyRecord`.
+- **Decision:** I opened every cited fragment in the IDE on commit `9dc5282` to confirm the line numbers, and grouped the type conditionals of my four repositories into one finding because they have the same cause and the same fix. I kept the monthly balance in `ReturnService` as correct for High Cohesion, because adjustment A6 placed it there and it only uses the returns the class manages. I reported to the Technical Leader the four findings that need classes of Developer 1.
+- **Related commit:** `docs: add scope to developer2 audit`, `docs: add information expert and creator findings to developer2 audit`, `docs: add controller, coupling and cohesion verdicts to developer2 audit`, `docs: add polymorphism findings to developer2 audit`, `docs: add pure fabrication, indirection and protected variations to developer2 audit`
+
+#### Guiding question 4
+- **Date:** 2026-10-16
+- **Tool:** Claude (Anthropic)
+- **Phase and branch:** Requirement 7, Phase 1 – `feature/grasp-audit`
+- **Objective:** Write the team's answer to guiding question 4 (how to prove that the refactor does not change the behavior).
+- **Query:** Asked for ways to compare the behavior of a console program before and after a refactor, and what evidence is usually kept.
+- **Response:** Run a fixed input script with the 33 menu operations and a script of error cases on `develop` before the first correction and on the branch after the corrections, from the same data folder, and compare the screen output line by line and the data files byte by byte.
+- **Decision:** I chose the scripted comparison because the team already used it in Requirement 6, and wrote the answer listing the operations and the error cases we will run.
+- **Related commit:** `docs: answer guiding question 4 in grasp analysis`
+
+### Phase 2 — Correction
+
+#### Services that use the new operations of the model (V-01, V-03, V-04, V-05)
+- **Date:** 2026-10-17
+- **Tool:** Claude (Anthropic)
+- **Phase and branch:** Requirement 7, Phase 2 – `feature/grasp-refactor`
+- **Objective:** Use in my services the operations that Developer 1 added: the stock methods of `Accessory`, `CategoryDiscount.isSupportedCategory`, `ConsoleCompatibleAccessory`, and `Product.isWarrantyEligible()`.
+- **Query:** Asked Claude to review my services and show which lines should call the new operations, keeping the same return values and the same messages.
+- **Response:** `AccessoryService` uses `hasEnoughStock`, `decreaseStock`, and `increaseStock`, and asks only for `ConsoleCompatibleAccessory`; `PromotionService` asks `CategoryDiscount` if the category is supported; `WarrantyService` and `ReturnService` ask `isWarrantyEligible()`.
+- **Decision:** I kept `setStock` in `updateStock`, because it replaces the stock with the value typed by the user. I renamed `validateConsole` to `validateWarrantyEligible` because the method no longer checks the class, and kept its message. I compiled after each commit and ran the accessory, promotion, warranty, and return operations of the regression scenarios.
+- **Related commit:** `refactor: use the stock operations of Accessory in AccessoryService (V-01)`, `refactor: ask CategoryDiscount for the supported categories in PromotionService (V-03)`, `refactor: find compatible accessories through ConsoleCompatibleAccessory (V-04)`, `refactor: ask products for warranty eligibility in WarrantyService and ReturnService (V-05)`
+
+#### File formats of my repositories (V-07)
+- **Date:** 2026-10-17
+- **Tool:** Claude (Anthropic)
+- **Phase and branch:** Requirement 7, Phase 2 – `feature/grasp-refactor`
+- **Objective:** Remove the type conditionals of `PersonPersistence`, `AccessoryRepository`, `PromotionRepository`, and `WarrantyRepository`, with the same design that Developer 1 used in `ProductPersistence`, without changing any file.
+- **Query:** Asked how to apply the registered writers and readers to each repository, and where to keep the warranty types so that `WarrantyService` does not choose the class by its code.
+- **Response:** One registration per type in the constructor of each repository; in warranties, the repository registers the code and the constructor of each type and creates the warranty of a record (`toWarranty`) after the service resolves the sale and the product.
+- **Decision:** I checked that every repository keeps its behavior with invalid lines (the promotion and warranty repositories still print "Se omitió una línea inválida…", and a line of an unknown type is still ignored) and when a file cannot be written (the accessory repository still prints the error, out-of-scope finding O-03). I ran the regression scenarios that reload the data and read files with unknown types and invalid lines, and the comparison reported no differences.
+- **Related commit:** `refactor: register a file format per person type in PersonPersistence (V-07)`, `refactor: register a file format per accessory type in AccessoryRepository (V-07)`, `refactor: register a file format per promotion type in PromotionRepository (V-07)`, `refactor: register the warranty types in WarrantyRepository (V-07)`, `docs: log developer 2 corrections in grasp refactor log`

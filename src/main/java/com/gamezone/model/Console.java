@@ -56,11 +56,31 @@ public class Console extends Product {
 
     @Override
     public String getDescription() {
-        return getTitle() + " - Brand: " + brand +
-                ", Model: " + model +
-                ", Generation: " + generation +
-                ", Price: $" + getPrice() +
+        return getTitle() + " - Marca: " + brand +
+                ", Modelo: " + model +
+                ", Generación: " + generation +
+                ", Precio: $" + getPrice() +
                 ", Stock: " + getStock();
+    }
+
+    /**
+     * Returns the category of consoles used by the category promotions.
+     *
+     * @return "CONSOLE"
+     */
+    @Override
+    public String getCategory() {
+        return "CONSOLE";
+    }
+
+    /**
+     * Indicates that consoles receive a warranty when they are sold.
+     *
+     * @return true, since every console receives a warranty
+     */
+    @Override
+    public boolean isWarrantyEligible() {
+        return true;
     }
 
     @Override

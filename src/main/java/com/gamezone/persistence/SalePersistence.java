@@ -1,5 +1,6 @@
 package com.gamezone.persistence;
 
+import com.gamezone.exceptions.PersistenceException;
 import com.gamezone.model.Accessory;
 import com.gamezone.model.Client;
 import com.gamezone.model.Person;
@@ -30,6 +31,9 @@ import java.util.List;
  * discount of 0. Lines stored before sales had
  * an id start directly with the date, so all older lines are still read
  * correctly; those sales receive an id from the service layer.</p>
+ *
+ * <p>Any error while reading or writing the file is reported as a
+ * {@link PersistenceException} that names the file and the operation.</p>
  */
 public class SalePersistence {
 
@@ -71,6 +75,7 @@ public class SalePersistence {
      * previously stored content.
      *
      * @param sales the list of sales to persist
+     * @throws PersistenceException if the file cannot be written
      */
     public void save(List<Sale> sales) {
         try (BufferedWriter bw = new BufferedWriter(new FileWriter(FILE_PATH))) {
@@ -79,7 +84,8 @@ public class SalePersistence {
                 bw.newLine();
             }
         } catch (IOException e) {
-            System.out.println("Error saving sales: " + e.getMessage());
+            throw new PersistenceException("Error de escritura en el archivo " + FILE_PATH
+                    + " al guardar las ventas.", e);
         }
     }
 
@@ -90,6 +96,8 @@ public class SalePersistence {
      *
      * @return the list of sales found, or an empty list if the file does
      *         not exist yet
+     * @throws PersistenceException if the file cannot be read or contains a
+     *                              line with an invalid format
      */
     public List<Sale> load() {
         List<Sale> sales = new ArrayList<>();
@@ -105,13 +113,14 @@ public class SalePersistence {
         try (BufferedReader br = new BufferedReader(new FileReader(file))) {
             String line;
             while ((line = br.readLine()) != null) {
-                Sale sale = fromLine(line, people, products, accessories);
+                Sale sale = parseLine(line, people, products, accessories);
                 if (sale != null) {
                     sales.add(sale);
                 }
             }
         } catch (IOException e) {
-            System.out.println("Error loading sales: " + e.getMessage());
+            throw new PersistenceException("Error de lectura en el archivo " + FILE_PATH
+                    + " al cargar las ventas.", e);
         }
         return sales;
     }
@@ -166,6 +175,28 @@ public class SalePersistence {
             line.append(DELIMITER).append(sale.getWarrantyCost());
         }
         return line.toString();
+    }
+
+    /**
+     * Parses a stored line, reporting a line with an invalid date, number or
+     * value as a PersistenceException (the file is corrupted).
+     *
+     * @param line        the text line to parse
+     * @param people      the list of people to search for the client and seller
+     * @param products    the list of products to search for the sale's items
+     * @param accessories the list of accessories to search for the sale's accessories
+     * @return the reconstructed Sale, or null if the line is incomplete or a
+     *         reference cannot be resolved
+     * @throws PersistenceException if the line has an invalid value
+     */
+    private Sale parseLine(String line, List<Person> people, List<Product> products,
+                           List<Accessory> accessories) {
+        try {
+            return fromLine(line, people, products, accessories);
+        } catch (RuntimeException e) {
+            throw new PersistenceException("Error de lectura en el archivo " + FILE_PATH
+                    + ": la línea \"" + line + "\" tiene un formato inválido.", e);
+        }
     }
 
     /**
@@ -248,14 +279,14 @@ public class SalePersistence {
                 sale.setDiscountAmount(Double.parseDouble(parts[6]));
                 sale.setAppliedPromotionName(parts[5]);
             } catch (IllegalArgumentException e) {
-                System.out.println("Invalid discount stored for a sale; it was ignored.");
+                System.out.println("Se ignoró un descuento inválido guardado en una venta.");
             }
         }
         if (parts.length > 7) {
             try {
                 sale.setWarrantyCost(Double.parseDouble(parts[7]));
             } catch (IllegalArgumentException e) {
-                System.out.println("Invalid warranty cost stored for a sale; it was ignored.");
+                System.out.println("Se ignoró un costo de garantía inválido guardado en una venta.");
             }
         }
         return sale;

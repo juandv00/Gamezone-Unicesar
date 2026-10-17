@@ -85,8 +85,7 @@ public abstract class Promotion {
 
     @Override
     public String toString() {
-        return "Promotion{id='" + id + "', name='" + name +
-                "', startDate=" + startDate + ", endDate=" + endDate + "}";
+        return id + " - " + name + " (del " + startDate + " al " + endDate + ")";
     }
 
     @Override

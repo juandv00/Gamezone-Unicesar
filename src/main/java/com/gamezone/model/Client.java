@@ -31,6 +31,6 @@ public class Client extends Person {
 
     @Override
     public String toString() {
-        return super.toString() + "Client{" + "email=" + email + '}';
+        return super.toString() + " | Correo: " + email;
     }
 }

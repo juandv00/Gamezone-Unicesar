@@ -118,3 +118,76 @@ and warranties, plus adjustment A1.
 - **Response:** The refund of each item is `price × (1 − discount / subtotal)`, where the discount and subtotal come from the original sale (`getDiscountAmount()` and `calculateTotal()`); if the subtotal is 0 the factor is 1. The receipt shows, for each item, the list price, the proportional discount, and the refunded amount.
 - **Decision:** Accepted. The calculation applies to products and accessories (A4 was already merged). The extended warranty cost is not part of the subtotal, so it does not change the factor. Tested: a sale with subtotal 1,000,000 and discount 100,000; returning items of 200,000 and 300,000 refunds 180,000 and 270,000; a sale without discount refunds the list price.
 - **Related commit:** `fix: refund returned items proportionally to the sale discount`
+
+
+
+## Requirement 6 — Validations and Exceptions
+
+### Exception hierarchy and validators
+- **Date:** 2026-10-11
+- **Tool:** Claude (Anthropic)
+- **Phase and branch:** Requirement 6 – `feature/exception-handling`
+- **Objective:** Create the custom exception hierarchy (`com.gamezone.exceptions`) and the three validators (`com.gamezone.validation`) defined by the specification.
+- **Query:** How to implement `GameZoneException` as an abstract unchecked root with an error code, its four subclasses with Spanish messages, and static validators for products, people, and sales that only depend on the model and the exceptions.
+- **Response:** `GameZoneException` extends `RuntimeException`, stores a private error code, and has two protected constructors (message, and message with error code). Each subclass passes its own code: `ResourceNotFoundException(resourceType, resourceId)` builds "<Tipo> con identificador <id> no existe en el sistema."; `InvalidDataException(fieldName, problem)` builds "El campo '<campo>' no es válido: <problema>"; `BusinessRuleException(message)`; and `PersistenceException(message, cause)` keeps the original exception with `initCause`. The validators are final classes with a private constructor and static methods that throw these exceptions.
+- **Decision:** Accepted, with three additions to the specification: `PersonValidator.validateSellerData` (sellers have an employee code and a shift but no email, so `validatePersonData` only validates the email when it is not null); an overload of `SaleValidator.validateSaleData` that also receives the accessories, because adjustment A3 allows sales with only accessories; and `validateStockAvailability` also rejects a quantity that is not positive. The error code constants are private so the classes have no public attributes. Every class compiled on its own before committing.
+- **Related commit:** `feat: add GameZoneException root exception`, `feat: add ResourceNotFoundException`, `feat: add BusinessRuleException`, `feat: add InvalidDataException`, `feat: add PersistenceException`, `feat: add ProductValidator`, `feat: add PersonValidator`, `feat: add SaleValidator`
+
+
+
+## Requirement 7 — GRASP Audit and Correction
+
+### Phase 1 — Audit
+
+#### Audit of my code against the nine GRASP patterns
+- **Date:** 2026-10-16
+- **Tool:** Claude (Anthropic)
+- **Phase and branch:** Requirement 7, Phase 1 – `feature/grasp-audit`
+- **Objective:** Audit the product module, the accessory, promotion, and warranty hierarchies, `Return` with `Sale.canBeReturned`, and the `exceptions` and `validation` packages against the nine GRASP patterns, with evidence from commit `9dc5282`.
+- **Query:** Went through my classes with Claude pattern by pattern, asking for each pattern where it applies in my code, which fragments could break it, and what concrete consequence each one would have.
+- **Response:** Six findings: stock read and written outside `Product` (Information Expert), the paid ratio calculated by `Return` with `Sale` data (Information Expert), categories decided with `instanceof` in `CategoryDiscount` (Polymorphism), compatibility duplicated in `Controller` and `Memory` (Polymorphism), type conditionals in `ProductPersistence` (Polymorphism), and the money format copied in `Return` and `Warranty` (Pure Fabrication). Creator, Controller, Low Coupling, High Cohesion, and Indirection were found correctly applied, with examples.
+- **Decision:** I opened every cited fragment in the IDE on commit `9dc5282` to confirm the line numbers and that the problem is real, and kept only the findings I can explain with their consequence. I classified `ProductService` creating its own `ProductPersistence` as correct (Creator: it is the only class that uses it closely). I marked the findings whose fix needs code of other members and reported them to the Technical Leader.
+- **Related commit:** `docs: add scope to developer1 audit`, `docs: add information expert and creator findings to developer1 audit`, `docs: add controller, coupling and cohesion verdicts to developer1 audit`, `docs: add polymorphism findings to developer1 audit`, `docs: add pure fabrication, indirection and protected variations to developer1 audit`
+
+#### Guiding question 3
+- **Date:** 2026-10-16
+- **Tool:** Claude (Anthropic)
+- **Phase and branch:** Requirement 7, Phase 1 – `feature/grasp-audit`
+- **Objective:** Write the team's answer to guiding question 3 (code that breaks more than one pattern).
+- **Query:** Asked how other teams usually register a fragment that breaks Polymorphism and Protected Variations at the same time, and how to choose the pattern that guides the correction.
+- **Response:** Register it once under the pattern that describes the fix (replacing a type conditional with an operation per type is Polymorphism) and mention the other pattern next to it; the other section points to the same ID.
+- **Decision:** I applied the rule to my own findings (V-03 and V-05) and wrote the answer with those examples; it matches how the consolidation registered them.
+- **Related commit:** `docs: answer guiding question 3 in grasp analysis`
+
+
+### Phase 2 — Correction
+
+#### Stock operations and paid ratio (V-01, V-02)
+- **Date:** 2026-10-17
+- **Tool:** Claude (Anthropic)
+- **Phase and branch:** Requirement 7, Phase 2 – `feature/grasp-refactor`
+- **Objective:** Move the stock logic into `Product` and `Accessory` (V-01) and make `Return` use the paid ratio calculated by `Sale` (V-02), without changing any result.
+- **Query:** Asked Claude to review my stock code and propose the methods that `Product` and `Accessory` should offer, and how `Return` should use `Sale.calculatePaidRatio()` keeping the same refund for every item.
+- **Response:** `hasEnoughStock(int)`, `decreaseStock(int)`, and `increaseStock(int)` in both classes, used by `ProductService` and `ProductValidator`; in `Return`, `paidFactor` is removed and `refundFor` asks the sale for the ratio, which is the same calculation (1 when the subtotal is 0).
+- **Decision:** I kept `setStock` for `updateStock`, as the consolidated audit says, because it replaces the stock with a typed value. I compared `calculatePaidRatio()` with the old `paidFactor` line by line before removing it, compiled after each commit, and ran the regression scenarios to check that the refunds of the return receipts were the same.
+- **Related commit:** `refactor: move stock operations into Product and Accessory (V-01)`, `refactor: use the paid ratio of Sale in Return refunds (V-02)`
+
+#### Categories, console compatibility, and warranty eligibility (V-03, V-04, V-05)
+- **Date:** 2026-10-17
+- **Tool:** Claude (Anthropic)
+- **Phase and branch:** Requirement 7, Phase 2 – `feature/grasp-refactor`
+- **Objective:** Replace the type checks of my hierarchies with polymorphic operations that Developer 2 and the Technical Leader will use.
+- **Query:** Asked how to implement `getCategory()`, the abstract class `ConsoleCompatibleAccessory`, and `isWarrantyEligible()` so that the discount of `CategoryDiscount` keeps exactly the same value.
+- **Response:** `getCategory()` abstract in `Product` and implemented in `VideoGame`, `Console`, and `Accessory`; `calculateDiscount` sums the products and then the accessories whose category matches, in the same order as before; `ConsoleCompatibleAccessory` holds the list and the three methods that were duplicated in `Controller` and `Memory`; `isWarrantyEligible()` is false in `Product` and true in `Console`.
+- **Decision:** I checked that the order of the sums in `calculateDiscount` is the same as before, so the double values do not change, and that the scenario with the 25 % accessories promotion gives the same discount. I left the list of supported categories in one place (`CategoryDiscount.isSupportedCategory`) for Developer 2 to use.
+- **Related commit:** `refactor: let each product and accessory report its category (V-03)`, `refactor: add ConsoleCompatibleAccessory for controllers and memories (V-04)`, `refactor: let products report whether they receive a warranty (V-05)`
+
+#### Product file format and money format (V-06, V-09)
+- **Date:** 2026-10-17
+- **Tool:** Claude (Anthropic)
+- **Phase and branch:** Requirement 7, Phase 2 – `feature/grasp-refactor`
+- **Objective:** Remove the type conditionals of `ProductPersistence` without changing the file, and use `CurrencyFormatter` in `Return` and `Warranty`.
+- **Query:** Asked how to register a writer per class and a reader per type code in `ProductPersistence` keeping the model free of file logic, and how to check that the file stays byte-identical.
+- **Response:** A map from class to writer and a map from type code to reader, filled in the constructor; `toLine` and `fromLine` look them up. The regression scenarios compare the data files byte by byte.
+- **Decision:** I kept the validations and the order of `fromLine` (the price and the stock are read before the type), so a corrupted line still produces the same `PersistenceException`. I ran the regression scripts on my branch and the comparison reported no differences in the output or in `products.txt`.
+- **Related commit:** `refactor: register a file format per product type in ProductPersistence (V-06)`, `refactor: format amounts with CurrencyFormatter in Return and Warranty (V-09)`, `docs: log developer 1 corrections in grasp refactor log`

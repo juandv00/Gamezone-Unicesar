@@ -1,16 +1,22 @@
 package com.gamezone.service;
 
+import com.gamezone.exceptions.BusinessRuleException;
+import com.gamezone.exceptions.InvalidDataException;
+import com.gamezone.exceptions.ResourceNotFoundException;
 import com.gamezone.model.Client;
 import com.gamezone.model.Person;
 import com.gamezone.model.Seller;
 import com.gamezone.persistence.PersonPersistence;
+import com.gamezone.validation.PersonValidator;
 import java.util.ArrayList;
 import java.util.List;
 
 /**
  * Contains the business rules for managing people at GameZone Unicesar, such as
  * registering new clients and sellers, and listing the people currently
- * registered in the system.
+ * registered in the system. The data and rules are checked by
+ * {@link PersonValidator} before each operation, which throws the custom
+ * exceptions of the system when something is not valid.
  */
 public class PersonService {
 
@@ -33,20 +39,13 @@ public class PersonService {
      * @param name the client's full name
      * @param phone the client's contact phone number
      * @param email the client's email address
+     * @throws InvalidDataException  if a field is empty or the email does not
+     * have a valid format
+     * @throws BusinessRuleException if another person already has the same id
      */
     public void registerClient(String id, String name, String phone, String email) {
-        if (id == null || id.trim().isEmpty()) {
-            throw new IllegalArgumentException("Client id cannot be empty.");
-        }
-        if (name == null || name.trim().isEmpty()) {
-            throw new IllegalArgumentException("Client name cannot be empty.");
-        }
-        if (phone == null || phone.trim().isEmpty()) {
-            throw new IllegalArgumentException("Client phone cannot be empty.");
-        }
-        if (email == null || email.trim().isEmpty()) {
-            throw new IllegalArgumentException("Client email cannot be empty.");
-        }
+        PersonValidator.validatePersonData(id, name, email == null ? "" : email, phone);
+        PersonValidator.validateUniquePerson(people, id);
 
         Client c = new Client(id, name, phone, email);
         people.add(c);
@@ -61,23 +60,13 @@ public class PersonService {
      * @param phone the seller's contact phone number
      * @param employeeCode the seller's employee code
      * @param shift the seller's assigned work shift
+     * @throws InvalidDataException  if a field is empty
+     * @throws BusinessRuleException if another person already has the same id
      */
     public void registerSeller(String id, String name, String phone, String employeeCode, String shift) {
-        if (id == null || id.trim().isEmpty()) {
-            throw new IllegalArgumentException("Seller id cannot be empty.");
-        }
-        if (name == null || name.trim().isEmpty()) {
-            throw new IllegalArgumentException("Seller name cannot be empty.");
-        }
-        if (phone == null || phone.trim().isEmpty()) {
-            throw new IllegalArgumentException("Seller phone cannot be empty.");
-        }
-        if (employeeCode == null || employeeCode.trim().isEmpty()) {
-            throw new IllegalArgumentException("Employee code cannot be empty.");
-        }
-        if (shift == null || shift.trim().isEmpty()) {
-            throw new IllegalArgumentException("Shift cannot be empty.");
-        }
+        PersonValidator.validatePersonData(id, name, null, phone);
+        PersonValidator.validateSellerData(employeeCode, shift);
+        PersonValidator.validateUniquePerson(people, id);
 
         Seller s = new Seller(id, name, phone, employeeCode, shift);
         people.add(s);
@@ -127,5 +116,37 @@ public class PersonService {
             }
         }
         return null;
+    }
+
+    /**
+     * Finds a registered client by id, failing if no client has that id.
+     *
+     * @param id the identification number to search for
+     * @return the matching client
+     * @throws ResourceNotFoundException if no client has the given id
+     */
+    public Client getClientById(String id) {
+        Person person = findById(id);
+        PersonValidator.validatePersonExists(person, id);
+        if (!(person instanceof Client client)) {
+            throw new ResourceNotFoundException("Cliente", id);
+        }
+        return client;
+    }
+
+    /**
+     * Finds a registered seller by id, failing if no seller has that id.
+     *
+     * @param id the identification number to search for
+     * @return the matching seller
+     * @throws ResourceNotFoundException if no seller has the given id
+     */
+    public Seller getSellerById(String id) {
+        Person person = findById(id);
+        PersonValidator.validatePersonExists(person, id);
+        if (!(person instanceof Seller seller)) {
+            throw new ResourceNotFoundException("Vendedor", id);
+        }
+        return seller;
     }
 }

@@ -2,6 +2,7 @@ package com.gamezone.persistence;
 
 import com.gamezone.model.Accessory;
 import com.gamezone.model.Cable;
+import com.gamezone.model.ConsoleCompatibleAccessory;
 import com.gamezone.model.Controller;
 import com.gamezone.model.Memory;
 import java.io.BufferedReader;
@@ -11,17 +12,122 @@ import java.io.FileReader;
 import java.io.FileWriter;
 import java.io.IOException;
 import java.util.ArrayList;
+import java.util.HashMap;
 import java.util.List;
+import java.util.Map;
+import java.util.function.Function;
 
 /**
  * Handles saving and loading Accessory data (controllers, cables, and memories)
  * to and from a file, so that this information persists between application
  * runs.
+ * <p>
+ * The format of each accessory type is registered once in the constructor:
+ * a writer for its class and a reader for its type code. Saving and loading
+ * look up the registered format instead of checking the type with a chain
+ * of conditionals, so a new accessory type only needs a new registration.
  */
 public class AccessoryRepository {
 
     private static final String FILE_PATH = "data/accessories.csv";
     private static final String DELIMITER = "\t";
+
+    private final Map<Class<? extends Accessory>, Function<Accessory, String>> writers = new HashMap<>();
+    private final Map<String, AccessoryReader> readers = new HashMap<>();
+
+    /**
+     * Rebuilds an accessory of one type from the fields of a stored line.
+     */
+    @FunctionalInterface
+    private interface AccessoryReader {
+
+        /**
+         * Creates the accessory from its common fields and the stored line.
+         *
+         * @param id    the accessory id
+         * @param title the accessory title
+         * @param price the unit price
+         * @param stock the units in stock
+         * @param parts every field of the stored line
+         * @return the reconstructed accessory
+         */
+        Accessory read(String id, String title, double price, int stock, String[] parts);
+    }
+
+    /**
+     * Creates the repository and registers the file format of each accessory
+     * type (memories, controllers, and cables).
+     */
+    public AccessoryRepository() {
+        registerFormat(Memory.class, "MEMORY",
+                memory -> memory.getCapacityInGB() + DELIMITER + memory.getMemoryType() + DELIMITER
+                        + consolesField(memory),
+                (id, title, price, stock, parts) -> {
+                    int capacity = Integer.parseInt(parts[5]);
+                    Memory.MemoryType memoryType = Memory.MemoryType.valueOf(parts[6]);
+                    Memory memory = new Memory(id, title, price, stock, capacity, memoryType);
+                    readConsoles(memory, parts, 7);
+                    return memory;
+                });
+        registerFormat(Controller.class, "CONTROLLER",
+                controller -> controller.getConnectionType() + DELIMITER + consolesField(controller),
+                (id, title, price, stock, parts) -> {
+                    Controller.ConnectionType connectionType = Controller.ConnectionType.valueOf(parts[5]);
+                    Controller controller = new Controller(id, title, price, stock, connectionType);
+                    readConsoles(controller, parts, 6);
+                    return controller;
+                });
+        registerFormat(Cable.class, "CABLE",
+                cable -> cable.getLengthInMeters() + DELIMITER + cable.getConnectorType(),
+                (id, title, price, stock, parts) -> new Cable(id, title, price, stock,
+                        Double.parseDouble(parts[5]), parts[6]));
+    }
+
+    /**
+     * Registers how an accessory type is written to and read from the file.
+     * Every line starts with the type code followed by the common fields
+     * (id, title, price, stock) and then the fields of the type.
+     *
+     * @param type           the class of the accessory type
+     * @param code           the type code stored at the start of the line
+     * @param specificFields builds the fields of the type, already delimited
+     * @param reader         rebuilds an accessory of the type from a line
+     * @param <T>            the accessory type
+     */
+    private <T extends Accessory> void registerFormat(Class<T> type, String code,
+                                                      Function<T, String> specificFields,
+                                                      AccessoryReader reader) {
+        writers.put(type, accessory -> code + DELIMITER + accessory.getId() + DELIMITER
+                + accessory.getTitle() + DELIMITER + accessory.getPrice() + DELIMITER
+                + accessory.getStock() + DELIMITER + specificFields.apply(type.cast(accessory)));
+        readers.put(code, reader);
+    }
+
+    /**
+     * Joins the compatible console ids of an accessory with commas.
+     *
+     * @param accessory the accessory with console compatibility
+     * @return the ids separated by commas, or an empty text if there are none
+     */
+    private String consolesField(ConsoleCompatibleAccessory accessory) {
+        return String.join(",", accessory.getCompatibleConsoleIds());
+    }
+
+    /**
+     * Registers in the accessory the compatible consoles stored in the given
+     * field of the line, if the field exists and is not empty.
+     *
+     * @param accessory the accessory being rebuilt
+     * @param parts     every field of the stored line
+     * @param index     the position of the compatible consoles field
+     */
+    private void readConsoles(ConsoleCompatibleAccessory accessory, String[] parts, int index) {
+        if (parts.length > index && !parts[index].isEmpty()) {
+            for (String consoleId : parts[index].split(",")) {
+                accessory.addCompatibleConsole(consoleId);
+            }
+        }
+    }
 
     /**
      * Persists the given list of accessories to the file, overwriting any
@@ -38,7 +144,7 @@ public class AccessoryRepository {
                 bw.newLine();
             }
         } catch (IOException e) {
-            System.out.println("Error saving accessories: " + e.getMessage());
+            System.out.println("Error al guardar los accesorios: " + e.getMessage());
         }
     }
 
@@ -64,42 +170,30 @@ public class AccessoryRepository {
                 }
             }
         } catch (IOException e) {
-            System.out.println("Error loading accessories: " + e.getMessage());
+            System.out.println("Error al cargar los accesorios: " + e.getMessage());
         }
         return accessories;
     }
 
     /**
      * Converts a single accessory into its delimited text representation,
-     * choosing the fields to write based on its concrete subtype.
+     * using the format registered for its type.
      *
      * @param accessory the accessory to convert
      * @return the delimited line representing this accessory, or an empty
      * string if the subtype is not recognized
      */
     private String toLine(Accessory accessory) {
-        if (accessory instanceof Memory memory) {
-            String consoles = String.join(",", memory.getCompatibleConsoleIds());
-            return "MEMORY" + DELIMITER + memory.getId() + DELIMITER + memory.getTitle() + DELIMITER
-                    + memory.getPrice() + DELIMITER + memory.getStock() + DELIMITER
-                    + memory.getCapacityInGB() + DELIMITER + memory.getMemoryType() + DELIMITER + consoles;
-        } else if (accessory instanceof Controller controller) {
-            String consoles = String.join(",", controller.getCompatibleConsoleIds());
-            return "CONTROLLER" + DELIMITER + controller.getId() + DELIMITER + controller.getTitle() + DELIMITER
-                    + controller.getPrice() + DELIMITER + controller.getStock() + DELIMITER
-                    + controller.getConnectionType() + DELIMITER + consoles;
-        } else if (accessory instanceof Cable cable) {
-            return "CABLE" + DELIMITER + cable.getId() + DELIMITER + cable.getTitle() + DELIMITER
-                    + cable.getPrice() + DELIMITER + cable.getStock() + DELIMITER
-                    + cable.getLengthInMeters() + DELIMITER + cable.getConnectorType();
+        Function<Accessory, String> writer = writers.get(accessory.getClass());
+        if (writer == null) {
+            return "";
         }
-        return "";
+        return writer.apply(accessory);
     }
 
     /**
      * Reconstructs a single Accessory from its delimited text representation,
-     * using the discriminator column to determine which concrete subtype to
-     * instantiate.
+     * using the format registered for the type code in the first column.
      *
      * @param line the delimited line read from the file
      * @return the reconstructed Accessory, or null if the line is malformed or
@@ -116,35 +210,10 @@ public class AccessoryRepository {
         double price = Double.parseDouble(parts[3]);
         int stock = Integer.parseInt(parts[4]);
 
-        if (type.equals("MEMORY")) {
-            int capacity = Integer.parseInt(parts[5]);
-            Memory.MemoryType memoryType = Memory.MemoryType.valueOf(parts[6]);
-            Memory memory = new Memory(id, title, price, stock, capacity, memoryType);
-
-            if (parts.length > 7 && !parts[7].isEmpty()) {
-                for (String consoleId : parts[7].split(",")) {
-                    memory.addCompatibleConsole(consoleId);
-                }
-            }
-            return memory;
-
-        } else if (type.equals("CONTROLLER")) {
-            Controller.ConnectionType connectionType = Controller.ConnectionType.valueOf(parts[5]);
-            Controller controller = new Controller(id, title, price, stock, connectionType);
-
-            if (parts.length > 6 && !parts[6].isEmpty()) {
-                for (String consoleId : parts[6].split(",")) {
-                    controller.addCompatibleConsole(consoleId);
-                }
-            }
-            return controller;
-
-        } else if (type.equals("CABLE")) {
-            double length = Double.parseDouble(parts[5]);
-            String connector = parts[6];
-            return new Cable(id, title, price, stock, length, connector);
+        AccessoryReader reader = readers.get(type);
+        if (reader == null) {
+            return null;
         }
-
-        return null;
+        return reader.read(id, title, price, stock, parts);
     }
 }

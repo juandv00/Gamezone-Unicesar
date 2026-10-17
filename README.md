@@ -17,6 +17,10 @@ promotion automatically, generates basic and extended warranties, and
 can later be partially returned, which updates the inventory, the
 warranties, and the monthly balance.
 
+The code was audited against the nine GRASP patterns and corrected
+without changing what the user sees (Requirement 7); see
+[GRASP audit and correction](#grasp-audit-and-correction-requirement-7).
+
 ## Requirements
 
 - **Java JDK 17** or higher
@@ -27,14 +31,23 @@ warranties, and the monthly balance.
 ```
 com.gamezone
 ├── model        # Domain classes (Person, Client, Seller, Product, VideoGame,
-│                #   Console, Accessory, Controller, Cable, Memory, Sale,
+│                #   Console, Accessory, ConsoleCompatibleAccessory,
+│                #   Controller, Cable, Memory, Sale,
 │                #   Promotion, PercentageDiscount, CategoryDiscount,
 │                #   BulkPurchaseDiscount, Return, Warranty,
 │                #   BasicWarranty, ExtendedWarranty)
+├── exceptions   # Custom exception hierarchy (GameZoneException and its
+│                #   four subclasses), usable from any layer
+├── validation   # Validators called by the services (ProductValidator,
+│                #   PersonValidator, SaleValidator)
 ├── persistence  # File-based read/write for each module (stores ids,
 │                #   not objects, for warranties and returns)
-├── service      # Business rules and validations
-├── ui           # Console-based user interface (ConsoleUI)
+├── service      # Business rules
+├── ui           # Console-based user interface: ConsoleUI (main menu),
+│                #   one class per submenu (ProductMenu, PersonMenu,
+│                #   SaleMenu, AccessoryMenu, PromotionMenu, ReturnMenu,
+│                #   WarrantyMenu), ConsoleInput, and ErrorHandler
+├── util         # Cross-cutting helpers (CurrencyFormatter)
 └── Main.java    # Application entry point
 ```
 
@@ -49,7 +62,8 @@ Additional folders:
   - `products.txt`, `sales.txt`, `returns.csv`, `warranties.csv` —
     created automatically when the first item of each kind is
     registered.
-- `docs/` — analysis documents, UML diagrams (Mermaid), and each team
+- `docs/` — analysis documents, UML diagrams (Mermaid), the GRASP audit
+  and correction documents, the non-regression scripts, and each team
   member's AI usage log.
 
 ## How to build
@@ -73,8 +87,10 @@ mvn clean compile
 java -cp target/classes com.gamezone.Main
 ```
 
-The application starts a text menu. Data loaded from `data/` on
-startup is automatically saved back to disk after each operation.
+The application starts a text menu in Spanish. Data loaded from `data/`
+on startup is automatically saved back to disk after each operation.
+If the data files cannot be read, the application shows a message and
+does not start.
 
 ## Functional operations
 
@@ -138,10 +154,52 @@ The main menu is organized into seven modules:
 4. List the warranties expiring soon (within a number of days chosen by
    the user)
 
+## Validation and error handling
+
+The system distinguishes four kinds of errors, each with its own
+exception (package `com.gamezone.exceptions`) and its own message in the
+console:
+
+| Exception | When it is thrown | Message shown to the user |
+|---|---|---|
+| `ResourceNotFoundException` | A product, client, seller, or sale searched by id does not exist. | *No se encontró el recurso solicitado: …* |
+| `BusinessRuleException` | A business rule is violated: insufficient stock, a duplicated person id, a sale without items, among others. | *No se puede completar la operación: …* |
+| `InvalidDataException` | A value has the wrong format or range: an empty field, a price that is not positive, a negative stock, an invalid email. | *Los datos ingresados no son válidos: …* |
+| `PersistenceException` | A data file cannot be read or written, or contains a corrupted line. | *Ocurrió un problema al acceder a los datos del sistema. Contacte al administrador.* |
+
+All of them extend the abstract class `GameZoneException`, which extends
+`RuntimeException` and stores an error code.
+
+- **Validators** (package `com.gamezone.validation`): `ProductValidator`,
+  `PersonValidator`, and `SaleValidator` group the checks of each module
+  in static methods. The services call them before executing an
+  operation, so a rejected operation never changes any data. Validators
+  do not access services or persistence classes.
+- **Services:** `ProductService`, `PersonService`, and `SaleService`
+  delegate their checks to the validators and throw the typed
+  exceptions. Their `findById` methods still return `null` when nothing
+  is found; the new `getProductById`, `getClientById`, `getSellerById`,
+  and `getSaleById` methods throw `ResourceNotFoundException` instead.
+- **Persistence:** `ProductPersistence`, `PersonPersistence`, and
+  `SalePersistence` turn every `IOException` into a
+  `PersistenceException` that names the file and the operation, keeping
+  the original exception as its cause.
+- **User interface:** every menu operation runs through one handler,
+  `ErrorHandler`, that catches each exception type separately. The user
+  never sees a technical message or a stack trace.
+
 ## Business rules
 
+**Products and people**
+- A product needs an id and a title, a price greater than zero, and a
+  stock that is not negative.
+- A client needs an id, a name, a phone, and a valid email; a seller
+  needs an id, a name, a phone, an employee code, and a shift.
+- Two people (clients or sellers) cannot have the same id.
+
 **Sales and stock**
-- A sale must include at least one item (a product or an accessory).
+- A sale must include a client, a seller, and at least one item (a
+  product or an accessory).
 - A sale is registered in this order: validate the items and their
   stock, create the sale and calculate its subtotal, apply the best
   promotion on the subtotal, assign the warranties of the consoles,
@@ -215,6 +273,45 @@ The main menu is organized into seven modules:
   costs), the total refunded by the returns registered in that month,
   and the net balance (sales minus returns).
 
+## GRASP audit and correction (Requirement 7)
+
+**Audit (Phase 1).** Each member audited the code they developed against
+the nine GRASP patterns (`docs/grasp-audit/`), and the Technical Leader
+consolidated the three reports into one team audit
+(`consolidated-audit.md`): nine violations (V-01 to V-09), six of them in
+the boundary between two members, and three functional defects left out
+of scope (O-01 to O-03). The answers to the guiding questions are in
+`docs/grasp-analysis.md`.
+
+**Correction (Phase 2).** Every violation was corrected by the owner of
+each part of the code:
+
+| ID | Pattern | Design change |
+|---|---|---|
+| V-01 | Information Expert | `Product` and `Accessory` manage their own stock (`hasEnoughStock`, `decreaseStock`, `increaseStock`); services and validators call them. |
+| V-02 | Information Expert | `Sale.calculatePaidRatio()` calculates the paid fraction used by the refunds of `Return`. |
+| V-03 | Polymorphism, Protected Variations | Each product and accessory reports its category (`getCategory()`); `CategoryDiscount` holds the only list of supported categories. |
+| V-04 | Polymorphism | New abstract class `ConsoleCompatibleAccessory` with the console compatibility of `Controller` and `Memory`. |
+| V-05 | Polymorphism | `Product.isWarrantyEligible()` (true for `Console`) replaces every `instanceof Console`. |
+| V-06, V-07 | Polymorphism, Protected Variations | Every repository registers one file format per type instead of using chains of type conditionals; the data files keep the same format. |
+| V-08 | High Cohesion | `ConsoleUI` keeps only the main menu; each submenu has its own class, with `ConsoleInput` for the input and `ErrorHandler` for the errors. |
+| V-09 | Pure Fabrication | New class `CurrencyFormatter` (`com.gamezone.util`) replaces four copies of the money format. |
+
+The menu, the messages, and the data files did not change. The
+non-regression verification runs every menu operation, the error cases,
+and the data file cases before and after the corrections and compares
+the results file by file. From the project root:
+
+```powershell
+powershell -ExecutionPolicy Bypass -File docs/regression/run-regression.ps1 -Label reference -Source 44d8f9e
+powershell -ExecutionPolicy Bypass -File docs/regression/run-regression.ps1 -Label final
+powershell -ExecutionPolicy Bypass -File docs/regression/compare-regression.ps1 -Reference reference -Candidate final
+```
+
+The strategy, every change, and the results are recorded in
+`docs/grasp-refactor-log.md`, and the classes before and after the
+corrections are in `docs/grasp-class-diagram.md`.
+
 ## Team
 
 See [TEAM.md](TEAM.md) for roles, module distribution, and committed
@@ -231,6 +328,8 @@ See the [docs/](docs) folder for:
 - `accessory-analysis.md` — design analysis of the accessory module.
 - `integration-analysis.md` — the integration of the four modules
   (Requirement 5): each adjustment, its cause, and the solution applied.
+- `exception-analysis.md` — design analysis of the exception and
+  validation layers (Requirement 6).
 - `hierarchy-diagram.md`, `class-diagram.md` — the base system's UML
   diagrams, written in Mermaid.
 - `layers-diagram.md` — the four layers of the integrated system and
@@ -245,4 +344,17 @@ See the [docs/](docs) folder for:
   module, written in Mermaid.
 - `integrated-class-diagram.md` — a single class diagram of the
   integrated system, with the four layers and every module.
+- `exception-class-diagram.md` — the class diagram of the exception
+  hierarchy, the validators, and how the services and the console use
+  them, written in Mermaid.
+- `grasp-audit/` — the GRASP audit report of each member and the
+  consolidated audit of the team (Requirement 7).
+- `grasp-analysis.md` — the answers to the guiding questions of
+  Requirement 7.
+- `grasp-class-diagram.md` — the classes involved in the GRASP
+  violations before and after the corrections, written in Mermaid.
+- `grasp-refactor-log.md` — the non-regression strategy, every change of
+  the correction phase, and the results of the verification.
+- `regression/` — the input scenarios and the PowerShell scripts of the
+  non-regression verification.
 - `ai-usage/` — each team member's AI usage log.

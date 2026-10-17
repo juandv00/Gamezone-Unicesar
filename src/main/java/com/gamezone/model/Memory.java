@@ -1,7 +1,6 @@
 package com.gamezone.model;
 
-import java.util.ArrayList;
-import java.util.List;
+import com.gamezone.exceptions.InvalidDataException;
 
 /**
  * Represents a memory accessory sold at GameZone Unicesar.
@@ -9,7 +8,7 @@ import java.util.List;
  * storage capacity, its type, and (for some memory types, such as
  * console-specific internal storage) the consoles it is compatible with.
  */
-public class Memory extends Accessory {
+public class Memory extends ConsoleCompatibleAccessory {
 
     /**
      * Type of memory: SD card, microSD card, or internal storage card.
@@ -22,7 +21,6 @@ public class Memory extends Accessory {
 
     private int capacityInGB;
     private MemoryType memoryType;
-    private final List<String> compatibleConsoleIds;
 
     /**
      * Creates a new Memory with the given common and particular attributes.
@@ -36,16 +34,17 @@ public class Memory extends Accessory {
      * @param stock        initial quantity available in inventory
      * @param capacityInGB storage capacity of the memory, in gigabytes
      * @param memoryType   type of the memory (SD, microSD, internal card)
+     * @throws InvalidDataException if the capacity is not positive, or the
+     *                              price or the stock is negative
      */
     public Memory(String id, String title, double price, int stock,
                   int capacityInGB, MemoryType memoryType) {
         super(id, title, price, stock);
         if (capacityInGB <= 0) {
-            throw new IllegalArgumentException("Capacity must be greater than zero");
+            throw new InvalidDataException("capacidad", "debe ser mayor que cero.");
         }
         this.capacityInGB = capacityInGB;
         this.memoryType = memoryType;
-        this.compatibleConsoleIds = new ArrayList<>();
     }
 
     public int getCapacityInGB() {
@@ -64,37 +63,6 @@ public class Memory extends Accessory {
         this.memoryType = memoryType;
     }
 
-    /**
-     * Returns the ids of the consoles this memory is compatible with.
-     *
-     * @return an unmodifiable-safe copy of the compatible console ids
-     */
-    public List<String> getCompatibleConsoleIds() {
-        return new ArrayList<>(compatibleConsoleIds);
-    }
-
-    /**
-     * Registers a console as compatible with this memory, if it is
-     * not already registered.
-     *
-     * @param consoleId the id of the console to add
-     */
-    public void addCompatibleConsole(String consoleId) {
-        if (!compatibleConsoleIds.contains(consoleId)) {
-            compatibleConsoleIds.add(consoleId);
-        }
-    }
-
-    /**
-     * Checks whether this memory is compatible with the given console.
-     *
-     * @param consoleId the id of the console to check
-     * @return true if the console is registered as compatible, false otherwise
-     */
-    public boolean isCompatibleWith(String consoleId) {
-        return compatibleConsoleIds.contains(consoleId);
-    }
-
     @Override
     public String getType() {
         return "Memory";
@@ -102,10 +70,10 @@ public class Memory extends Accessory {
 
     @Override
     public String getDescription() {
-        return getTitle() + " - Capacity: " + capacityInGB + "GB" +
-                ", Type: " + memoryType +
-                ", Compatible consoles: " + compatibleConsoleIds.size() +
-                ", Price: $" + getPrice() +
+        return getTitle() + " - Capacidad: " + capacityInGB + "GB" +
+                ", Tipo: " + memoryType +
+                ", Consolas compatibles: " + getCompatibleConsoleIds().size() +
+                ", Precio: $" + getPrice() +
                 ", Stock: " + getStock();
     }
 
