@@ -73,6 +73,16 @@ public class Console extends Product {
         return "CONSOLE";
     }
 
+    /**
+     * Indicates that consoles receive a warranty when they are sold.
+     *
+     * @return true, since every console receives a warranty
+     */
+    @Override
+    public boolean isWarrantyEligible() {
+        return true;
+    }
+
     @Override
     public String toString() {
         return "Console{" + getDescription() + "}";

@@ -116,6 +116,17 @@ public abstract class Product {
      */
     public abstract String getCategory();
 
+    /**
+     * Indicates whether this product receives a warranty when it is sold.
+     * By default a product does not; the product types that do receive one
+     * override this method, so the services never check the concrete class.
+     *
+     * @return false for products without warranty
+     */
+    public boolean isWarrantyEligible() {
+        return false;
+    }
+
     @Override
     public String toString() {
         return "Product{id='" + id + "', title='" + title +
