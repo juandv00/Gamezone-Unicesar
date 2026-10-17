@@ -1,9 +1,9 @@
 package com.gamezone.model;
 
+import com.gamezone.util.CurrencyFormatter;
 import java.time.LocalDate;
 import java.util.ArrayList;
 import java.util.List;
-import java.util.Locale;
 
 /**
  * Represents the return of one or more items (products and accessories)
@@ -208,10 +208,11 @@ public class Return {
             appendItemLine(sb, accessory.getTitle() + " (accesorio)", accessory.getPrice());
         }
         if (warrantyRefund > 0) {
-            sb.append("Garantías extendidas anuladas: +").append(formatAmount(warrantyRefund)).append("\n");
+            sb.append("Garantías extendidas anuladas: +").append(CurrencyFormatter.format(warrantyRefund))
+                    .append("\n");
         }
         sb.append("Motivo: ").append(reason).append("\n");
-        sb.append("Monto reembolsado: ").append(formatAmount(refundAmount)).append("\n");
+        sb.append("Monto reembolsado: ").append(CurrencyFormatter.format(refundAmount)).append("\n");
         sb.append("===================================================");
         return sb.toString();
     }
@@ -227,13 +228,9 @@ public class Return {
     private void appendItemLine(StringBuilder sb, String title, double listPrice) {
         double refund = refundFor(listPrice);
         sb.append("  - ").append(title)
-                .append(": precio de lista ").append(formatAmount(listPrice))
-                .append(", descuento -").append(formatAmount(listPrice - refund))
-                .append(", reembolso ").append(formatAmount(refund)).append("\n");
-    }
-
-    private String formatAmount(double amount) {
-        return String.format(Locale.US, "$%,.2f", amount);
+                .append(": precio de lista ").append(CurrencyFormatter.format(listPrice))
+                .append(", descuento -").append(CurrencyFormatter.format(listPrice - refund))
+                .append(", reembolso ").append(CurrencyFormatter.format(refund)).append("\n");
     }
 
     @Override

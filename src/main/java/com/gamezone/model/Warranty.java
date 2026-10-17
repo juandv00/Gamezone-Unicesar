@@ -1,5 +1,6 @@
 package com.gamezone.model;
 
+import com.gamezone.util.CurrencyFormatter;
 import java.time.LocalDate;
 
 /**
@@ -82,13 +83,9 @@ public abstract class Warranty {
         sb.append("Venta: ").append(sale.getId()).append("\n");
         sb.append("Fecha de inicio: ").append(startDate).append("\n");
         sb.append("Fecha de fin: ").append(endDate).append("\n");
-        sb.append("Costo adicional: ").append(formatAmount(getAdditionalCost())).append("\n");
+        sb.append("Costo adicional: ").append(CurrencyFormatter.format(getAdditionalCost())).append("\n");
         sb.append("========================================================");
         return sb.toString();
-    }
-
-    private String formatAmount(double amount) {
-        return String.format(java.util.Locale.US, "$%,.2f", amount);
     }
 
     public String getId() {
