@@ -1,8 +1,6 @@
 package com.gamezone.model;
 
 import com.gamezone.exceptions.InvalidDataException;
-import java.util.ArrayList;
-import java.util.List;
 
 /**
  * Represents a memory accessory sold at GameZone Unicesar.
@@ -10,7 +8,7 @@ import java.util.List;
  * storage capacity, its type, and (for some memory types, such as
  * console-specific internal storage) the consoles it is compatible with.
  */
-public class Memory extends Accessory {
+public class Memory extends ConsoleCompatibleAccessory {
 
     /**
      * Type of memory: SD card, microSD card, or internal storage card.
@@ -23,7 +21,6 @@ public class Memory extends Accessory {
 
     private int capacityInGB;
     private MemoryType memoryType;
-    private final List<String> compatibleConsoleIds;
 
     /**
      * Creates a new Memory with the given common and particular attributes.
@@ -48,7 +45,6 @@ public class Memory extends Accessory {
         }
         this.capacityInGB = capacityInGB;
         this.memoryType = memoryType;
-        this.compatibleConsoleIds = new ArrayList<>();
     }
 
     public int getCapacityInGB() {
@@ -67,37 +63,6 @@ public class Memory extends Accessory {
         this.memoryType = memoryType;
     }
 
-    /**
-     * Returns the ids of the consoles this memory is compatible with.
-     *
-     * @return an unmodifiable-safe copy of the compatible console ids
-     */
-    public List<String> getCompatibleConsoleIds() {
-        return new ArrayList<>(compatibleConsoleIds);
-    }
-
-    /**
-     * Registers a console as compatible with this memory, if it is
-     * not already registered.
-     *
-     * @param consoleId the id of the console to add
-     */
-    public void addCompatibleConsole(String consoleId) {
-        if (!compatibleConsoleIds.contains(consoleId)) {
-            compatibleConsoleIds.add(consoleId);
-        }
-    }
-
-    /**
-     * Checks whether this memory is compatible with the given console.
-     *
-     * @param consoleId the id of the console to check
-     * @return true if the console is registered as compatible, false otherwise
-     */
-    public boolean isCompatibleWith(String consoleId) {
-        return compatibleConsoleIds.contains(consoleId);
-    }
-
     @Override
     public String getType() {
         return "Memory";
@@ -107,7 +72,7 @@ public class Memory extends Accessory {
     public String getDescription() {
         return getTitle() + " - Capacidad: " + capacityInGB + "GB" +
                 ", Tipo: " + memoryType +
-                ", Consolas compatibles: " + compatibleConsoleIds.size() +
+                ", Consolas compatibles: " + getCompatibleConsoleIds().size() +
                 ", Precio: $" + getPrice() +
                 ", Stock: " + getStock();
     }

@@ -1,14 +1,11 @@
 package com.gamezone.model;
 
-import java.util.ArrayList;
-import java.util.List;
-
 /**
  * Represents a game controller accessory sold at GameZone Unicesar.
  * A controller is a specific type of Accessory characterized by its
  * connection type and the list of consoles it is compatible with.
  */
-public class Controller extends Accessory {
+public class Controller extends ConsoleCompatibleAccessory {
 
     /**
      * Connection type of a controller: either wireless or wired.
@@ -19,7 +16,6 @@ public class Controller extends Accessory {
     }
 
     private ConnectionType connectionType;
-    private final List<String> compatibleConsoleIds;
 
     /**
      * Creates a new Controller with the given common and particular attributes.
@@ -35,7 +31,6 @@ public class Controller extends Accessory {
                       ConnectionType connectionType) {
         super(id, title, price, stock);
         this.connectionType = connectionType;
-        this.compatibleConsoleIds = new ArrayList<>();
     }
 
     public ConnectionType getConnectionType() {
@@ -44,37 +39,6 @@ public class Controller extends Accessory {
 
     public void setConnectionType(ConnectionType connectionType) {
         this.connectionType = connectionType;
-    }
-
-    /**
-     * Returns the ids of the consoles this controller is compatible with.
-     *
-     * @return an unmodifiable-safe copy of the compatible console ids
-     */
-    public List<String> getCompatibleConsoleIds() {
-        return new ArrayList<>(compatibleConsoleIds);
-    }
-
-    /**
-     * Registers a console as compatible with this controller, if it is
-     * not already registered.
-     *
-     * @param consoleId the id of the console to add
-     */
-    public void addCompatibleConsole(String consoleId) {
-        if (!compatibleConsoleIds.contains(consoleId)) {
-            compatibleConsoleIds.add(consoleId);
-        }
-    }
-
-    /**
-     * Checks whether this controller is compatible with the given console.
-     *
-     * @param consoleId the id of the console to check
-     * @return true if the console is registered as compatible, false otherwise
-     */
-    public boolean isCompatibleWith(String consoleId) {
-        return compatibleConsoleIds.contains(consoleId);
     }
 
     @Override
@@ -86,7 +50,7 @@ public class Controller extends Accessory {
     public String getDescription() {
         String connection = connectionType == ConnectionType.WIRELESS ? "inalámbrica" : "cableada";
         return getTitle() + " - Conexión: " + connection +
-                ", Consolas compatibles: " + compatibleConsoleIds.size() +
+                ", Consolas compatibles: " + getCompatibleConsoleIds().size() +
                 ", Precio: $" + getPrice() +
                 ", Stock: " + getStock();
     }
