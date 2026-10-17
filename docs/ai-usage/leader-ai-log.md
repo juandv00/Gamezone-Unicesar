@@ -523,3 +523,55 @@ for Requirement 4 before approving them.
 - **Response:** Criteria based on concrete consequences and exact evidence; V-05 as the boundary example; an order where the owner of each new operation goes first, one member at a time in the branch.
 - **Decision:** I chose V-05 as the boundary example because it involves the three members, and wrote the answers after the team's discussion of the questions.
 - **Related commit:** `docs: answer guiding questions 1, 2 and 5 in grasp analysis`
+
+### Phase 2 — Correction
+
+#### Preparation: diagram "before" and non-regression strategy
+- **Date:** 2026-10-17
+- **Tool:** Claude (Anthropic)
+- **Phase and branch:** Requirement 7, Phase 2 – `feature/grasp-refactor`
+- **Objective:** Draw the classes involved in the nine violations as they are before the corrections, and prepare the scripts and the reference result of the non-regression strategy agreed in guiding question 4.
+- **Query:** Asked Claude to help me turn the operations of the menu into input scripts that cover the 33 operations and the error cases, and to write PowerShell scripts that run them and compare two results.
+- **Response:** Seven scenarios (all operations, error cases, a file that cannot be written, a file that cannot be read, a reload of the saved data, and files with unknown types and invalid lines), a script that runs them in separate folders without touching `data/`, and a script that compares the output and every data file.
+- **Decision:** I checked that every option of the seven submenus appears in the main scenario, added a sale with only accessories so the accessory category promotion is applied, and ran the scripts on `develop` before the first correction to obtain the reference result. I validated the Mermaid diagram before committing it.
+- **Related commit:** `docs: add class diagram before the GRASP corrections`, `docs: add non-regression scenarios and scripts`, `docs: add non-regression strategy and reference result to grasp refactor log`
+
+#### Paid ratio of the sale and money format (V-02, V-09)
+- **Date:** 2026-10-17
+- **Tool:** Claude (Anthropic)
+- **Phase and branch:** Requirement 7, Phase 2 – `feature/grasp-refactor`
+- **Objective:** Add `Sale.calculatePaidRatio()` and the new class `CurrencyFormatter`, which Developer 1 needs for his corrections.
+- **Query:** Asked for a review of the paid ratio formula of `Return` moved to `Sale`, and of the place for a class that formats money and is used by the model and the interface.
+- **Response:** The same formula, with 1 when the subtotal is 0; `CurrencyFormatter` with a private constructor and a static `format(double)` in `com.gamezone.util`.
+- **Decision:** I kept the same format string and locale (`$%,.2f`, `Locale.US`) so no receipt changes, and ran the regression scenarios after the two commits.
+- **Related commit:** `refactor: add paid ratio calculation to Sale (V-02)`, `refactor: format amounts with CurrencyFormatter in Sale and ConsoleUI (V-09)`, `docs: log technical leader preparation in grasp refactor log`
+
+#### Stock, warranty eligibility, and console compatibility in my classes (V-01, V-04, V-05)
+- **Date:** 2026-10-17
+- **Tool:** Claude (Anthropic)
+- **Phase and branch:** Requirement 7, Phase 2 – `feature/grasp-refactor`
+- **Objective:** Use the operations added by Developer 1 in `ProductService.restoreStock`, `SaleService`, and `ConsoleUI`.
+- **Query:** Asked Claude to point out the lines of my classes that still check the class of a product or an accessory.
+- **Response:** `restoreStock` uses `increaseStock`; `assignWarranties`, `containsConsole`, and `askExtendedWarranties` use `isWarrantyEligible()`; `addCompatibleConsole` asks for `ConsoleCompatibleAccessory`.
+- **Decision:** I renamed `containsConsole` to `containsWarrantyEligibleProduct` because it no longer checks the class, and kept the message shown to the user. I left the `instanceof Console` of `registerCompatibility`, because it checks that the id typed by the user belongs to a console, which is not a violation of the audit.
+- **Related commit:** `refactor: restore product stock through Product (V-01)`, `refactor: ask products for warranty eligibility in SaleService and ConsoleUI (V-05)`, `refactor: check console compatibility through ConsoleCompatibleAccessory in ConsoleUI (V-04)`
+
+#### Division of `ConsoleUI` (V-08)
+- **Date:** 2026-10-17
+- **Tool:** Claude (Anthropic)
+- **Phase and branch:** Requirement 7, Phase 2 – `feature/grasp-refactor`
+- **Objective:** Split `ConsoleUI` into one class per submenu plus `ConsoleInput` and `ErrorHandler`, keeping every message exactly the same.
+- **Query:** Asked Claude to help me move each submenu with its methods to its own class, and to check which services each submenu needs.
+- **Response:** First `ConsoleInput` (input readers) and `ErrorHandler` (the differentiated error handling); then seven submenu classes with a `show()` method, and `ConsoleUI` with only the main menu, from 1,479 to 173 lines.
+- **Decision:** I did it in steps so each commit compiles and can be verified alone (first the input and the errors, then the seven submenu classes, and last `ConsoleUI` with only the main menu), and kept the methods and texts of each submenu unchanged (only the calls to the input and to the error handler changed). After the division I ran the seven regression scenarios, because the menu is used by every operation.
+- **Related commit:** `refactor: extract ConsoleInput and ErrorHandler from ConsoleUI (V-08)`, `refactor: move each submenu of ConsoleUI to its own class (V-08)`, `refactor: keep only the main menu in ConsoleUI (V-08)`, `docs: log technical leader corrections in grasp refactor log`
+
+#### Diagram "after", final verification, and README
+- **Date:** 2026-10-17
+- **Tool:** Claude (Anthropic)
+- **Phase and branch:** Requirement 7, Phase 2 – `feature/grasp-refactor`
+- **Objective:** Close Phase 2: diagram of the classes after the corrections, final non-regression verification, and README.
+- **Query:** Asked for a review of the "after" diagram against the code and of the README section that describes the design changes.
+- **Response:** The diagram with the new classes (`ConsoleCompatibleAccessory`, `CurrencyFormatter`, `ConsoleInput`, `ErrorHandler`, and the seven submenus) and a note with the violation of every changed class; a README section with the audit, the corrections, and how to run the verification.
+- **Decision:** I ran the reference again on `develop` and the final version on the same day, and the comparison reported no differences in any scenario. I checked every class of the diagram against the code of the branch and validated the Mermaid syntax.
+- **Related commit:** `docs: keep git messages from stopping the regression script`, `docs: add class diagram after the GRASP corrections`, `docs: add final non-regression result to grasp refactor log`, `docs: describe Requirement 7 in README`, `docs: add Requirement 7 phase 2 entries to leader AI log`
