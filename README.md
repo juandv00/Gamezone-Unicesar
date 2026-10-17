@@ -17,6 +17,10 @@ promotion automatically, generates basic and extended warranties, and
 can later be partially returned, which updates the inventory, the
 warranties, and the monthly balance.
 
+The code was audited against the nine GRASP patterns and corrected
+without changing what the user sees (Requirement 7); see
+[GRASP audit and correction](#grasp-audit-and-correction-requirement-7).
+
 ## Requirements
 
 - **Java JDK 17** or higher
@@ -27,7 +31,8 @@ warranties, and the monthly balance.
 ```
 com.gamezone
 ├── model        # Domain classes (Person, Client, Seller, Product, VideoGame,
-│                #   Console, Accessory, Controller, Cable, Memory, Sale,
+│                #   Console, Accessory, ConsoleCompatibleAccessory,
+│                #   Controller, Cable, Memory, Sale,
 │                #   Promotion, PercentageDiscount, CategoryDiscount,
 │                #   BulkPurchaseDiscount, Return, Warranty,
 │                #   BasicWarranty, ExtendedWarranty)
@@ -38,7 +43,11 @@ com.gamezone
 ├── persistence  # File-based read/write for each module (stores ids,
 │                #   not objects, for warranties and returns)
 ├── service      # Business rules
-├── ui           # Console-based user interface (ConsoleUI)
+├── ui           # Console-based user interface: ConsoleUI (main menu),
+│                #   one class per submenu (ProductMenu, PersonMenu,
+│                #   SaleMenu, AccessoryMenu, PromotionMenu, ReturnMenu,
+│                #   WarrantyMenu), ConsoleInput, and ErrorHandler
+├── util         # Cross-cutting helpers (CurrencyFormatter)
 └── Main.java    # Application entry point
 ```
 
@@ -53,7 +62,8 @@ Additional folders:
   - `products.txt`, `sales.txt`, `returns.csv`, `warranties.csv` —
     created automatically when the first item of each kind is
     registered.
-- `docs/` — analysis documents, UML diagrams (Mermaid), and each team
+- `docs/` — analysis documents, UML diagrams (Mermaid), the GRASP audit
+  and correction documents, the non-regression scripts, and each team
   member's AI usage log.
 
 ## How to build
@@ -174,9 +184,9 @@ All of them extend the abstract class `GameZoneException`, which extends
   `SalePersistence` turn every `IOException` into a
   `PersistenceException` that names the file and the operation, keeping
   the original exception as its cause.
-- **User interface:** every menu operation runs through one handler in
-  `ConsoleUI` that catches each exception type separately. The user never
-  sees a technical message or a stack trace.
+- **User interface:** every menu operation runs through one handler,
+  `ErrorHandler`, that catches each exception type separately. The user
+  never sees a technical message or a stack trace.
 
 ## Business rules
 
@@ -263,6 +273,45 @@ All of them extend the abstract class `GameZoneException`, which extends
   costs), the total refunded by the returns registered in that month,
   and the net balance (sales minus returns).
 
+## GRASP audit and correction (Requirement 7)
+
+**Audit (Phase 1).** Each member audited the code they developed against
+the nine GRASP patterns (`docs/grasp-audit/`), and the Technical Leader
+consolidated the three reports into one team audit
+(`consolidated-audit.md`): nine violations (V-01 to V-09), six of them in
+the boundary between two members, and three functional defects left out
+of scope (O-01 to O-03). The answers to the guiding questions are in
+`docs/grasp-analysis.md`.
+
+**Correction (Phase 2).** Every violation was corrected by the owner of
+each part of the code:
+
+| ID | Pattern | Design change |
+|---|---|---|
+| V-01 | Information Expert | `Product` and `Accessory` manage their own stock (`hasEnoughStock`, `decreaseStock`, `increaseStock`); services and validators call them. |
+| V-02 | Information Expert | `Sale.calculatePaidRatio()` calculates the paid fraction used by the refunds of `Return`. |
+| V-03 | Polymorphism, Protected Variations | Each product and accessory reports its category (`getCategory()`); `CategoryDiscount` holds the only list of supported categories. |
+| V-04 | Polymorphism | New abstract class `ConsoleCompatibleAccessory` with the console compatibility of `Controller` and `Memory`. |
+| V-05 | Polymorphism | `Product.isWarrantyEligible()` (true for `Console`) replaces every `instanceof Console`. |
+| V-06, V-07 | Polymorphism, Protected Variations | Every repository registers one file format per type instead of using chains of type conditionals; the data files keep the same format. |
+| V-08 | High Cohesion | `ConsoleUI` keeps only the main menu; each submenu has its own class, with `ConsoleInput` for the input and `ErrorHandler` for the errors. |
+| V-09 | Pure Fabrication | New class `CurrencyFormatter` (`com.gamezone.util`) replaces four copies of the money format. |
+
+The menu, the messages, and the data files did not change. The
+non-regression verification runs every menu operation, the error cases,
+and the data file cases before and after the corrections and compares
+the results file by file. From the project root:
+
+```powershell
+powershell -ExecutionPolicy Bypass -File docs/regression/run-regression.ps1 -Label reference -Source 44d8f9e
+powershell -ExecutionPolicy Bypass -File docs/regression/run-regression.ps1 -Label final
+powershell -ExecutionPolicy Bypass -File docs/regression/compare-regression.ps1 -Reference reference -Candidate final
+```
+
+The strategy, every change, and the results are recorded in
+`docs/grasp-refactor-log.md`, and the classes before and after the
+corrections are in `docs/grasp-class-diagram.md`.
+
 ## Team
 
 See [TEAM.md](TEAM.md) for roles, module distribution, and committed
@@ -298,4 +347,14 @@ See the [docs/](docs) folder for:
 - `exception-class-diagram.md` — the class diagram of the exception
   hierarchy, the validators, and how the services and the console use
   them, written in Mermaid.
+- `grasp-audit/` — the GRASP audit report of each member and the
+  consolidated audit of the team (Requirement 7).
+- `grasp-analysis.md` — the answers to the guiding questions of
+  Requirement 7.
+- `grasp-class-diagram.md` — the classes involved in the GRASP
+  violations before and after the corrections, written in Mermaid.
+- `grasp-refactor-log.md` — the non-regression strategy, every change of
+  the correction phase, and the results of the verification.
+- `regression/` — the input scenarios and the PowerShell scripts of the
+  non-regression verification.
 - `ai-usage/` — each team member's AI usage log.
