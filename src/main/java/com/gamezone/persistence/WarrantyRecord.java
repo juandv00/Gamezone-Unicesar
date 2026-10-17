@@ -5,8 +5,8 @@ import java.time.LocalDate;
 /**
  * Holds the identifier-only data of a stored warranty, exactly as it is
  * read from the file, so that the repository does not need to resolve
- * sales or products. The service is responsible for turning a record
- * into a Warranty.
+ * sales or products. The service resolves the sale and the product of a
+ * record and asks the repository to create the warranty of its type.
  *
  * @param type      the discriminator, BASIC or EXTENDED
  * @param id        the warranty id

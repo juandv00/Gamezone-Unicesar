@@ -2,6 +2,7 @@ package com.gamezone.service;
 
 import com.gamezone.model.Accessory;
 import com.gamezone.model.Cable;
+import com.gamezone.model.ConsoleCompatibleAccessory;
 import com.gamezone.model.Controller;
 import com.gamezone.model.Memory;
 import com.gamezone.persistence.AccessoryRepository;
@@ -117,9 +118,9 @@ public class AccessoryService {
 
     /**
      * Returns the accessories that are compatible with the given console. Only
-     * accessories that expose console compatibility (Controller and Memory) are
-     * considered; Cable accessories never match, since cables do not register
-     * console compatibility.
+     * the accessories with console compatibility ({@link ConsoleCompatibleAccessory},
+     * such as controllers and memories) are considered; cables never match,
+     * since they do not register console compatibility.
      *
      * @param consoleId the id of the console to check compatibility for
      * @return the list of accessories compatible with that console
@@ -127,11 +128,8 @@ public class AccessoryService {
     public List<Accessory> findAccessoriesCompatibleWith(String consoleId) {
         List<Accessory> result = new ArrayList<>();
         for (Accessory accessory : accessories) {
-            if (accessory instanceof Controller controller
-                    && controller.isCompatibleWith(consoleId)) {
-                result.add(accessory);
-            } else if (accessory instanceof Memory memory
-                    && memory.isCompatibleWith(consoleId)) {
+            if (accessory instanceof ConsoleCompatibleAccessory compatible
+                    && compatible.isCompatibleWith(consoleId)) {
                 result.add(accessory);
             }
         }
@@ -181,7 +179,7 @@ public class AccessoryService {
      */
     public boolean hasEnoughStock(String accessoryId, int amount) {
         Accessory accessory = findById(accessoryId);
-        return accessory != null && accessory.getStock() >= amount;
+        return accessory != null && accessory.hasEnoughStock(amount);
     }
 
     /**
@@ -195,18 +193,19 @@ public class AccessoryService {
      */
     public boolean reduceStock(String accessoryId, int amount) throws IOException {
         Accessory accessory = findById(accessoryId);
-        if (accessory == null || accessory.getStock() < amount) {
+        if (accessory == null || !accessory.hasEnoughStock(amount)) {
             return false;
         }
-        accessory.setStock(accessory.getStock() - amount);
+        accessory.decreaseStock(amount);
         accessoryRepository.saveAll(accessories);
         return true;
     }
 
     /**
      * Registers a console as compatible with the given accessory and persists
-     * the change. Only accessories that support console compatibility
-     * (Controller and Memory) can be updated; Cable accessories are rejected.
+     * the change. Only the accessories with console compatibility
+     * ({@link ConsoleCompatibleAccessory}, such as controllers and memories)
+     * can be updated; cables are rejected.
      *
      * @param accessoryId the id of the controller or memory to update
      * @param consoleId the id of the console to register as compatible
@@ -215,13 +214,10 @@ public class AccessoryService {
      */
     public boolean addCompatibleConsole(String accessoryId, String consoleId) throws IOException {
         Accessory accessory = findById(accessoryId);
-        if (accessory instanceof Controller controller) {
-            controller.addCompatibleConsole(consoleId);
-        } else if (accessory instanceof Memory memory) {
-            memory.addCompatibleConsole(consoleId);
-        } else {
+        if (!(accessory instanceof ConsoleCompatibleAccessory compatible)) {
             return false;
         }
+        compatible.addCompatibleConsole(consoleId);
         accessoryRepository.saveAll(accessories);
         return true;
     }
@@ -242,7 +238,7 @@ public class AccessoryService {
         if (accessory == null || quantity <= 0) {
             return false;
         }
-        accessory.setStock(accessory.getStock() + quantity);
+        accessory.increaseStock(quantity);
         accessoryRepository.saveAll(accessories);
         return true;
     }

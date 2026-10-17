@@ -1,7 +1,6 @@
 package com.gamezone.service;
 
 import com.gamezone.model.Accessory;
-import com.gamezone.model.Console;
 import com.gamezone.model.Product;
 import com.gamezone.model.Return;
 import com.gamezone.model.Sale;
@@ -195,7 +194,7 @@ public class ReturnService {
         double warrantyRefund = 0.0;
         if (warrantyService != null) {
             for (Product product : returnedProducts) {
-                if (product instanceof Console) {
+                if (product.isWarrantyEligible()) {
                     warrantyRefund += warrantyService.cancelWarranties(product.getId(), sale.getId());
                 }
             }

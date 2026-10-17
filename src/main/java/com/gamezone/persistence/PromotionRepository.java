@@ -12,17 +12,86 @@ import java.io.FileWriter;
 import java.io.IOException;
 import java.time.LocalDate;
 import java.util.ArrayList;
+import java.util.HashMap;
 import java.util.List;
+import java.util.Map;
+import java.util.function.Function;
 
 /**
  * Handles saving and loading Promotion data (percentage, category, and bulk
  * purchase discounts) to and from a file, so that this information persists
  * between application runs.
+ * <p>
+ * The format of each promotion type is registered once in the constructor:
+ * a writer for its class and a reader for its type code. Saving and loading
+ * look up the registered format instead of checking the type with a chain
+ * of conditionals, so a new promotion type only needs a new registration.
  */
 public class PromotionRepository {
 
     private static final String FILE_PATH = "data/promotions.csv";
     private static final String DELIMITER = ";";
+
+    private final Map<Class<? extends Promotion>, Function<Promotion, String>> writers = new HashMap<>();
+    private final Map<String, PromotionReader> readers = new HashMap<>();
+
+    /**
+     * Rebuilds a promotion of one type from the fields of a stored line.
+     */
+    @FunctionalInterface
+    private interface PromotionReader {
+
+        /**
+         * Creates the promotion from its common fields and the stored line.
+         *
+         * @param id        the promotion id
+         * @param name      the promotion name
+         * @param startDate the first day of validity
+         * @param endDate   the last day of validity
+         * @param parts     every field of the stored line
+         * @return the reconstructed promotion
+         */
+        Promotion read(String id, String name, LocalDate startDate, LocalDate endDate, String[] parts);
+    }
+
+    /**
+     * Creates the repository and registers the file format of each promotion
+     * type (percentage, category, and bulk purchase discounts).
+     */
+    public PromotionRepository() {
+        registerFormat(PercentageDiscount.class, "PERCENTAGE",
+                percentage -> String.valueOf(percentage.getPercentage()),
+                (id, name, startDate, endDate, parts) -> new PercentageDiscount(id, name, startDate,
+                        endDate, Double.parseDouble(parts[5])));
+        registerFormat(CategoryDiscount.class, "CATEGORY",
+                category -> category.getPercentage() + DELIMITER + category.getTargetCategory(),
+                (id, name, startDate, endDate, parts) -> new CategoryDiscount(id, name, startDate,
+                        endDate, Double.parseDouble(parts[5]), parts[6]));
+        registerFormat(BulkPurchaseDiscount.class, "BULK",
+                bulk -> bulk.getMinimumQuantity() + DELIMITER + bulk.getPercentage(),
+                (id, name, startDate, endDate, parts) -> new BulkPurchaseDiscount(id, name, startDate,
+                        endDate, Integer.parseInt(parts[5]), Double.parseDouble(parts[6])));
+    }
+
+    /**
+     * Registers how a promotion type is written to and read from the file.
+     * Every line starts with the type code followed by the common fields
+     * (id, name, start date, end date) and then the fields of the type.
+     *
+     * @param type           the class of the promotion type
+     * @param code           the type code stored at the start of the line
+     * @param specificFields builds the fields of the type, already delimited
+     * @param reader         rebuilds a promotion of the type from a line
+     * @param <T>            the promotion type
+     */
+    private <T extends Promotion> void registerFormat(Class<T> type, String code,
+                                                      Function<T, String> specificFields,
+                                                      PromotionReader reader) {
+        writers.put(type, promotion -> code + DELIMITER + promotion.getId() + DELIMITER
+                + promotion.getName() + DELIMITER + promotion.getStartDate() + DELIMITER
+                + promotion.getEndDate() + DELIMITER + specificFields.apply(type.cast(promotion)));
+        readers.put(code, reader);
+    }
 
     /**
      * Persists the given list of promotions to the file, overwriting any
@@ -70,35 +139,25 @@ public class PromotionRepository {
 
     /**
      * Converts a single promotion into its delimited text representation,
-     * choosing the fields to write based on its concrete subtype.
+     * using the format registered for its type.
      *
      * @param promotion the promotion to convert
      * @return the delimited line representing this promotion, or an empty
      * string if the subtype is not recognized
      */
     private String toLine(Promotion promotion) {
-        String common = promotion.getId() + DELIMITER + promotion.getName() + DELIMITER
-                + promotion.getStartDate() + DELIMITER + promotion.getEndDate();
-
-        if (promotion instanceof PercentageDiscount p) {
-            return "PERCENTAGE" + DELIMITER + common + DELIMITER + p.getPercentage();
-
-        } else if (promotion instanceof CategoryDiscount c) {
-            return "CATEGORY" + DELIMITER + common + DELIMITER + c.getPercentage()
-                    + DELIMITER + c.getTargetCategory();
-
-        } else if (promotion instanceof BulkPurchaseDiscount b) {
-            return "BULK" + DELIMITER + common + DELIMITER + b.getMinimumQuantity()
-                    + DELIMITER + b.getPercentage();
+        Function<Promotion, String> writer = writers.get(promotion.getClass());
+        if (writer == null) {
+            return "";
         }
-        return "";
+        return writer.apply(promotion);
     }
 
     /**
      * Reconstructs a single Promotion from its delimited text representation,
-     * using the discriminator column to determine which concrete subtype to
-     * instantiate. Malformed lines (missing fields, invalid numbers or dates)
-     * are skipped with a warning instead of stopping the whole load.
+     * using the format registered for the type code in the first column.
+     * Malformed lines (missing fields, invalid numbers or dates) are skipped
+     * with a warning instead of stopping the whole load.
      *
      * @param line the delimited line read from the file
      * @return the reconstructed Promotion, or null if the line is malformed or
@@ -116,19 +175,9 @@ public class PromotionRepository {
             LocalDate startDate = LocalDate.parse(parts[3]);
             LocalDate endDate = LocalDate.parse(parts[4]);
 
-            if (type.equals("PERCENTAGE")) {
-                double percentage = Double.parseDouble(parts[5]);
-                return new PercentageDiscount(id, name, startDate, endDate, percentage);
-
-            } else if (type.equals("CATEGORY")) {
-                double percentage = Double.parseDouble(parts[5]);
-                String targetCategory = parts[6];
-                return new CategoryDiscount(id, name, startDate, endDate, percentage, targetCategory);
-
-            } else if (type.equals("BULK")) {
-                int minimumQuantity = Integer.parseInt(parts[5]);
-                double percentage = Double.parseDouble(parts[6]);
-                return new BulkPurchaseDiscount(id, name, startDate, endDate, minimumQuantity, percentage);
+            PromotionReader reader = readers.get(type);
+            if (reader != null) {
+                return reader.read(id, name, startDate, endDate, parts);
             }
         } catch (RuntimeException e) {
             System.out.println("Se omitió una línea inválida de promoción: " + line);
