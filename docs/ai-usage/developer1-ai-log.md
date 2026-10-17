@@ -159,3 +159,35 @@ and warranties, plus adjustment A1.
 - **Decision:** I applied the rule to my own findings (V-03 and V-05) and wrote the answer with those examples; it matches how the consolidation registered them.
 - **Related commit:** `docs: answer guiding question 3 in grasp analysis`
 
+
+### Phase 2 — Correction
+
+#### Stock operations and paid ratio (V-01, V-02)
+- **Date:** 2026-10-17
+- **Tool:** Claude (Anthropic)
+- **Phase and branch:** Requirement 7, Phase 2 – `feature/grasp-refactor`
+- **Objective:** Move the stock logic into `Product` and `Accessory` (V-01) and make `Return` use the paid ratio calculated by `Sale` (V-02), without changing any result.
+- **Query:** Asked Claude to review my stock code and propose the methods that `Product` and `Accessory` should offer, and how `Return` should use `Sale.calculatePaidRatio()` keeping the same refund for every item.
+- **Response:** `hasEnoughStock(int)`, `decreaseStock(int)`, and `increaseStock(int)` in both classes, used by `ProductService` and `ProductValidator`; in `Return`, `paidFactor` is removed and `refundFor` asks the sale for the ratio, which is the same calculation (1 when the subtotal is 0).
+- **Decision:** I kept `setStock` for `updateStock`, as the consolidated audit says, because it replaces the stock with a typed value. I compared `calculatePaidRatio()` with the old `paidFactor` line by line before removing it, compiled after each commit, and ran the regression scenarios to check that the refunds of the return receipts were the same.
+- **Related commit:** `refactor: move stock operations into Product and Accessory (V-01)`, `refactor: use the paid ratio of Sale in Return refunds (V-02)`
+
+#### Categories, console compatibility, and warranty eligibility (V-03, V-04, V-05)
+- **Date:** 2026-10-17
+- **Tool:** Claude (Anthropic)
+- **Phase and branch:** Requirement 7, Phase 2 – `feature/grasp-refactor`
+- **Objective:** Replace the type checks of my hierarchies with polymorphic operations that Developer 2 and the Technical Leader will use.
+- **Query:** Asked how to implement `getCategory()`, the abstract class `ConsoleCompatibleAccessory`, and `isWarrantyEligible()` so that the discount of `CategoryDiscount` keeps exactly the same value.
+- **Response:** `getCategory()` abstract in `Product` and implemented in `VideoGame`, `Console`, and `Accessory`; `calculateDiscount` sums the products and then the accessories whose category matches, in the same order as before; `ConsoleCompatibleAccessory` holds the list and the three methods that were duplicated in `Controller` and `Memory`; `isWarrantyEligible()` is false in `Product` and true in `Console`.
+- **Decision:** I checked that the order of the sums in `calculateDiscount` is the same as before, so the double values do not change, and that the scenario with the 25 % accessories promotion gives the same discount. I left the list of supported categories in one place (`CategoryDiscount.isSupportedCategory`) for Developer 2 to use.
+- **Related commit:** `refactor: let each product and accessory report its category (V-03)`, `refactor: add ConsoleCompatibleAccessory for controllers and memories (V-04)`, `refactor: let products report whether they receive a warranty (V-05)`
+
+#### Product file format and money format (V-06, V-09)
+- **Date:** 2026-10-17
+- **Tool:** Claude (Anthropic)
+- **Phase and branch:** Requirement 7, Phase 2 – `feature/grasp-refactor`
+- **Objective:** Remove the type conditionals of `ProductPersistence` without changing the file, and use `CurrencyFormatter` in `Return` and `Warranty`.
+- **Query:** Asked how to register a writer per class and a reader per type code in `ProductPersistence` keeping the model free of file logic, and how to check that the file stays byte-identical.
+- **Response:** A map from class to writer and a map from type code to reader, filled in the constructor; `toLine` and `fromLine` look them up. The regression scenarios compare the data files byte by byte.
+- **Decision:** I kept the validations and the order of `fromLine` (the price and the stock are read before the type), so a corrupted line still produces the same `PersistenceException`. I ran the regression scripts on my branch and the comparison reported no differences in the output or in `products.txt`.
+- **Related commit:** `refactor: register a file format per product type in ProductPersistence (V-06)`, `refactor: format amounts with CurrencyFormatter in Return and Warranty (V-09)`, `docs: log developer 1 corrections in grasp refactor log`
