@@ -98,7 +98,7 @@ public class ProductService {
     public boolean reduceStock(String productId, int amount) {
         Product product = getProductById(productId);
         ProductValidator.validateStockAvailability(product, amount);
-        product.setStock(product.getStock() - amount);
+        product.decreaseStock(amount);
         productPersistence.save(products);
         return true;
     }
@@ -112,7 +112,7 @@ public class ProductService {
      */
     public boolean hasEnoughStock(String productId, int amount) {
         Product product = findById(productId);
-        return product != null && product.getStock() >= amount;
+        return product != null && product.hasEnoughStock(amount);
     }
 
     /**

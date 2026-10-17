@@ -75,6 +75,37 @@ public abstract class Accessory {
     }
 
     /**
+     * Indicates whether this accessory has at least the given number of units
+     * in stock.
+     *
+     * @param amount the number of units requested
+     * @return true if the stock covers the requested amount
+     */
+    public boolean hasEnoughStock(int amount) {
+        return stock >= amount;
+    }
+
+    /**
+     * Removes the given number of units from the stock of this accessory. The
+     * caller is responsible for checking first that there is enough stock.
+     *
+     * @param amount the number of units to remove
+     */
+    public void decreaseStock(int amount) {
+        stock -= amount;
+    }
+
+    /**
+     * Adds the given number of units to the stock of this accessory, for
+     * example when a sold unit is returned.
+     *
+     * @param amount the number of units to add
+     */
+    public void increaseStock(int amount) {
+        stock += amount;
+    }
+
+    /**
      * Returns the type name of this accessory (e.g. "Controller", "Cable", "Memory"),
      * used for filtering and reporting operations.
      *

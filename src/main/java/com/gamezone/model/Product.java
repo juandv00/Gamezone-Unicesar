@@ -69,6 +69,37 @@ public abstract class Product {
     }
 
     /**
+     * Indicates whether this product has at least the given number of units
+     * in stock.
+     *
+     * @param amount the number of units requested
+     * @return true if the stock covers the requested amount
+     */
+    public boolean hasEnoughStock(int amount) {
+        return stock >= amount;
+    }
+
+    /**
+     * Removes the given number of units from the stock of this product. The
+     * caller is responsible for checking first that there is enough stock.
+     *
+     * @param amount the number of units to remove
+     */
+    public void decreaseStock(int amount) {
+        stock -= amount;
+    }
+
+    /**
+     * Adds the given number of units to the stock of this product, for
+     * example when a sold unit is returned.
+     *
+     * @param amount the number of units to add
+     */
+    public void increaseStock(int amount) {
+        stock += amount;
+    }
+
+    /**
      * Returns a full description of the product, combining common
      * attributes with the particular characteristics of each subclass.
      *
