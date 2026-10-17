@@ -59,10 +59,9 @@ public class WarrantyService {
             if (sale == null || product == null) {
                 continue;
             }
-            if (record.type().equals("BASIC")) {
-                resolved.add(new BasicWarranty(record.id(), product, sale, record.startDate()));
-            } else {
-                resolved.add(new ExtendedWarranty(record.id(), product, sale, record.startDate()));
+            Warranty warranty = warrantyRepository.toWarranty(record, product, sale);
+            if (warranty != null) {
+                resolved.add(warranty);
             }
         }
         return resolved;
