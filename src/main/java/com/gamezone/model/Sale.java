@@ -239,6 +239,22 @@ public class Sale {
     }
 
     /**
+     * Calculates the fraction of the subtotal that the client actually paid
+     * after the promotion discount, for example 0.9 when a 10% discount was
+     * applied. Returns 1 when the subtotal is zero, so a sale without items
+     * never causes a division by zero.
+     *
+     * @return the paid ratio of the sale, between 0 and 1
+     */
+    public double calculatePaidRatio() {
+        double subtotal = calculateTotal();
+        if (subtotal <= 0) {
+            return 1.0;
+        }
+        return 1.0 - discountAmount / subtotal;
+    }
+
+    /**
      * Indicates whether a promotion discount was applied to this sale.
      *
      * @return true if a promotion with a positive discount was applied
