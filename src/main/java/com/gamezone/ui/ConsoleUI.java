@@ -8,6 +8,7 @@ import com.gamezone.model.Accessory;
 import com.gamezone.model.Cable;
 import com.gamezone.model.Client;
 import com.gamezone.model.Console;
+import com.gamezone.model.ConsoleCompatibleAccessory;
 import com.gamezone.model.Controller;
 import com.gamezone.model.Memory;
 import com.gamezone.model.Product;
@@ -844,7 +845,7 @@ public class ConsoleUI {
             System.out.println("No se encontró un accesorio con ese identificador.");
             return;
         }
-        if (!(accessory instanceof Controller) && !(accessory instanceof Memory)) {
+        if (!(accessory instanceof ConsoleCompatibleAccessory)) {
             System.out.println("Solo los controles y las memorias admiten compatibilidad con consolas.");
             return;
         }
