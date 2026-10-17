@@ -488,3 +488,38 @@ for Requirement 4 before approving them.
 - **Response:** A private `executeOperation(Runnable)` with one `catch` per custom exception, a clause for the `IllegalArgumentException`/`IllegalStateException` of the modules outside the scope, and a final `catch (RuntimeException e)`; every submenu option runs through it. `Main` creates the objects in `createConsoleUI()` and catches `PersistenceException` at startup. The checked `IOException` of `AccessoryService` is converted into a `PersistenceException`. The model constructors throw `InvalidDataException` for negative prices or stock.
 - **Decision:** Accepted. The catch blocks repeated in each operation were reduced to one handler. The lookups of `registerSale`, `registerReturn`, and the warranty query now use the new `get...ById` methods. All the console text, receipts, certificates, and messages of the other modules were translated to Spanish; the accessory type filter accepts Spanish names and the extended warranty question accepts "s". Verified: the same input run on `develop` and on the branch produced identical data files and the same values for the 33 operations of the menu, and each type of error showed its own message.
 - **Related commit:** `refactor: handle custom exceptions by type in ConsoleUI`, `refactor: show a clear message when stored data cannot be loaded in Main`, `refactor: throw InvalidDataException for invalid product and accessory data`, `feat: show console menu messages in Spanish`, `feat: show receipts, certificates and descriptions in Spanish`, `feat: show messages of the other modules in Spanish`, `docs: describe the exception and validation layers in README`
+
+
+## Requirement 7 — GRASP Audit and Correction
+
+### Phase 1 — Audit
+
+#### Audit of my code against the nine GRASP patterns
+- **Date:** 2026-10-16
+- **Tool:** Claude (Anthropic)
+- **Phase and branch:** Requirement 7, Phase 1 – `feature/grasp-audit`
+- **Objective:** Audit `Sale`, `SalePersistence`, `SaleService`, `ConsoleUI`, `Main`, and `ProductService.restoreStock` against the nine GRASP patterns, with evidence from commit `9dc5282`.
+- **Query:** Went through my classes with Claude pattern by pattern, asking for each pattern where it applies in my code, which fragments could break it, and what concrete consequence each one would have.
+- **Response:** Five findings: stock written from `restoreStock` (Information Expert), `instanceof Console` in `SaleService` and `ConsoleUI` (Polymorphism), `instanceof Controller`/`Memory` in `ConsoleUI` (Polymorphism), `ConsoleUI` with 1,479 lines and every module's menu (High Cohesion), and the money format copied in `Sale` and `ConsoleUI` (Pure Fabrication).
+- **Decision:** I opened every cited fragment in the IDE on commit `9dc5282` to confirm it, and counted the lines and methods of `ConsoleUI` for V-04. I classified `SalePersistence` creating `ProductPersistence` and `PersonPersistence` as correct (Creator: it uses them closely), and its dependencies on other persistence classes as correct for Low Coupling (same layer, no cycles).
+- **Related commit:** `docs: add scope to leader audit`, `docs: add information expert and creator findings to leader audit`, `docs: add controller, coupling and cohesion verdicts to leader audit`, `docs: add polymorphism findings to leader audit`, `docs: add pure fabrication, indirection and protected variations to leader audit`
+
+#### Consolidation of the three reports
+- **Date:** 2026-10-16
+- **Tool:** Claude (Anthropic)
+- **Phase and branch:** Requirement 7, Phase 1 – `feature/grasp-audit`
+- **Objective:** Verify coverage, validate evidence, unify boundary findings, assign final IDs and responsible members, and record the out-of-scope defects.
+- **Query:** Used Claude to cross-check the three reports against the list of classes of the system and to discuss options for merging the findings that involve more than one member.
+- **Response:** All 42 classes covered once (with the methods added by other members listed explicitly). Sixteen findings of the three reports became nine violations: six are boundary findings, split by ownership. Three functional defects were moved out of scope: duplicated product ids, different case rules for product and accessory ids in returns, and accessory file errors that are not handled (one of them was verified by running the application with a corrupted line).
+- **Decision:** I defined the rule for boundary findings (the owner of the class that must offer the new operation corrects first) and assigned each part by ownership using `TEAM.md` and the commit history. I ran the application with a corrupted `accessories.csv` to confirm O-03 before recording it. I chose `com.gamezone.util` for the new `CurrencyFormatter`, because it is used by the model and the interface, like the cross-cutting `exceptions` package.
+- **Related commit:** `docs: add coverage and team verdicts to consolidated audit`, `docs: consolidate GRASP audit findings from the three reports`, `docs: add boundary and out-of-scope findings to consolidated audit`
+
+#### Guiding questions 1, 2, and 5
+- **Date:** 2026-10-16
+- **Tool:** Claude (Anthropic)
+- **Phase and branch:** Requirement 7, Phase 1 – `feature/grasp-audit`
+- **Objective:** Write the team's answers to guiding questions 1, 2, and 5.
+- **Query:** Asked for feedback on the criteria we agreed for each verdict and on the order of corrections, to avoid conflicts in the shared branch.
+- **Response:** Criteria based on concrete consequences and exact evidence; V-05 as the boundary example; an order where the owner of each new operation goes first, one member at a time in the branch.
+- **Decision:** I chose V-05 as the boundary example because it involves the three members, and wrote the answers after the team's discussion of the questions.
+- **Related commit:** `docs: answer guiding questions 1, 2 and 5 in grasp analysis`
