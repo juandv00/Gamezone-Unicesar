@@ -58,8 +58,13 @@ $temporaryCopy = $null
 if ($Source -ne "") {
     # Temporary copy of the requested version, outside the project folder.
     $temporaryCopy = Join-Path ([System.IO.Path]::GetTempPath()) ("gamezone-regression-" + [guid]::NewGuid())
-    & git -C $projectRoot worktree add --detach $temporaryCopy $Source 2>&1 | Out-Null
-    if ($LASTEXITCODE -ne 0) {
+    # Git writes progress messages to the error stream; in Windows PowerShell
+    # they must not stop the script, so errors are not treated as fatal here.
+    $ErrorActionPreference = "Continue"
+    & git -C $projectRoot worktree add --detach $temporaryCopy $Source *> $null
+    $created = ($LASTEXITCODE -eq 0)
+    $ErrorActionPreference = "Stop"
+    if (-not $created) {
         throw "The Git reference '$Source' was not found."
     }
     $codeRoot = $temporaryCopy
@@ -69,11 +74,13 @@ if ($Source -ne "") {
 }
 $sources = Get-ChildItem -Recurse -Filter "*.java" (Join-Path (Join-Path $codeRoot "src") "main") |
         ForEach-Object { $_.FullName }
+$ErrorActionPreference = "Continue"
 & $javac -encoding UTF-8 -d $classesDir $sources
 $compiled = ($LASTEXITCODE -eq 0)
 if ($temporaryCopy) {
-    & git -C $projectRoot worktree remove --force $temporaryCopy 2>&1 | Out-Null
+    & git -C $projectRoot worktree remove --force $temporaryCopy *> $null
 }
+$ErrorActionPreference = "Stop"
 if (-not $compiled) {
     throw "The project does not compile."
 }
