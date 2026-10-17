@@ -6,7 +6,6 @@ import com.gamezone.exceptions.PersistenceException;
 import com.gamezone.exceptions.ResourceNotFoundException;
 import com.gamezone.model.Accessory;
 import com.gamezone.model.Client;
-import com.gamezone.model.Console;
 import com.gamezone.model.ExtendedWarranty;
 import com.gamezone.model.Product;
 import com.gamezone.model.Promotion;
@@ -259,7 +258,7 @@ public class SaleService {
             throw new IllegalStateException("This SaleService was created without warranty support.");
         }
         for (String productId : extendedIds) {
-            if (!containsConsole(saleProducts, productId)) {
+            if (!containsWarrantyEligibleProduct(saleProducts, productId)) {
                 throw new BusinessRuleException("La garantía extendida solo se puede asignar a las consolas"
                         + " de la venta, y " + productId + " no es una de ellas.");
             }
@@ -476,7 +475,7 @@ public class SaleService {
         }
         double warrantyCost = 0.0;
         for (Product product : sale.getProducts()) {
-            if (!(product instanceof Console)) {
+            if (!product.isWarrantyEligible()) {
                 continue;
             }
             if (containsId(extendedIds, product.getId())) {
@@ -489,9 +488,17 @@ public class SaleService {
         sale.setWarrantyCost(warrantyCost);
     }
 
-    private boolean containsConsole(List<Product> products, String productId) {
+    /**
+     * Indicates whether the given products include one with the given id that
+     * receives a warranty. Each product answers whether it receives one.
+     *
+     * @param products  the products of the sale
+     * @param productId the id to look for
+     * @return true if a product with that id receives a warranty
+     */
+    private boolean containsWarrantyEligibleProduct(List<Product> products, String productId) {
         for (Product product : products) {
-            if (product instanceof Console && product.getId().equalsIgnoreCase(productId)) {
+            if (product.isWarrantyEligible() && product.getId().equalsIgnoreCase(productId)) {
                 return true;
             }
         }

@@ -139,3 +139,55 @@ Technical Leader.
 | `AccessoryRepository` | Writer per class and reader per type code (memories, controllers, and cables); the compatible consoles are written and read once for every `ConsoleCompatibleAccessory`; the file format does not change | V-07 | Polymorphism, Protected Variations | `refactor: register a file format per accessory type in AccessoryRepository (V-07)` / PR of Developer 2 | Developer 2 |
 | `PromotionRepository` | Writer per class and reader per type code (percentage, category, and bulk purchase); the file format does not change | V-07 | Polymorphism, Protected Variations | `refactor: register a file format per promotion type in PromotionRepository (V-07)` / PR of Developer 2 | Developer 2 |
 | `WarrantyRepository`, `WarrantyRecord`, `WarrantyService` | Each warranty type is registered once in the repository with its code and its constructor; the repository writes the code of the class and creates the warranty of a record (`toWarranty`), so `WarrantyService.resolveWarranties` no longer chooses the class by its code | V-07 | Polymorphism, Protected Variations | `refactor: register the warranty types in WarrantyRepository (V-07)` / PR of Developer 2 | Developer 2 |
+| `ProductService` | `restoreStock` calls `product.increaseStock(quantity)` | V-01 | Information Expert | `refactor: restore product stock through Product (V-01)` / PR of Technical Leader | Technical Leader |
+| `SaleService`, `ConsoleUI` | `assignWarranties`, `containsConsole` (renamed `containsWarrantyEligibleProduct`), and `askExtendedWarranties` ask `product.isWarrantyEligible()` instead of `instanceof Console` | V-05 | Polymorphism | `refactor: ask products for warranty eligibility in SaleService and ConsoleUI (V-05)` / PR of Technical Leader | Technical Leader |
+| `ConsoleUI` | `addCompatibleConsole` asks only for `ConsoleCompatibleAccessory` instead of `Controller` and `Memory` | V-04 | Polymorphism | `refactor: check console compatibility through ConsoleCompatibleAccessory in ConsoleUI (V-04)` / PR of Technical Leader | Technical Leader |
+| `ConsoleInput`, `ErrorHandler` (new, `ui`) | `ConsoleInput` reads and converts the user input (`readLine`, `readOption`, `readPrice`, `readStock`, `readPercentage`, `readDate`); `ErrorHandler.executeOperation` shows the message of each category of error. Both moved from `ConsoleUI` without changes in their messages | V-08 | High Cohesion, Pure Fabrication | `refactor: extract ConsoleInput and ErrorHandler from ConsoleUI (V-08)` / PR of Technical Leader | Technical Leader |
+| `ProductMenu`, `PersonMenu`, `SaleMenu`, `AccessoryMenu`, `PromotionMenu`, `ReturnMenu`, `WarrantyMenu` (new, `ui`) | Each submenu and its operations moved from `ConsoleUI` to its own class with a `show()` method; every message stays the same | V-08 | High Cohesion | `refactor: move each submenu of ConsoleUI to its own class (V-08)` / PR of Technical Leader | Technical Leader |
+| `ConsoleUI` | Keeps only the main menu and delegates each option to its submenu (from 1,479 to 173 lines) | V-08 | High Cohesion | `refactor: keep only the main menu in ConsoleUI (V-08)` / PR of Technical Leader | Technical Leader |
+
+## Pattern trade-offs
+
+- **V-04, `instanceof ConsoleCompatibleAccessory`.** `AccessoryService`
+  and `ConsoleUI` still check a type, but the type is now the abstraction
+  of every accessory with console compatibility, not two concrete
+  classes: a new accessory with compatibility only has to extend it. The
+  alternative, declaring the compatibility methods in `Accessory`, would
+  give cables operations that they cannot support, which goes against
+  High Cohesion. We kept the check on the abstraction.
+- **V-06 and V-07, formats registered in the repositories.** The file
+  format of each type could be a polymorphic method of the model classes,
+  but the model must not know about files (layer rule of the project), so
+  the polymorphism is applied inside the persistence layer (Pure
+  Fabrication): one registered writer and reader per type. Adding a type
+  means one new registration in the repository, without editing any
+  conditional.
+- **V-09, new dependency on `com.gamezone.util`.** `Sale`, `Return`, and
+  `Warranty` now depend on `CurrencyFormatter`. It is a dependency on a
+  stable helper without state, in a cross-cutting package (like
+  `exceptions`), so Low Coupling is not affected in practice, and it
+  removes four copies of the same method.
+- No correction moved a violation to the out-of-scope findings: the nine
+  violations were corrected without changing the external behavior.
+
+## Final non-regression result
+
+Commit: last correction of `feature/grasp-refactor`
+(`refactor: keep only the main menu in ConsoleUI (V-08)`), with
+the corrections of the three members — 2026-10-17 — result: **no
+differences**. The seven scenarios were run on the final version and
+compared with a new reference run of `develop` before the corrections
+(`44d8f9e`) made on the same day: `compare-regression.ps1 -Reference
+reference -Candidate final` reported the same screen output and the same
+content in every data file of every scenario (the 33 menu operations, the
+error cases, and the five data file scenarios). The project compiles
+with `mvn clean compile`.
+
+Verifications made in each Pull Request, on the operations affected by
+its corrections:
+
+| Pull Request | Violations corrected | Scenarios compared | Result |
+|---|---|---|---|
+| Developer 1 (with the preparation of the Technical Leader) | V-01, V-02, V-03, V-04, V-05, V-06, V-09 | All seven (products, accessories, promotions, sales, returns, warranties, and every data file) | No differences |
+| Developer 2 | V-01, V-03, V-04, V-05, V-07 | All seven (accessories, promotions, returns, warranties, and the reload and corrupted data scenarios) | No differences |
+| Technical Leader | V-01, V-04, V-05, V-08 | All seven (every operation, since the menu was divided) | No differences |
