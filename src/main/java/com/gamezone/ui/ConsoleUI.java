@@ -1,9 +1,6 @@
 package com.gamezone.ui;
 
-import com.gamezone.exceptions.BusinessRuleException;
-import com.gamezone.exceptions.InvalidDataException;
 import com.gamezone.exceptions.PersistenceException;
-import com.gamezone.exceptions.ResourceNotFoundException;
 import com.gamezone.model.Accessory;
 import com.gamezone.model.Cable;
 import com.gamezone.model.Client;
@@ -28,7 +25,6 @@ import com.gamezone.service.SaleService;
 import com.gamezone.util.CurrencyFormatter;
 import java.io.IOException;
 import java.time.LocalDate;
-import java.time.format.DateTimeParseException;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.Locale;
@@ -38,9 +34,9 @@ import java.util.Scanner;
  * Provides the console-based user interface for GameZone Unicesar,
  * allowing the user to manage products, people, accessories, sales,
  * promotions, returns, and warranties through a text menu that delegates
- * all operations to the corresponding services. Every operation of the
- * submenus runs through {@link #executeOperation(Runnable)}, which catches
- * the custom exceptions by type and shows a different message to the user
+ * all operations to the corresponding services. The user input is read
+ * through {@link ConsoleInput}, and every operation of the submenus runs
+ * through {@link ErrorHandler}, which shows a different message to the user
  * for each category of error, so the user never sees a technical message
  * or a stack trace.
  */
@@ -53,7 +49,8 @@ public class ConsoleUI {
     private final PromotionService promotionService;
     private final ReturnService returnService;
     private final WarrantyService warrantyService;
-    private final Scanner scanner;
+    private final ConsoleInput input;
+    private final ErrorHandler errorHandler;
 
     /**
      * Creates a new ConsoleUI using the given services to perform all
@@ -150,7 +147,8 @@ public class ConsoleUI {
         this.promotionService = promotionService;
         this.returnService = returnService;
         this.warrantyService = warrantyService;
-        this.scanner = new Scanner(System.in);
+        this.input = new ConsoleInput(new Scanner(System.in));
+        this.errorHandler = new ErrorHandler();
     }
 
     /**
@@ -161,7 +159,7 @@ public class ConsoleUI {
         boolean exit = false;
         while (!exit) {
             showMainMenu();
-            int option = readOption();
+            int option = input.readOption();
             switch (option) {
                 case 1 -> productMenu();
                 case 2 -> personMenu();
@@ -175,7 +173,7 @@ public class ConsoleUI {
             }
         }
         System.out.println("¡Gracias por usar GameZone Unicesar!");
-        scanner.close();
+        input.close();
     }
 
     /**
@@ -194,50 +192,6 @@ public class ConsoleUI {
         System.out.print("Seleccione una opción: ");
     }
 
-    /**
-     * Reads an integer option from the user, returning -1 if the input
-     * is not a valid number.
-     *
-     * @return the option selected by the user
-     */
-    private int readOption() {
-        try {
-            return Integer.parseInt(scanner.nextLine().trim());
-        } catch (NumberFormatException e) {
-            return -1;
-        }
-    }
-
-    /**
-     * Runs one operation of a submenu and handles its errors. The custom
-     * exceptions are caught by their specific type, from the most specific
-     * categories to the most general, and each category shows a different
-     * message: a resource that was not found, a business rule that was
-     * violated, invalid input data, or a problem accessing the data files
-     * (whose technical details are never shown). The modules that still use
-     * the standard Java exceptions are handled as business rule errors, and
-     * any unexpected error shows a general message instead of a stack trace.
-     *
-     * @param operation the operation to run
-     */
-    private void executeOperation(Runnable operation) {
-        try {
-            operation.run();
-        } catch (ResourceNotFoundException e) {
-            System.out.println("No se encontró el recurso solicitado: " + e.getMessage());
-        } catch (BusinessRuleException e) {
-            System.out.println("No se puede completar la operación: " + e.getMessage());
-        } catch (InvalidDataException e) {
-            System.out.println("Los datos ingresados no son válidos: " + e.getMessage());
-        } catch (PersistenceException e) {
-            System.out.println("Ocurrió un problema al acceder a los datos del sistema. Contacte al administrador.");
-        } catch (IllegalArgumentException | IllegalStateException e) {
-            System.out.println("No se puede completar la operación: " + e.getMessage());
-        } catch (RuntimeException e) {
-            System.out.println("Ocurrió un error inesperado. Contacte al administrador.");
-        }
-    }
-
     // ===================== PRODUCT MENU =====================
 
     /**
@@ -253,11 +207,11 @@ public class ConsoleUI {
             System.out.println("3. Listar todos los productos");
             System.out.println("0. Volver al menú principal");
             System.out.print("Seleccione una opción: ");
-            int option = readOption();
+            int option = input.readOption();
             switch (option) {
-                case 1 -> executeOperation(this::registerVideoGame);
-                case 2 -> executeOperation(this::registerConsole);
-                case 3 -> executeOperation(this::listProducts);
+                case 1 -> errorHandler.executeOperation(this::registerVideoGame);
+                case 2 -> errorHandler.executeOperation(this::registerConsole);
+                case 3 -> errorHandler.executeOperation(this::listProducts);
                 case 0 -> back = true;
                 default -> System.out.println("Opción inválida. Intente de nuevo.");
             }
@@ -273,11 +227,11 @@ public class ConsoleUI {
             return;
         }
         System.out.print("Plataforma: ");
-        String platform = scanner.nextLine().trim();
+        String platform = input.readLine().trim();
         System.out.print("Género: ");
-        String genre = scanner.nextLine().trim();
+        String genre = input.readLine().trim();
         System.out.print("Clasificación por edad: ");
-        String ageRating = scanner.nextLine().trim();
+        String ageRating = input.readLine().trim();
 
         VideoGame videoGame = new VideoGame(data.id(), data.title(), data.price(), data.stock(),
                 platform, genre, ageRating);
@@ -294,11 +248,11 @@ public class ConsoleUI {
             return;
         }
         System.out.print("Marca: ");
-        String brand = scanner.nextLine().trim();
+        String brand = input.readLine().trim();
         System.out.print("Modelo: ");
-        String model = scanner.nextLine().trim();
+        String model = input.readLine().trim();
         System.out.print("Generación: ");
-        String generation = scanner.nextLine().trim();
+        String generation = input.readLine().trim();
 
         Console console = new Console(data.id(), data.title(), data.price(), data.stock(),
                 brand, model, generation);
@@ -314,11 +268,11 @@ public class ConsoleUI {
      */
     private CommonProductData readCommonProductData() {
         System.out.print("Identificador del producto: ");
-        String id = scanner.nextLine().trim();
+        String id = input.readLine().trim();
         System.out.print("Título: ");
-        String title = scanner.nextLine().trim();
-        Double price = readPrice();
-        Integer stock = readStock();
+        String title = input.readLine().trim();
+        Double price = input.readPrice();
+        Integer stock = input.readStock();
         if (price == null || stock == null) {
             return null;
         }
@@ -362,11 +316,11 @@ public class ConsoleUI {
             System.out.println("3. Listar todos los vendedores");
             System.out.println("0. Volver al menú principal");
             System.out.print("Seleccione una opción: ");
-            int option = readOption();
+            int option = input.readOption();
             switch (option) {
-                case 1 -> executeOperation(this::registerClient);
-                case 2 -> executeOperation(this::listClients);
-                case 3 -> executeOperation(this::listSellers);
+                case 1 -> errorHandler.executeOperation(this::registerClient);
+                case 2 -> errorHandler.executeOperation(this::listClients);
+                case 3 -> errorHandler.executeOperation(this::listSellers);
                 case 0 -> back = true;
                 default -> System.out.println("Opción inválida. Intente de nuevo.");
             }
@@ -378,13 +332,13 @@ public class ConsoleUI {
      */
     private void registerClient() {
         System.out.print("Identificación del cliente: ");
-        String id = scanner.nextLine().trim();
+        String id = input.readLine().trim();
         System.out.print("Nombre: ");
-        String name = scanner.nextLine().trim();
+        String name = input.readLine().trim();
         System.out.print("Teléfono: ");
-        String phone = scanner.nextLine().trim();
+        String phone = input.readLine().trim();
         System.out.print("Correo electrónico: ");
-        String email = scanner.nextLine().trim();
+        String email = input.readLine().trim();
 
         personService.registerClient(id, name, phone, email);
         System.out.println("Cliente registrado correctamente.");
@@ -437,13 +391,13 @@ public class ConsoleUI {
             System.out.println("5. Ver el recibo de una venta");
             System.out.println("0. Volver al menú principal");
             System.out.print("Seleccione una opción: ");
-            int option = readOption();
+            int option = input.readOption();
             switch (option) {
-                case 1 -> executeOperation(this::registerSale);
-                case 2 -> executeOperation(this::listAllSales);
-                case 3 -> executeOperation(this::listSalesByClient);
-                case 4 -> executeOperation(this::listSalesBySeller);
-                case 5 -> executeOperation(this::viewSaleReceipt);
+                case 1 -> errorHandler.executeOperation(this::registerSale);
+                case 2 -> errorHandler.executeOperation(this::listAllSales);
+                case 3 -> errorHandler.executeOperation(this::listSalesByClient);
+                case 4 -> errorHandler.executeOperation(this::listSalesBySeller);
+                case 5 -> errorHandler.executeOperation(this::viewSaleReceipt);
                 case 0 -> back = true;
                 default -> System.out.println("Opción inválida. Intente de nuevo.");
             }
@@ -460,17 +414,17 @@ public class ConsoleUI {
      */
     private void registerSale() {
         System.out.print("Identificación del cliente: ");
-        Client client = personService.getClientById(scanner.nextLine().trim());
+        Client client = personService.getClientById(input.readLine().trim());
 
         System.out.print("Identificación del vendedor: ");
-        Seller seller = personService.getSellerById(scanner.nextLine().trim());
+        Seller seller = personService.getSellerById(input.readLine().trim());
 
         List<String> itemIds = new ArrayList<>();
         List<Product> products = new ArrayList<>();
         boolean addingItems = true;
         while (addingItems) {
             System.out.print("Identificador del producto o accesorio a agregar (o 0 para terminar): ");
-            String itemId = scanner.nextLine().trim();
+            String itemId = input.readLine().trim();
             if (itemId.equals("0")) {
                 addingItems = false;
                 continue;
@@ -517,8 +471,9 @@ public class ConsoleUI {
             }
             askedIds.add(product.getId());
             System.out.print("¿Agregar garantía extendida (12 meses, +"
-                    + CurrencyFormatter.format(product.getPrice() * 0.10) + " por unidad) a " + product.getTitle() + "? (s/n): ");
-            String answer = scanner.nextLine().trim();
+                    + CurrencyFormatter.format(product.getPrice() * 0.10) + " por unidad) a "
+                    + product.getTitle() + "? (s/n): ");
+            String answer = input.readLine().trim();
             if (answer.equalsIgnoreCase("s") || answer.equalsIgnoreCase("si")
                     || answer.equalsIgnoreCase("sí")) {
                 extendedIds.add(product.getId());
@@ -564,7 +519,7 @@ public class ConsoleUI {
             System.out.println((i + 1) + ". " + sales.get(i));
         }
         System.out.print("Número de la venta a consultar: ");
-        int number = readOption();
+        int number = input.readOption();
         if (number < 1 || number > sales.size()) {
             System.out.println("Número de venta inválido.");
             return;
@@ -577,7 +532,7 @@ public class ConsoleUI {
      */
     private void listSalesByClient() {
         System.out.print("Identificación del cliente: ");
-        String clientId = scanner.nextLine().trim();
+        String clientId = input.readLine().trim();
         List<Sale> sales = saleService.findByClient(clientId);
         printSales(sales);
     }
@@ -587,7 +542,7 @@ public class ConsoleUI {
      */
     private void listSalesBySeller() {
         System.out.print("Identificación del vendedor: ");
-        String sellerId = scanner.nextLine().trim();
+        String sellerId = input.readLine().trim();
         List<Sale> sales = saleService.findBySeller(sellerId);
         printSales(sales);
     }
@@ -644,16 +599,16 @@ public class ConsoleUI {
             System.out.println("8. Actualizar el stock de un accesorio");
             System.out.println("0. Volver al menú principal");
             System.out.print("Seleccione una opción: ");
-            int option = readOption();
+            int option = input.readOption();
             switch (option) {
-                case 1 -> executeOperation(this::registerController);
-                case 2 -> executeOperation(this::registerCable);
-                case 3 -> executeOperation(this::registerMemory);
-                case 4 -> executeOperation(this::listAccessories);
-                case 5 -> executeOperation(this::listAccessoriesByType);
-                case 6 -> executeOperation(this::listAccessoriesCompatibleWithConsole);
-                case 7 -> executeOperation(this::addCompatibleConsole);
-                case 8 -> executeOperation(this::updateAccessoryStock);
+                case 1 -> errorHandler.executeOperation(this::registerController);
+                case 2 -> errorHandler.executeOperation(this::registerCable);
+                case 3 -> errorHandler.executeOperation(this::registerMemory);
+                case 4 -> errorHandler.executeOperation(this::listAccessories);
+                case 5 -> errorHandler.executeOperation(this::listAccessoriesByType);
+                case 6 -> errorHandler.executeOperation(this::listAccessoriesCompatibleWithConsole);
+                case 7 -> errorHandler.executeOperation(this::addCompatibleConsole);
+                case 8 -> errorHandler.executeOperation(this::updateAccessoryStock);
                 case 0 -> back = true;
                 default -> System.out.println("Opción inválida. Intente de nuevo.");
             }
@@ -670,7 +625,7 @@ public class ConsoleUI {
             return;
         }
         System.out.print("Tipo de conexión (1 = inalámbrico, 2 = cableado): ");
-        Controller.ConnectionType connectionType = switch (readOption()) {
+        Controller.ConnectionType connectionType = switch (input.readOption()) {
             case 1 -> Controller.ConnectionType.WIRELESS;
             case 2 -> Controller.ConnectionType.WIRED;
             default -> null;
@@ -701,13 +656,13 @@ public class ConsoleUI {
         System.out.print("Longitud en metros: ");
         double length;
         try {
-            length = Double.parseDouble(scanner.nextLine().trim());
+            length = Double.parseDouble(input.readLine().trim());
         } catch (NumberFormatException e) {
             System.out.println("Longitud inválida.");
             return;
         }
         System.out.print("Tipo de conector (p. ej. HDMI, USB): ");
-        String connectorType = scanner.nextLine().trim();
+        String connectorType = input.readLine().trim();
 
         try {
             accessoryService.registerCable(data.id(), data.title(), data.price(), data.stock(),
@@ -730,13 +685,13 @@ public class ConsoleUI {
         System.out.print("Capacidad en GB: ");
         int capacity;
         try {
-            capacity = Integer.parseInt(scanner.nextLine().trim());
+            capacity = Integer.parseInt(input.readLine().trim());
         } catch (NumberFormatException e) {
             System.out.println("Capacidad inválida.");
             return;
         }
         System.out.print("Tipo de memoria (1 = SD, 2 = MICRO_SD, 3 = INTERNAL_CARD): ");
-        Memory.MemoryType memoryType = switch (readOption()) {
+        Memory.MemoryType memoryType = switch (input.readOption()) {
             case 1 -> Memory.MemoryType.SD;
             case 2 -> Memory.MemoryType.MICRO_SD;
             case 3 -> Memory.MemoryType.INTERNAL_CARD;
@@ -765,7 +720,7 @@ public class ConsoleUI {
      */
     private CommonAccessoryData readCommonAccessoryData() {
         System.out.print("Identificador del accesorio: ");
-        String id = scanner.nextLine().trim();
+        String id = input.readLine().trim();
         if (id.isEmpty()) {
             System.out.println("El identificador del accesorio no puede estar vacío.");
             return null;
@@ -775,9 +730,9 @@ public class ConsoleUI {
             return null;
         }
         System.out.print("Título: ");
-        String title = scanner.nextLine().trim();
-        Double price = readPrice();
-        Integer stock = readStock();
+        String title = input.readLine().trim();
+        Double price = input.readPrice();
+        Integer stock = input.readStock();
         if (price == null || stock == null) {
             return null;
         }
@@ -801,7 +756,7 @@ public class ConsoleUI {
         boolean adding = true;
         while (adding) {
             System.out.print("Identificador de la consola compatible (o 0 para terminar): ");
-            String consoleId = scanner.nextLine().trim();
+            String consoleId = input.readLine().trim();
             if (consoleId.equals("0")) {
                 adding = false;
                 continue;
@@ -839,7 +794,7 @@ public class ConsoleUI {
      */
     private void addCompatibleConsole() {
         System.out.print("Identificador del accesorio: ");
-        String accessoryId = scanner.nextLine().trim();
+        String accessoryId = input.readLine().trim();
         Accessory accessory = accessoryService.findById(accessoryId);
         if (accessory == null) {
             System.out.println("No se encontró un accesorio con ese identificador.");
@@ -850,7 +805,7 @@ public class ConsoleUI {
             return;
         }
         System.out.print("Identificador de la consola: ");
-        String consoleId = scanner.nextLine().trim();
+        String consoleId = input.readLine().trim();
         registerCompatibility(accessoryId, consoleId);
     }
 
@@ -866,7 +821,7 @@ public class ConsoleUI {
      */
     private void listAccessoriesByType() {
         System.out.print("Tipo (Control, Cable o Memoria): ");
-        String type = toAccessoryType(scanner.nextLine().trim());
+        String type = toAccessoryType(input.readLine().trim());
         printAccessories(accessoryService.listAccessoriesByType(type),
                 "No se encontraron accesorios de ese tipo.");
     }
@@ -877,7 +832,7 @@ public class ConsoleUI {
      */
     private void listAccessoriesCompatibleWithConsole() {
         System.out.print("Identificador de la consola: ");
-        String consoleId = scanner.nextLine().trim();
+        String consoleId = input.readLine().trim();
         printAccessories(accessoryService.findAccessoriesCompatibleWith(consoleId),
                 "No hay accesorios registrados como compatibles con esa consola.");
     }
@@ -887,12 +842,12 @@ public class ConsoleUI {
      */
     private void updateAccessoryStock() {
         System.out.print("Identificador del accesorio: ");
-        String accessoryId = scanner.nextLine().trim();
+        String accessoryId = input.readLine().trim();
         if (accessoryService.findById(accessoryId) == null) {
             System.out.println("No se encontró un accesorio con ese identificador.");
             return;
         }
-        Integer stock = readStock();
+        Integer stock = input.readStock();
         if (stock == null) {
             return;
         }
@@ -911,7 +866,7 @@ public class ConsoleUI {
     /**
      * Converts an error of the accessory file, which AccessoryService reports
      * as a checked IOException, into a PersistenceException, so it is handled
-     * like any other persistence error by {@link #executeOperation(Runnable)}.
+     * like any other persistence error by {@link ErrorHandler#executeOperation(Runnable)}
      *
      * @param cause the original error
      * @return the exception to throw
@@ -991,14 +946,14 @@ public class ConsoleUI {
             System.out.println("4. Listar las garantías próximas a vencer");
             System.out.println("0. Volver al menú principal");
             System.out.print("Seleccione una opción: ");
-            int option = readOption();
+            int option = input.readOption();
             switch (option) {
-                case 1 -> executeOperation(this::viewWarrantyOfProduct);
-                case 2 -> executeOperation(() -> printWarranties(warrantyService.listAllWarranties(),
+                case 1 -> errorHandler.executeOperation(this::viewWarrantyOfProduct);
+                case 2 -> errorHandler.executeOperation(() -> printWarranties(warrantyService.listAllWarranties(),
                         "Aún no hay garantías registradas."));
-                case 3 -> executeOperation(() -> printWarranties(warrantyService.listActiveWarranties(),
+                case 3 -> errorHandler.executeOperation(() -> printWarranties(warrantyService.listActiveWarranties(),
                         "No hay garantías vigentes hoy."));
-                case 4 -> executeOperation(this::listWarrantiesExpiringSoon);
+                case 4 -> errorHandler.executeOperation(this::listWarrantiesExpiringSoon);
                 case 0 -> back = true;
                 default -> System.out.println("Opción inválida. Intente de nuevo.");
             }
@@ -1011,9 +966,9 @@ public class ConsoleUI {
      */
     private void viewWarrantyOfProduct() {
         System.out.print("Identificador de la venta (p. ej. SALE-1): ");
-        Sale sale = saleService.getSaleById(scanner.nextLine().trim());
+        Sale sale = saleService.getSaleById(input.readLine().trim());
         System.out.print("Identificador del producto: ");
-        String productId = scanner.nextLine().trim();
+        String productId = input.readLine().trim();
         Product product = null;
         for (Product candidate : sale.getProducts()) {
             if (candidate.getId().equalsIgnoreCase(productId)) {
@@ -1043,7 +998,7 @@ public class ConsoleUI {
      */
     private void listWarrantiesExpiringSoon() {
         System.out.print("Días hacia adelante (p. ej. 30): ");
-        int daysAhead = readOption();
+        int daysAhead = input.readOption();
         if (daysAhead < 0) {
             System.out.println("El número de días debe ser cero o mayor.");
             return;
@@ -1098,14 +1053,14 @@ public class ConsoleUI {
             System.out.println("5. Ver el balance mensual");
             System.out.println("0. Volver al menú principal");
             System.out.print("Seleccione una opción: ");
-            int option = readOption();
+            int option = input.readOption();
             switch (option) {
-                case 1 -> executeOperation(this::registerReturn);
-                case 2 -> executeOperation(() -> printReturns(returnService.viewAllReturns(),
+                case 1 -> errorHandler.executeOperation(this::registerReturn);
+                case 2 -> errorHandler.executeOperation(() -> printReturns(returnService.viewAllReturns(),
                         "Aún no hay devoluciones registradas."));
-                case 3 -> executeOperation(this::listReturnsByClient);
-                case 4 -> executeOperation(this::listReturnsBySale);
-                case 5 -> executeOperation(this::showMonthlyBalance);
+                case 3 -> errorHandler.executeOperation(this::listReturnsByClient);
+                case 4 -> errorHandler.executeOperation(this::listReturnsBySale);
+                case 5 -> errorHandler.executeOperation(this::showMonthlyBalance);
                 case 0 -> back = true;
                 default -> System.out.println("Opción inválida. Intente de nuevo.");
             }
@@ -1121,7 +1076,7 @@ public class ConsoleUI {
      */
     private void registerReturn() {
         System.out.print("Identificador de la venta (p. ej. SALE-1): ");
-        String saleId = scanner.nextLine().trim();
+        String saleId = input.readLine().trim();
         Sale sale = saleService.getSaleById(saleId);
         if (!sale.canBeReturned()) {
             System.out.println("Esta venta ya no admite devoluciones: pasaron más de 30 días desde el "
@@ -1143,7 +1098,7 @@ public class ConsoleUI {
         boolean addingItems = true;
         while (addingItems) {
             System.out.print("Identificador del ítem a devolver (o 0 para terminar): ");
-            String itemId = scanner.nextLine().trim();
+            String itemId = input.readLine().trim();
             if (itemId.equals("0")) {
                 addingItems = false;
             } else if (!itemId.isEmpty()) {
@@ -1156,7 +1111,7 @@ public class ConsoleUI {
         }
 
         System.out.print("Motivo de la devolución: ");
-        String reason = scanner.nextLine().trim();
+        String reason = input.readLine().trim();
 
         Return registeredReturn = returnService.registerReturn(sale.getId(), itemIds, reason);
         System.out.println("Devolución registrada correctamente.");
@@ -1168,7 +1123,7 @@ public class ConsoleUI {
      */
     private void listReturnsByClient() {
         System.out.print("Identificación del cliente: ");
-        String clientId = scanner.nextLine().trim();
+        String clientId = input.readLine().trim();
         printReturns(returnService.viewReturnsByCustomer(clientId),
                 "No se encontraron devoluciones para ese cliente.");
     }
@@ -1178,7 +1133,7 @@ public class ConsoleUI {
      */
     private void listReturnsBySale() {
         System.out.print("Identificador de la venta: ");
-        String saleId = scanner.nextLine().trim();
+        String saleId = input.readLine().trim();
         printReturns(returnService.viewReturnsBySale(saleId), "No se encontraron devoluciones para esa venta.");
     }
 
@@ -1188,9 +1143,9 @@ public class ConsoleUI {
      */
     private void showMonthlyBalance() {
         System.out.print("Mes (1-12): ");
-        int month = readOption();
+        int month = input.readOption();
         System.out.print("Año (p. ej. 2026): ");
-        int year = readOption();
+        int year = input.readOption();
         if (year <= 0) {
             System.out.println("Año inválido.");
             return;
@@ -1250,14 +1205,14 @@ public class ConsoleUI {
             System.out.println("5. Listar las promociones vigentes (hoy)");
             System.out.println("0. Volver al menú principal");
             System.out.print("Seleccione una opción: ");
-            int option = readOption();
+            int option = input.readOption();
             switch (option) {
-                case 1 -> executeOperation(this::registerPercentagePromotion);
-                case 2 -> executeOperation(this::registerCategoryPromotion);
-                case 3 -> executeOperation(this::registerBulkPurchasePromotion);
-                case 4 -> executeOperation(() -> printPromotions(promotionService.listAllPromotions(),
+                case 1 -> errorHandler.executeOperation(this::registerPercentagePromotion);
+                case 2 -> errorHandler.executeOperation(this::registerCategoryPromotion);
+                case 3 -> errorHandler.executeOperation(this::registerBulkPurchasePromotion);
+                case 4 -> errorHandler.executeOperation(() -> printPromotions(promotionService.listAllPromotions(),
                         "Aún no hay promociones registradas."));
-                case 5 -> executeOperation(() -> printPromotions(promotionService.listActivePromotions(),
+                case 5 -> errorHandler.executeOperation(() -> printPromotions(promotionService.listActivePromotions(),
                         "No hay promociones vigentes hoy."));
                 case 0 -> back = true;
                 default -> System.out.println("Opción inválida. Intente de nuevo.");
@@ -1274,7 +1229,7 @@ public class ConsoleUI {
         if (data == null) {
             return;
         }
-        Double percentage = readPercentage();
+        Double percentage = input.readPercentage();
         if (percentage == null) {
             return;
         }
@@ -1292,12 +1247,12 @@ public class ConsoleUI {
         if (data == null) {
             return;
         }
-        Double percentage = readPercentage();
+        Double percentage = input.readPercentage();
         if (percentage == null) {
             return;
         }
         System.out.print("Categoría objetivo (1 = videojuegos, 2 = consolas, 3 = accesorios): ");
-        String targetCategory = switch (readOption()) {
+        String targetCategory = switch (input.readOption()) {
             case 1 -> "VIDEOGAME";
             case 2 -> "CONSOLE";
             case 3 -> "ACCESSORY";
@@ -1322,12 +1277,12 @@ public class ConsoleUI {
             return;
         }
         System.out.print("Cantidad mínima de productos: ");
-        int minimumQuantity = readOption();
+        int minimumQuantity = input.readOption();
         if (minimumQuantity <= 0) {
             System.out.println("La cantidad mínima de productos debe ser mayor que cero.");
             return;
         }
-        Double percentage = readPercentage();
+        Double percentage = input.readPercentage();
         if (percentage == null) {
             return;
         }
@@ -1345,7 +1300,7 @@ public class ConsoleUI {
      */
     private CommonPromotionData readCommonPromotionData() {
         System.out.print("Identificador de la promoción: ");
-        String id = scanner.nextLine().trim();
+        String id = input.readLine().trim();
         if (id.isEmpty()) {
             System.out.println("El identificador de la promoción no puede estar vacío.");
             return null;
@@ -1355,12 +1310,12 @@ public class ConsoleUI {
             return null;
         }
         System.out.print("Nombre: ");
-        String name = scanner.nextLine().trim();
-        LocalDate startDate = readDate("Fecha de inicio (AAAA-MM-DD): ");
+        String name = input.readLine().trim();
+        LocalDate startDate = input.readDate("Fecha de inicio (AAAA-MM-DD): ");
         if (startDate == null) {
             return null;
         }
-        LocalDate endDate = readDate("Fecha de fin (AAAA-MM-DD): ");
+        LocalDate endDate = input.readDate("Fecha de fin (AAAA-MM-DD): ");
         if (endDate == null) {
             return null;
         }
@@ -1395,78 +1350,6 @@ public class ConsoleUI {
         for (Promotion promotion : promotions) {
             String status = promotion.isActive(today) ? "[VIGENTE] " : "[NO VIGENTE] ";
             System.out.println(status + promotion);
-        }
-    }
-
-    // ===================== INPUT HELPERS =====================
-
-    /**
-     * Reads a price from the user, returning null if the input is not a
-     * valid non-negative number.
-     *
-     * @return the price entered, or null if invalid
-     */
-    private Double readPrice() {
-        System.out.print("Precio: ");
-        try {
-            return Double.parseDouble(scanner.nextLine().trim());
-        } catch (NumberFormatException e) {
-            System.out.println("Precio inválido.");
-            return null;
-        }
-    }
-
-    /**
-     * Reads a stock quantity from the user, returning null if the input is
-     * not a valid integer.
-     *
-     * @return the stock entered, or null if invalid
-     */
-    private Integer readStock() {
-        System.out.print("Stock: ");
-        try {
-            return Integer.parseInt(scanner.nextLine().trim());
-        } catch (NumberFormatException e) {
-            System.out.println("Stock inválido.");
-            return null;
-        }
-    }
-
-    /**
-     * Reads a discount percentage from the user, returning null if the input
-     * is not a number between 0 and 100.
-     *
-     * @return the percentage entered, or null if invalid
-     */
-    private Double readPercentage() {
-        System.out.print("Porcentaje de descuento (0-100): ");
-        try {
-            double percentage = Double.parseDouble(scanner.nextLine().trim());
-            if (percentage < 0 || percentage > 100) {
-                System.out.println("El porcentaje debe estar entre 0 y 100.");
-                return null;
-            }
-            return percentage;
-        } catch (NumberFormatException e) {
-            System.out.println("Porcentaje inválido.");
-            return null;
-        }
-    }
-
-    /**
-     * Reads a date in ISO format (YYYY-MM-DD) from the user, returning null
-     * if the input is not a valid date.
-     *
-     * @param prompt the text shown to the user before reading the date
-     * @return the date entered, or null if invalid
-     */
-    private LocalDate readDate(String prompt) {
-        System.out.print(prompt);
-        try {
-            return LocalDate.parse(scanner.nextLine().trim());
-        } catch (DateTimeParseException e) {
-            System.out.println("Fecha inválida. Use el formato AAAA-MM-DD.");
-            return null;
         }
     }
 }
