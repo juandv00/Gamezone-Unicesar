@@ -181,7 +181,7 @@ public class AccessoryService {
      */
     public boolean hasEnoughStock(String accessoryId, int amount) {
         Accessory accessory = findById(accessoryId);
-        return accessory != null && accessory.getStock() >= amount;
+        return accessory != null && accessory.hasEnoughStock(amount);
     }
 
     /**
@@ -195,10 +195,10 @@ public class AccessoryService {
      */
     public boolean reduceStock(String accessoryId, int amount) throws IOException {
         Accessory accessory = findById(accessoryId);
-        if (accessory == null || accessory.getStock() < amount) {
+        if (accessory == null || !accessory.hasEnoughStock(amount)) {
             return false;
         }
-        accessory.setStock(accessory.getStock() - amount);
+        accessory.decreaseStock(amount);
         accessoryRepository.saveAll(accessories);
         return true;
     }
@@ -242,7 +242,7 @@ public class AccessoryService {
         if (accessory == null || quantity <= 0) {
             return false;
         }
-        accessory.setStock(accessory.getStock() + quantity);
+        accessory.increaseStock(quantity);
         accessoryRepository.saveAll(accessories);
         return true;
     }
