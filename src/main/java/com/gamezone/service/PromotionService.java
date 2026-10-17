@@ -68,10 +68,7 @@ public class PromotionService {
      */
     public CategoryDiscount registerCategoryDiscount(String id, String name,
                                                      LocalDate startDate, LocalDate endDate, double percentage, String targetCategory) {
-        if (targetCategory == null
-                || !(targetCategory.equalsIgnoreCase("VIDEOGAME")
-                || targetCategory.equalsIgnoreCase("CONSOLE")
-                || targetCategory.equalsIgnoreCase("ACCESSORY"))) {
+        if (!CategoryDiscount.isSupportedCategory(targetCategory)) {
             throw new IllegalArgumentException(
                     "La categoría objetivo debe ser VIDEOGAME, CONSOLE o ACCESSORY.");
         }
