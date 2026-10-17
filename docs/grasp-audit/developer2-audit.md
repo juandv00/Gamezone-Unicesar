@@ -137,4 +137,52 @@ its type.
 | Proposed solution | Apply Polymorphism: `Product` answers whether it receives a warranty, and the services ask that instead of checking the class. |
 | Other member's code | Yes. `Product` and `Console` are Developer 1's classes; `SaleService` and `ConsoleUI` are the Technical Leader's. Reported to the Technical Leader. |
 
+## Pure Fabrication
 
+**Verdict: correct.**
+
+- The repositories are fabricated classes that keep file access out of
+  the domain.
+- `ReturnRecord` and `WarrantyRecord` are fabricated records that carry
+  the stored identifiers between the persistence and the service layers.
+
+## Indirection
+
+**Verdict: correct.**
+
+`ReturnRecord` and `WarrantyRecord` are intermediaries between each
+repository and its service: the repository returns identifiers, the
+service resolves them, and neither layer depends on the other's details.
+`WarrantyService` reaches the sales through `SalePersistence` (an
+intermediary that avoids the circular dependency with `SaleService`).
+
+## Protected Variations
+
+**Verdict: violation** (V-05; V-02 is registered under Polymorphism).
+
+Where it is applied correctly: the services report errors through the
+`GameZoneException` hierarchy (Requirement 6), so the user interface is
+protected from the details of each error.
+
+### V-05
+| Field | Content |
+|---|---|
+| ID | V-05 |
+| Pattern | Protected Variations |
+| Module | Promotions (Req 2, adjustment A1) |
+| Evidence | `PromotionService.registerCategoryDiscount`, lines 71-76: `if (targetCategory == null || !(targetCategory.equalsIgnoreCase("VIDEOGAME") || targetCategory.equalsIgnoreCase("CONSOLE") || targetCategory.equalsIgnoreCase("ACCESSORY")))` |
+| Explanation | The list of valid categories is written in the service, but the class that knows the categories is `CategoryDiscount`, which has its own copy of the same text values. |
+| Consequence | Adding a category requires changing both classes; if only `CategoryDiscount` changes, the service keeps rejecting the new category, and the promotion can never be registered. |
+| Proposed solution | Protect the variation in one place: `CategoryDiscount` exposes whether a category is supported, and the service asks it. |
+| Other member's code | Yes. `CategoryDiscount` is Developer 1's class. Reported to the Technical Leader. |
+
+## Problems reported to the Technical Leader
+
+1. V-01 requires stock methods in `Accessory` (Developer 1).
+2. V-03 requires a common type for the accessories with console
+   compatibility (Developer 1).
+3. V-04 requires a polymorphic operation in `Product` (Developer 1); the
+   same `instanceof Console` check exists in `SaleService` and
+   `ConsoleUI` (Technical Leader).
+4. V-05 requires `CategoryDiscount` (Developer 1) to expose its supported
+   categories.
