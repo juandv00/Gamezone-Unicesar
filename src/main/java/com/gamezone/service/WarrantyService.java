@@ -1,7 +1,6 @@
 package com.gamezone.service;
 
 import com.gamezone.model.BasicWarranty;
-import com.gamezone.model.Console;
 import com.gamezone.model.ExtendedWarranty;
 import com.gamezone.model.Product;
 import com.gamezone.model.Sale;
@@ -97,7 +96,7 @@ public class WarrantyService {
      * @throws IllegalArgumentException if the product is not a Console
      */
     public BasicWarranty assignBasicWarranty(Product product, Sale sale, LocalDate startDate) {
-        validateConsole(product);
+        validateWarrantyEligible(product);
         BasicWarranty warranty = new BasicWarranty(nextWarrantyId(), product, sale, startDate);
         warranties.add(warranty);
         warrantyRepository.saveAll(warranties);
@@ -115,7 +114,7 @@ public class WarrantyService {
      * @throws IllegalArgumentException if the product is not a Console
      */
     public ExtendedWarranty assignExtendedWarranty(Product product, Sale sale, LocalDate startDate) {
-        validateConsole(product);
+        validateWarrantyEligible(product);
         ExtendedWarranty warranty = new ExtendedWarranty(nextWarrantyId(), product, sale, startDate);
         warranties.add(warranty);
         warrantyRepository.saveAll(warranties);
@@ -123,14 +122,14 @@ public class WarrantyService {
     }
 
     /**
-     * Ensures the given product is a Console, since only consoles are
-     * eligible for warranties.
+     * Ensures the given product receives warranties. The product answers it
+     * itself; today only consoles do.
      *
      * @param product the product to validate
-     * @throws IllegalArgumentException if the product is not a Console
+     * @throws IllegalArgumentException if the product does not receive warranties
      */
-    private void validateConsole(Product product) {
-        if (!(product instanceof Console)) {
+    private void validateWarrantyEligible(Product product) {
+        if (!product.isWarrantyEligible()) {
             throw new IllegalArgumentException("Solo se pueden asignar garantías a las consolas.");
         }
     }
