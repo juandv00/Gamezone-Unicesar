@@ -56,4 +56,46 @@ Where it is applied correctly:
 - `ConsoleUI` creates `VideoGame` and `Console` objects from the data the
   user types (lines 280 and 301) and gives them to `ProductService`.
 
+## Controller
+
+**Verdict: correct.**
+
+`ConsoleUI` only reads input and shows results; every system operation is
+received by a service: for example, "register a sale" is received by
+`SaleService.registerSaleByItemIds`, which runs the unified flow
+(validation, promotion, warranties, stock, persistence). `ConsoleUI` does
+not decide any business rule.
+
+## Low Coupling
+
+**Verdict: correct.**
+
+- `SaleService` depends on the services of the modules it coordinates and
+  on `SalePersistence`; it never touches files.
+- `SalePersistence` depends on `ProductPersistence`, `PersonPersistence`,
+  and `AccessoryRepository` to resolve the references of each stored sale.
+  These are classes of its own layer; the dependencies point downwards and
+  there are no cycles.
+- `ConsoleUI` depends only on services, model classes, and exceptions,
+  never on persistence classes.
+
+## High Cohesion
+
+**Verdict: violation** (V-04).
+
+Where it is applied correctly: `Sale`, `SalePersistence`, `SaleService`,
+and `Main` each have one clear responsibility.
+
+### V-04
+| Field | Content |
+|---|---|
+| ID | V-04 |
+| Pattern | High Cohesion |
+| Module | Interface and start (Workshop 1 and every requirement) |
+| Evidence | `ConsoleUI` has 1,479 lines, 62 methods, 31 imports, and depends on seven services. It contains the main menu (`run` and `showMainMenu`, lines 158-193), seven submenus with every operation of each module (`productMenu` line 245, `personMenu` 354, `saleMenu` 427, `accessoryMenu` 627, `warrantyMenu` 978, `returnMenu` 1084, `promotionMenu` 1246), the input readers (`readOption` line 201, `readPrice` 1417, `readDate` 1471), the error handling (`executeOperation`, line 221), the accessory type names (`toAccessoryType` 929, `accessoryTypeLabel` 944), and money formatting (`formatAmount` 1235). |
+| Explanation | The class grew with every requirement and now holds unrelated responsibilities: the interaction of seven different modules, the reading and validation of input, and the presentation of errors. |
+| Consequence | Any change to one module's menu means editing a 1,479-line file that every member touches, which makes merge conflicts likely and the class hard to understand and test. A new module would make it even larger. |
+| Proposed solution | Apply High Cohesion (with Pure Fabrication): one class per submenu (`ProductMenu`, `PersonMenu`, `SaleMenu`, `AccessoryMenu`, `PromotionMenu`, `ReturnMenu`, `WarrantyMenu`), one class to read the input (`ConsoleInput`), and one class for the error handling (`ErrorHandler`). `ConsoleUI` keeps only the main menu and delegates to the submenus. |
+| Other member's code | No. |
+
 
