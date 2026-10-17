@@ -60,3 +60,36 @@ Where it is applied correctly:
 - `PromotionService` and `AccessoryService` create each promotion and
   accessory they register.
 
+## Controller
+
+**Verdict: correct.**
+
+Each service is the first object after the user interface that receives
+the operations of its module. `ReturnService.registerReturn` is the
+clearest case: it coordinates the validation of the sale, the warranty
+cancellation (`WarrantyService`), the stock restoration (`ProductService`
+and `AccessoryService`), and the persistence, without any console code.
+
+## Low Coupling
+
+**Verdict: correct.**
+
+- No persistence class depends on a service: `ReturnRepository` and
+  `WarrantyRepository` store identifiers and return records
+  (`ReturnRecord`, `WarrantyRecord`), and the services resolve them.
+- `WarrantyService` uses `SalePersistence` instead of `SaleService`, which
+  avoids the circular dependency `SaleService → WarrantyService →
+  SaleService` (adjustment A2).
+- The services that use the validators depend on them only through static
+  calls, and the validators do not depend on the services.
+
+## High Cohesion
+
+**Verdict: correct.**
+
+Each repository reads and writes one file, and each service manages one
+module. `ReturnService` also calculates the monthly balance (lines
+349-393), which combines sales and returns; this location was required by
+adjustment A6 and only adds three short methods that use the returns the
+class already manages, so the class stays focused on returns.
+
