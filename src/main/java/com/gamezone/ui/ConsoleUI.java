@@ -511,7 +511,7 @@ public class ConsoleUI {
         List<String> extendedIds = new ArrayList<>();
         List<String> askedIds = new ArrayList<>();
         for (Product product : products) {
-            if (!(product instanceof Console) || askedIds.contains(product.getId())) {
+            if (!product.isWarrantyEligible() || askedIds.contains(product.getId())) {
                 continue;
             }
             askedIds.add(product.getId());
