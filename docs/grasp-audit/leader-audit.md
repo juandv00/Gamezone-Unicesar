@@ -98,4 +98,36 @@ and `Main` each have one clear responsibility.
 | Proposed solution | Apply High Cohesion (with Pure Fabrication): one class per submenu (`ProductMenu`, `PersonMenu`, `SaleMenu`, `AccessoryMenu`, `PromotionMenu`, `ReturnMenu`, `WarrantyMenu`), one class to read the input (`ConsoleInput`), and one class for the error handling (`ErrorHandler`). `ConsoleUI` keeps only the main menu and delegates to the submenus. |
 | Other member's code | No. |
 
+## Polymorphism
+
+**Verdict: violation** (V-02, V-03).
+
+Where it is applied correctly: `SaleService.applyBestPromotion` works with
+`Promotion` through `calculateDiscount`, and `executeOperation` handles
+every error through the `GameZoneException` hierarchy.
+
+### V-02
+| Field | Content |
+|---|---|
+| ID | V-02 |
+| Pattern | Polymorphism |
+| Module | Warranties (Req 4) |
+| Evidence | `SaleService.assignWarranties`, line 479: `if (!(product instanceof Console)) { continue; }` · `SaleService.containsConsole`, line 494: `if (product instanceof Console && ...)` · `ConsoleUI.askExtendedWarranties`, line 513: `if (!(product instanceof Console) || ...)` |
+| Explanation | Whether a product receives a warranty is decided by asking its class. The rule varies by product type, so each type should answer it. |
+| Consequence | If another product type receives warranties, every `instanceof Console` must be found and changed (the same check also exists in `WarrantyService` and `ReturnService`). |
+| Proposed solution | Apply Polymorphism: `Product` answers whether it receives a warranty (`Console` answers yes), and the sale flow and the menu ask that. |
+| Other member's code | Yes. `Product` and `Console` are Developer 1's classes. Developer 2 reported the same check in his services. |
+
+### V-03
+| Field | Content |
+|---|---|
+| ID | V-03 |
+| Pattern | Polymorphism |
+| Module | Accessories (Req 1) |
+| Evidence | `ConsoleUI.addCompatibleConsole`, line 846: `if (!(accessory instanceof Controller) && !(accessory instanceof Memory))` |
+| Explanation | The menu decides whether an accessory supports console compatibility by checking two concrete classes. |
+| Consequence | A new accessory type with compatibility would be rejected by the menu until this condition is changed. |
+| Proposed solution | Apply Polymorphism: ask for the common type of the accessories with compatibility. |
+| Other member's code | Yes. The accessory hierarchy is Developer 1's, and the same check exists in `AccessoryService` (Developer 2). |
+
 
