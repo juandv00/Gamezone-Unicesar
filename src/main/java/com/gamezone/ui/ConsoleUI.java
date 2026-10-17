@@ -24,6 +24,7 @@ import com.gamezone.service.PromotionService;
 import com.gamezone.service.ReturnService;
 import com.gamezone.service.WarrantyService;
 import com.gamezone.service.SaleService;
+import com.gamezone.util.CurrencyFormatter;
 import java.io.IOException;
 import java.time.LocalDate;
 import java.time.format.DateTimeParseException;
@@ -514,8 +515,8 @@ public class ConsoleUI {
                 continue;
             }
             askedIds.add(product.getId());
-            System.out.print("¿Agregar garantía extendida (12 meses, +" + formatAmount(product.getPrice() * 0.10)
-                    + " por unidad) a " + product.getTitle() + "? (s/n): ");
+            System.out.print("¿Agregar garantía extendida (12 meses, +"
+                    + CurrencyFormatter.format(product.getPrice() * 0.10) + " por unidad) a " + product.getTitle() + "? (s/n): ");
             String answer = scanner.nextLine().trim();
             if (answer.equalsIgnoreCase("s") || answer.equalsIgnoreCase("si")
                     || answer.equalsIgnoreCase("sí")) {
@@ -1070,7 +1071,7 @@ public class ConsoleUI {
                     + " | " + warranty.getProduct().getTitle()
                     + " | venta " + warranty.getSale().getId()
                     + " | " + warranty.getStartDate() + " a " + warranty.getEndDate()
-                    + " | costo " + formatAmount(warranty.getAdditionalCost()));
+                    + " | costo " + CurrencyFormatter.format(warranty.getAdditionalCost()));
         }
     }
 
@@ -1130,11 +1131,11 @@ public class ConsoleUI {
         System.out.println("\nÍtems de la venta " + sale.getId() + ":");
         for (Product product : sale.getProducts()) {
             System.out.println("  " + product.getId() + " - " + product.getTitle()
-                    + " (" + formatAmount(product.getPrice()) + ")");
+                    + " (" + CurrencyFormatter.format(product.getPrice()) + ")");
         }
         for (Accessory accessory : sale.getAccessories()) {
             System.out.println("  " + accessory.getId() + " - " + accessory.getTitle()
-                    + " (accesorio, " + formatAmount(accessory.getPrice()) + ")");
+                    + " (accesorio, " + CurrencyFormatter.format(accessory.getPrice()) + ")");
         }
 
         List<String> itemIds = new ArrayList<>();
@@ -1197,9 +1198,9 @@ public class ConsoleUI {
         double refunds = returnService.calculateMonthlyReturns(month, year);
         double balance = returnService.generateMonthlyBalance(month, year);
         System.out.println("\n===== Balance mensual " + String.format("%02d/%d", month, year) + " =====");
-        System.out.println("Total de ventas:       " + formatAmount(sales));
-        System.out.println("Total de devoluciones: " + formatAmount(refunds));
-        System.out.println("Balance neto:          " + formatAmount(balance));
+        System.out.println("Total de ventas:       " + CurrencyFormatter.format(sales));
+        System.out.println("Total de devoluciones: " + CurrencyFormatter.format(refunds));
+        System.out.println("Balance neto:          " + CurrencyFormatter.format(balance));
     }
 
     /**
@@ -1221,19 +1222,9 @@ public class ConsoleUI {
                     + " | venta " + sale.getId()
                     + " | cliente " + sale.getClient().getName()
                     + " | " + (r.getReturnedProducts().size() + r.getReturnedAccessories().size()) + " ítem(s)"
-                    + " | reembolso " + formatAmount(r.getRefundAmount())
+                    + " | reembolso " + CurrencyFormatter.format(r.getRefundAmount())
                     + " | motivo: " + r.getReason());
         }
-    }
-
-    /**
-     * Formats an amount of money for display, e.g. $1,250,000.00.
-     *
-     * @param amount the amount to format
-     * @return the formatted amount
-     */
-    private String formatAmount(double amount) {
-        return String.format(Locale.US, "$%,.2f", amount);
     }
 
     // ===================== PROMOTION MENU =====================
