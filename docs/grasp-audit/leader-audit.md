@@ -130,4 +130,42 @@ every error through the `GameZoneException` hierarchy.
 | Proposed solution | Apply Polymorphism: ask for the common type of the accessories with compatibility. |
 | Other member's code | Yes. The accessory hierarchy is Developer 1's, and the same check exists in `AccessoryService` (Developer 2). |
 
+## Pure Fabrication
+
+**Verdict: violation** (V-05).
+
+Where it is applied correctly: `SalePersistence` keeps the sales file out
+of `Sale`, and `Main` builds the object graph so that no domain class does
+it.
+
+### V-05
+| Field | Content |
+|---|---|
+| ID | V-05 |
+| Pattern | Pure Fabrication |
+| Module | Sales (Req 2) and Interface |
+| Evidence | `Sale.formatAmount`, lines 303-305 and `ConsoleUI.formatAmount`, lines 1235-1237: `String.format(Locale.US, "$%,.2f", amount)` |
+| Explanation | Formatting money is a presentation responsibility that does not belong to a sale or to the menu, and there is no class responsible for it, so each class has its own copy. |
+| Consequence | A change in the currency format must be repeated in every copy; a missed copy shows different formats on the same screen. |
+| Proposed solution | Apply Pure Fabrication: create `CurrencyFormatter`, a class whose only responsibility is to format amounts, and use it everywhere. |
+| Other member's code | Yes. `Return` and `Warranty` (Developer 1) have the same method; Developer 1 reported it. |
+
+## Indirection
+
+**Verdict: correct.**
+
+- The services are intermediaries between `ConsoleUI` and the persistence
+  classes; the menu never reads a file.
+- `executeOperation` is the single intermediary between every operation
+  and the messages shown to the user.
+
+## Protected Variations
+
+**Verdict: correct.**
+
+- `ConsoleUI` is protected from new error types through the
+  `GameZoneException` hierarchy: a new subclass is handled by the existing
+  catch clauses.
+- `SalePersistence` writes the optional fields at the end of each line, so
+  sales stored before each requirement still load.
 
