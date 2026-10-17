@@ -63,6 +63,16 @@ public class Console extends Product {
                 ", Stock: " + getStock();
     }
 
+    /**
+     * Returns the category of consoles used by the category promotions.
+     *
+     * @return "CONSOLE"
+     */
+    @Override
+    public String getCategory() {
+        return "CONSOLE";
+    }
+
     @Override
     public String toString() {
         return "Console{" + getDescription() + "}";

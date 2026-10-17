@@ -1,6 +1,7 @@
 package com.gamezone.model;
 
 import java.time.LocalDate;
+import java.util.List;
 
 /**
  * Represents a promotion that applies a percentage discount only to the
@@ -9,6 +10,8 @@ import java.time.LocalDate;
  */
 
 public class CategoryDiscount extends Promotion {
+
+    private static final List<String> SUPPORTED_CATEGORIES = List.of("VIDEOGAME", "CONSOLE", "ACCESSORY");
 
     private double percentage;
     private String targetCategory;
@@ -47,34 +50,45 @@ public class CategoryDiscount extends Promotion {
     }
 
     /**
-     * Determines whether the given product belongs to this promotion's
-     * target category.
+     * Indicates whether the given category can be the target of a category
+     * promotion. This class is the only place that knows the supported
+     * categories, so the services ask it instead of repeating the list.
      *
-     * @param product the product to check
-     * @return true if the product matches the target category
+     * @param category the category to check (case is ignored)
+     * @return true if the category is VIDEOGAME, CONSOLE, or ACCESSORY
      */
-    private boolean matchesCategory(Product product) {
-        if ("VIDEOGAME".equalsIgnoreCase(targetCategory)) {
-            return product instanceof VideoGame;
+    public static boolean isSupportedCategory(String category) {
+        if (category == null) {
+            return false;
         }
-        if ("CONSOLE".equalsIgnoreCase(targetCategory)) {
-            return product instanceof Console;
+        for (String supported : SUPPORTED_CATEGORIES) {
+            if (supported.equalsIgnoreCase(category)) {
+                return true;
+            }
         }
         return false;
     }
 
+    /**
+     * Calculates the discount on the items of the target category. Each
+     * product and accessory reports its own category, so this method only
+     * compares it with the target category, without checking any concrete
+     * class.
+     *
+     * @param sale the sale to evaluate
+     * @return the discount amount for the items of the target category
+     */
     @Override
     public double calculateDiscount(Sale sale) {
         double categorySubtotal = 0.0;
-        if ("ACCESSORY".equalsIgnoreCase(targetCategory)) {
-            for (Accessory accessory : sale.getAccessories()) {
-                categorySubtotal += accessory.getPrice();
+        for (Product product : sale.getProducts()) {
+            if (product.getCategory().equalsIgnoreCase(targetCategory)) {
+                categorySubtotal += product.getPrice();
             }
-        } else {
-            for (Product product : sale.getProducts()) {
-                if (matchesCategory(product)) {
-                    categorySubtotal += product.getPrice();
-                }
+        }
+        for (Accessory accessory : sale.getAccessories()) {
+            if (accessory.getCategory().equalsIgnoreCase(targetCategory)) {
+                categorySubtotal += accessory.getPrice();
             }
         }
         return categorySubtotal * (percentage / 100.0);

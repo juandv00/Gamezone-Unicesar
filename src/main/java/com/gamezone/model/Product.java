@@ -107,6 +107,15 @@ public abstract class Product {
      */
     public abstract String getDescription();
 
+    /**
+     * Returns the category of this product used by the category promotions
+     * (for example "VIDEOGAME" or "CONSOLE"). Each product type answers its
+     * own category, so no other class needs to check the concrete class.
+     *
+     * @return the category code of this product
+     */
+    public abstract String getCategory();
+
     @Override
     public String toString() {
         return "Product{id='" + id + "', title='" + title +

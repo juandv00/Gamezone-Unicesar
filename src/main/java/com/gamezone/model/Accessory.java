@@ -121,6 +121,16 @@ public abstract class Accessory {
      */
     public abstract String getDescription();
 
+    /**
+     * Returns the category of accessories used by the category promotions.
+     * Every accessory type belongs to the same category.
+     *
+     * @return "ACCESSORY"
+     */
+    public String getCategory() {
+        return "ACCESSORY";
+    }
+
     @Override
     public String toString() {
         return "Accessory{id='" + id + "', title='" + title +
