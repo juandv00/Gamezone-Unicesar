@@ -85,3 +85,36 @@ Where it is applied correctly:
   (line 60). It is the single place that knows the categories (a GRASP
   correction of Requirement 7), not a conditional that chooses behavior,
   so we do not classify it as a violation.
+
+## Liskov Substitution Principle (LSP)
+
+**Verdict: correct.**
+
+I checked every hierarchy I own against the contract of its base class:
+each subclass must accept the same inputs, return values of the same
+meaning, and never throw an exception that the base class does not
+announce.
+
+- **Products:** `VideoGame` and `Console` implement `getDescription` and
+  `getCategory` without new preconditions. `Console.isWarrantyEligible`
+  (lines 82-84) returns `true`, which is a valid answer to the question of
+  the base method. `Product.equals` (lines 137-142) compares by id for
+  every subclass, so a list of products behaves the same with any type.
+- **Accessories:** `Controller`, `Cable`, and `Memory` implement
+  `getType` and `getDescription`. Only the accessories that support
+  consoles extend `ConsoleCompatibleAccessory` (line 13), so `Cable` (line
+    14) is never forced to implement compatibility operations that it could
+        not honor (for example, by throwing `UnsupportedOperationException`).
+- **Promotions:** every `calculateDiscount` returns an amount between zero
+  and the subtotal. `BulkPurchaseDiscount` returns `0.0` when the sale does
+  not reach the minimum (lines 49-54), and `CategoryDiscount` returns
+  `0.0` when no item matches; none of them throws, so
+  `PromotionService` can compare any promotion with any other.
+- **Warranties:** the constructor of `Warranty` calculates the end date
+  with `getDurationInMonths()` (line 49); `BasicWarranty` and
+  `ExtendedWarranty` return positive durations and a non-negative
+  `getAdditionalCost`, so any warranty can be used where a `Warranty` is
+  expected (`WarrantyService`, `SaleMenu`, `WarrantyMenu`).
+- **Exceptions:** each subclass of `GameZoneException` only adds the
+  meaning of its category; code that catches `GameZoneException` or
+  `RuntimeException` (`Main`, `ErrorHandler`) works with all of them.
