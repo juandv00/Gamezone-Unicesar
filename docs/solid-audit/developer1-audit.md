@@ -58,3 +58,30 @@ Where it is applied correctly:
 | Consequence | Changing only the layout of a receipt (a new line, a different separator, another label) forces a change in a model class and its recompilation, and puts the domain at risk of an unintended change. If the store wanted another output (a printed or a file receipt), the model would collect one more format for each output. The model also depends on a presentation helper (`CurrencyFormatter`) only to format text. |
 | Proposed solution | Move each text to a presentation class: `ReturnReceiptFormatter` and `WarrantyCertificateFormatter` in the `ui` package, with a static `format` method that builds exactly the same text from the getters of the object. `Return` exposes the refund of one item (`refundFor`, today private) as a public method, so the receipt can show it without repeating the calculation. Then the menus print the text of the formatters and the old methods are removed from the model. |
 | Other member's code | Yes. `SaleMenu` (lines 135, 178, 211), `ReturnMenu` (line 126), and `WarrantyMenu` (line 102), which print these texts, belong to the Technical Leader, and `Sale.generateReceipt` (Technical Leader) has the same problem. Reported to the Technical Leader. |
+
+## Open/Closed Principle (OCP)
+
+**Verdict: correct.**
+
+- **Promotions:** `Promotion.calculateDiscount(Sale)` is abstract (line
+    84) and each subclass implements its rule. `PromotionService.findBestPromotionFor`
+        (Developer 2, lines 138-153) evaluates every promotion through that
+        method, so a new type of promotion is a new subclass and the existing
+        rules do not change.
+- **Product categories and warranties:** since Requirement 7, every
+  product answers its own category (`Product.getCategory`, abstract, line
+    117) and whether it receives a warranty (`Product.isWarrantyEligible`,
+         line 126, overridden by `Console`, lines 82-84). `CategoryDiscount.calculateDiscount`
+         (lines 82-95) compares the category of each item without asking for its
+         class, so a new product type does not change the discount rule.
+- **File format of the products:** `ProductPersistence` registers the
+  format of each type once in its constructor (lines 57-67) and `save`
+  and `load` look it up. A new product type adds one registration; the
+  reading and writing algorithm is not modified.
+- **Exceptions:** a new error category is a new subclass of
+  `GameZoneException` (line 11); the existing classes are not changed.
+- The only list that grows with a new category is
+  `CategoryDiscount.SUPPORTED_CATEGORIES`, used by `isSupportedCategory`
+  (line 60). It is the single place that knows the categories (a GRASP
+  correction of Requirement 7), not a conditional that chooses behavior,
+  so we do not classify it as a violation.
