@@ -497,3 +497,13 @@ modules.
 - **Response:** `BalanceService` with the same three methods and the same check of the month, depending on `SaleLookup` and a new interface `ReturnLookup` (the three queries of the returns) implemented by `ReturnService`; the old methods stay until `ReturnMenu` uses the new class.
 - **Decision:** I kept the same loops and the same message "El mes debe estar entre 1 y 12." so the balance gives the same values, and ran the regression scenarios before my Pull Request: the comparison reported no differences, including the balance of the `main` and `reload` scenarios.
 - **Related commit:** `refactor: add the ReturnLookup role implemented by ReturnService (V-02)`, `refactor: move the monthly balance to BalanceService (V-02)`, `docs: log developer 2 corrections in solid refactor log`
+
+#### Removal of the old code (V-02, V-05)
+- **Date:** 2026-10-18
+- **Tool:** Claude (Anthropic)
+- **Phase and branch:** Requirement 8, Phase 2 – `feature/solid-refactor`
+- **Objective:** Remove the constructor of `PersonService` and the balance of `ReturnService`, which nobody uses after the corrections of the Technical Leader.
+- **Query:** Asked how to confirm that `PersonService()` and the balance methods of `ReturnService` have no callers before removing them.
+- **Response:** Search for every use in the project and compile after each removal; update the description of `ReturnService`, which still mentioned the balance.
+- **Decision:** I checked with Find Usages in NetBeans that they had no callers, removed them in two commits, and compiled after each one.
+- **Related commit:** `refactor: remove the PersonService constructor that created its own persistence (V-05)`, `refactor: remove the monthly balance methods from ReturnService (V-02)`, `docs: log developer 2 cleanup in solid refactor log`
