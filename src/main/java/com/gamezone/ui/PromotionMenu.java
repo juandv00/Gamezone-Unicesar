@@ -11,7 +11,7 @@ import java.util.List;
  * operation runs through the {@link ErrorHandler}, so its errors are shown
  * as clear messages.
  */
-public class PromotionMenu {
+public class PromotionMenu implements Menu {
 
     private final PromotionService promotionService;
     private final ConsoleInput input;
@@ -34,9 +34,20 @@ public class PromotionMenu {
     }
 
     /**
+     * Returns the title of the option of this submenu in the main menu.
+     *
+     * @return the title of the option
+     */
+    @Override
+    public String getTitle() {
+        return "Gestión de promociones";
+    }
+
+    /**
      * Displays the promotion management submenu and runs the operation chosen
      * by the user until the user goes back to the main menu.
      */
+    @Override
     public void show() {
         if (promotionService == null) {
             System.out.println("El módulo de promociones no está disponible.");

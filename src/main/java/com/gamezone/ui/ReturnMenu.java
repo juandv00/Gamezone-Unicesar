@@ -16,7 +16,7 @@ import java.util.List;
  * through the {@link ErrorHandler}, so its errors are shown as clear
  * messages.
  */
-public class ReturnMenu {
+public class ReturnMenu implements Menu {
 
     private final ReturnService returnService;
     private final SaleLookup saleLookup;
@@ -43,9 +43,20 @@ public class ReturnMenu {
     }
 
     /**
+     * Returns the title of the option of this submenu in the main menu.
+     *
+     * @return the title of the option
+     */
+    @Override
+    public String getTitle() {
+        return "Gestión de devoluciones";
+    }
+
+    /**
      * Displays the return management submenu and runs the operation chosen
      * by the user until the user goes back to the main menu.
      */
+    @Override
     public void show() {
         if (returnService == null) {
             System.out.println("El módulo de devoluciones no está disponible.");

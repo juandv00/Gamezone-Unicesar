@@ -15,7 +15,7 @@ import java.util.List;
  * operation runs through the {@link ErrorHandler}, so its errors are shown
  * as clear messages.
  */
-public class WarrantyMenu {
+public class WarrantyMenu implements Menu {
 
     private final WarrantyService warrantyService;
     private final SaleLookup saleLookup;
@@ -42,9 +42,20 @@ public class WarrantyMenu {
     }
 
     /**
+     * Returns the title of the option of this submenu in the main menu.
+     *
+     * @return the title of the option
+     */
+    @Override
+    public String getTitle() {
+        return "Gestión de garantías";
+    }
+
+    /**
      * Displays the warranty management submenu and runs the operation chosen
      * by the user until the user goes back to the main menu.
      */
+    @Override
     public void show() {
         if (warrantyService == null) {
             System.out.println("El módulo de garantías no está disponible.");

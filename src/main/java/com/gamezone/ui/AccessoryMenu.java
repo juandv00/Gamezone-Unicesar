@@ -18,7 +18,7 @@ import java.util.Locale;
  * them. Every operation runs through the {@link ErrorHandler}, so its errors
  * are shown as clear messages.
  */
-public class AccessoryMenu {
+public class AccessoryMenu implements Menu {
 
     private final AccessoryService accessoryService;
     private final ProductLookup productLookup;
@@ -45,9 +45,20 @@ public class AccessoryMenu {
     }
 
     /**
+     * Returns the title of the option of this submenu in the main menu.
+     *
+     * @return the title of the option
+     */
+    @Override
+    public String getTitle() {
+        return "Gestión de accesorios";
+    }
+
+    /**
      * Displays the accessory management submenu and runs the operation chosen
      * by the user until the user goes back to the main menu.
      */
+    @Override
     public void show() {
         if (accessoryService == null) {
             System.out.println("El módulo de accesorios no está disponible.");
