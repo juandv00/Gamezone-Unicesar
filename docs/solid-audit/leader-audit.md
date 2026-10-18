@@ -115,3 +115,25 @@ subclass through the contract of its base class:
   `SalePersistence` (lines 239 and 242) asks whether a person is a
   `Client` or a `Seller`. In each case the operation needs a specific role
   that the base class never promised.
+
+## Interface Segregation Principle (ISP)
+
+**Verdict: violation** (V-03).
+
+Where it is applied correctly:
+- `ProductMenu`, `PersonMenu`, and `PromotionMenu` use most of the
+  operations of their service, so they depend on what they use.
+- `ConsoleInput` and `ErrorHandler` are small classes; each submenu uses
+  the operations it needs from them.
+
+### V-03
+| Field | Content |
+|---|---|
+| ID | V-03 |
+| Principle | Interface Segregation Principle |
+| Module | Sales (Req 1, accessory integration) and Interface (Req 3, Req 4, Req 7) |
+| Evidence | `SaleService`, lines 41-42: `private final ProductService productService; private final AccessoryService accessoryService;` — it only uses `findById`, `getProductById`, and `reduceStock` of the products (lines 226, 271, 298) and `findById`, `hasEnoughStock`, and `reduceStock` of the accessories (lines 231, 275-276, 302) · `ReturnMenu` line 22 and `WarrantyMenu` line 21 depend on `SaleService` and only use `getSaleById` (lines 88 and 82) · `SaleMenu` lines 28-29 depend on `ProductService` and `AccessoryService` and only use `findById` (lines 116 and 123) · `AccessoryMenu` line 24 depends on `ProductService` and only uses `findById` (line 243) · `SaleService` (nine public operations, lines 128-376) offers no read-only role for the classes that only find or list sales |
+| Explanation | My classes depend on complete services of other modules when they use only the queries or only the stock operations. The menus that consult a sale also depend on the operations that register sales, and the sale service depends on the registration and listing of products and accessories. |
+| Consequence | A change in an operation that these classes never call still affects them (for example, a new parameter in `registerProduct` or in `registerSale`). They cannot be used with a simpler source of sales or products, and their dependencies do not show what each one really needs. |
+| Proposed solution | Make each class depend only on the role it uses. `SaleService` implements a new interface `SaleLookup` (`findById`, `getSaleById`, `listAll`) in the `service` package. `SaleService` uses the inventory roles of the products and the accessories; `ReturnMenu` and `WarrantyMenu` use `SaleLookup`; `SaleMenu` and `AccessoryMenu` use the read-only role of the products. The same services are passed as those roles, so the behavior does not change. |
+| Other member's code | Yes. The roles of the products and the accessories must be offered by `ProductService` (Developer 1) and `AccessoryService` (Developer 2). Developer 1 and Developer 2 reported the same problem from their side. It is a boundary finding. |
