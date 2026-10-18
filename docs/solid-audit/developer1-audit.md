@@ -143,3 +143,26 @@ Where it is applied correctly:
 | Consequence | Any change in the registration or listing operations (a new parameter, a new exception) affects the compilation of classes that never register products, and a client cannot be given a simpler implementation of "find a product" (for example, to test a return) without the whole service. It also hides which operations each module really needs. |
 | Proposed solution | Split the operations of `ProductService` into role interfaces in the `service` package: `ProductLookup` (`findById`, `getProductById`) for the clients that only find products, and `ProductInventory`, which extends `ProductLookup` and adds `reduceStock` and `restoreStock`, for the sale and return flows. `ProductService` implements both, so its behavior does not change; each client declares the role it uses. |
 | Other member's code | Yes. The clients belong to the Technical Leader (`SaleService`, `SaleMenu`, `AccessoryMenu`) and to Developer 2 (`ReturnService`, `WarrantyService`); `restoreStock` is the Technical Leader's method and `getProductById` is Developer 2's. Each one changes the type of their own fields. Reported to the Technical Leader. |
+
+## Dependency Inversion Principle (DIP)
+
+**Verdict: violation** (V-03).
+
+Where it is applied correctly:
+- The model classes, the validators, and the exceptions do not depend on
+  any class that reads or writes files or the console; they only depend on
+  other model classes, on the exceptions, and on `java.time`/`java.util`.
+- The validators are static rules without input or output; depending on
+  them directly does not tie a service to a technical detail.
+
+### V-03
+| Field | Content |
+|---|---|
+| ID | V-03 |
+| Principle | Dependency Inversion Principle |
+| Module | Products (Workshop 1) |
+| Evidence | `ProductService`, line 21: `private final ProductPersistence productPersistence;` and the constructor, lines 28-31: `this.productPersistence = new ProductPersistence(); this.products = productPersistence.load();` |
+| Explanation | `ProductService` is a high-level module: it contains the rules of the products. It creates and depends on `ProductPersistence`, a low-level class that reads and writes a text file. The rule depends on the detail, and there is no abstraction between them. In Requirement 7 this creation was classified as correct under the Creator pattern, because it is the only class that uses it closely; DIP looks at a different thing, the direction of the dependency. |
+| Consequence | The products cannot be stored in another way (another file format, a database, or a list in memory to test the rules) without modifying `ProductService`. The service cannot be created without touching the real file `data/products.txt`, and the composition of the system is hidden inside the service instead of being decided in one place. |
+| Proposed solution | Create the abstraction `ProductStorage` (`save`, `load`) in the `persistence` package, implemented by `ProductPersistence`. `ProductService` receives a `ProductStorage` in its constructor and depends only on it; the composition root (`Main`) creates the `ProductPersistence` and passes it. During the change, the current constructor is kept until `Main` passes the storage, so every commit compiles; then it is removed. |
+| Other member's code | Yes. `Main` (Technical Leader) must create the `ProductPersistence` and pass it to `ProductService`. Reported to the Technical Leader. |
