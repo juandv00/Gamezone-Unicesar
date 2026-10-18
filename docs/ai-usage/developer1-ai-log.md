@@ -237,3 +237,13 @@ and warranties, plus adjustment A1.
 - **Response:** `ReturnReceiptFormatter` and `WarrantyCertificateFormatter` with a static `format` method that uses the getters; `refundFor` becomes the public `calculateRefundFor` so the receipt asks `Return` for the refund of each item; the old methods stay until the menus use the formatters.
 - **Decision:** I compared the new texts with the old methods line by line (same order, labels, and money format), and ran the regression scenarios before my Pull Request: the comparison reported no differences, including every receipt and certificate of the `main` scenario.
 - **Related commit:** `refactor: move the return receipt text to ReturnReceiptFormatter (V-01)`, `refactor: move the warranty certificate text to WarrantyCertificateFormatter (V-01)`, `docs: log developer 1 corrections in solid refactor log`
+
+#### Removal of the old code (V-01, V-04)
+- **Date:** 2026-10-18
+- **Tool:** Claude (Anthropic)
+- **Phase and branch:** Requirement 8, Phase 2 – `feature/solid-refactor`
+- **Objective:** Remove the constructor and the methods that nobody uses after the corrections of the Technical Leader.
+- **Query:** Asked how to confirm that `ProductService()`, `Return.generateReturnReceipt`, `appendItemLine`, and `Warranty.generateWarrantyCertificate` are no longer called before removing them.
+- **Response:** Search for every use in the project (Find Usages in the IDE) and compile after each removal; also remove the imports that only those methods used.
+- **Decision:** I checked with Find Usages that each one had no callers, removed them in three commits, compiled after each one, and removed the import of `CurrencyFormatter` from `Return` and `Warranty`, which only the texts used.
+- **Related commit:** `refactor: remove the ProductService constructor that created its own persistence (V-04)`, `refactor: remove the receipt text from Return (V-01)`, `refactor: remove the certificate text from Warranty (V-01)`, `docs: log developer 1 cleanup in solid refactor log`
