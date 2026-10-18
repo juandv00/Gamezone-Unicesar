@@ -1,6 +1,5 @@
 package com.gamezone.model;
 
-import com.gamezone.util.CurrencyFormatter;
 import java.time.LocalDate;
 import java.util.ArrayList;
 import java.util.List;
@@ -184,54 +183,6 @@ public class Return {
      */
     public double calculateRefundFor(double listPrice) {
         return listPrice * originalSale.calculatePaidRatio();
-    }
-
-    /**
-     * Generates a text receipt describing this return: its id and date, the
-     * original sale it refers to, each returned product and accessory with its
-     * list price, proportional discount, and refunded amount, the reason, and
-     * the total refunded.
-     *
-     * @return the receipt of the return as multi-line text
-     */
-    public String generateReturnReceipt() {
-        StringBuilder sb = new StringBuilder();
-        sb.append("===== GameZone Unicesar - Recibo de devolución =====\n");
-        sb.append("Devolución: ").append(id).append("\n");
-        sb.append("Fecha: ").append(date).append("\n");
-        sb.append("Venta original: ").append(originalSale.getId())
-                .append(" (").append(originalSale.getDate()).append(")\n");
-        sb.append("Ítems devueltos:\n");
-        for (Product product : returnedProducts) {
-            appendItemLine(sb, product.getTitle(), product.getPrice());
-        }
-        for (Accessory accessory : returnedAccessories) {
-            appendItemLine(sb, accessory.getTitle() + " (accesorio)", accessory.getPrice());
-        }
-        if (warrantyRefund > 0) {
-            sb.append("Garantías extendidas anuladas: +").append(CurrencyFormatter.format(warrantyRefund))
-                    .append("\n");
-        }
-        sb.append("Motivo: ").append(reason).append("\n");
-        sb.append("Monto reembolsado: ").append(CurrencyFormatter.format(refundAmount)).append("\n");
-        sb.append("===================================================");
-        return sb.toString();
-    }
-
-    /**
-     * Appends one receipt line for a returned item, showing its list price,
-     * the proportional discount, and the refunded amount.
-     *
-     * @param sb        the receipt being built
-     * @param title     the title of the item
-     * @param listPrice the list price of the item
-     */
-    private void appendItemLine(StringBuilder sb, String title, double listPrice) {
-        double refund = calculateRefundFor(listPrice);
-        sb.append("  - ").append(title)
-                .append(": precio de lista ").append(CurrencyFormatter.format(listPrice))
-                .append(", descuento -").append(CurrencyFormatter.format(listPrice - refund))
-                .append(", reembolso ").append(CurrencyFormatter.format(refund)).append("\n");
     }
 
     @Override
