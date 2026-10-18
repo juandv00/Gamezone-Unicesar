@@ -18,9 +18,9 @@ import java.util.List;
  * Handles saving and loading Sale data to and from a file, so that sales
  * information persists between application runs. Since a Sale references
  * a client, a seller, a list of products and a list of accessories, this
- * class relies on ProductPersistence, PersonPersistence and
- * AccessoryRepository to resolve those references by id when
- * reconstructing a Sale from stored data.
+ * class relies on the product, person, and accessory storages it receives
+ * to resolve those references by id when reconstructing a Sale from stored
+ * data.
  *
  * <p>Each sale is stored as one line with the format
  * {@code [saleId;]date;clientId;sellerId;productIds[;accessoryIds[;promotionName;discountAmount[;warrantyCost]]]},
@@ -41,33 +41,29 @@ public class SalePersistence implements SaleStorage {
     private static final String DELIMITER = ";";
     private static final String ID_SEPARATOR = ",";
 
-    private final ProductPersistence productPersistence;
-    private final PersonPersistence personPersistence;
-    private final AccessoryRepository accessoryRepository;
+    private final ProductStorage productStorage;
+    private final PersonStorage personStorage;
+    private final AccessoryStorage accessoryStorage;
 
     /**
-     * Creates a new SalePersistence, using the given persistence classes
-     * to resolve client, seller, product and accessory references when
-     * loading sales. A default AccessoryRepository is used.
-     */
-    public SalePersistence() {
-        this(new AccessoryRepository());
-    }
-
-    /**
-     * Creates a new SalePersistence that resolves accessory references
-     * with the given repository when loading sales.
+     * Creates a new SalePersistence that resolves the client, seller, product,
+     * and accessory references of the stored sales with the given storages.
+     * It depends only on the storage abstractions; the composition root
+     * ({@code Main}) decides which implementations are used.
      *
-     * @param accessoryRepository the repository used to resolve accessories by id
-     * @throws IllegalArgumentException if accessoryRepository is null
+     * @param productStorage   the storage used to resolve products by id
+     * @param personStorage    the storage used to resolve clients and sellers by id
+     * @param accessoryStorage the storage used to resolve accessories by id
+     * @throws IllegalArgumentException if any storage is null
      */
-    public SalePersistence(AccessoryRepository accessoryRepository) {
-        if (accessoryRepository == null) {
-            throw new IllegalArgumentException("Accessory repository cannot be null.");
+    public SalePersistence(ProductStorage productStorage, PersonStorage personStorage,
+                           AccessoryStorage accessoryStorage) {
+        if (productStorage == null || personStorage == null || accessoryStorage == null) {
+            throw new IllegalArgumentException("The storages of a SalePersistence cannot be null.");
         }
-        this.productPersistence = new ProductPersistence();
-        this.personPersistence = new PersonPersistence();
-        this.accessoryRepository = accessoryRepository;
+        this.productStorage = productStorage;
+        this.personStorage = personStorage;
+        this.accessoryStorage = accessoryStorage;
     }
 
     /**
@@ -108,9 +104,9 @@ public class SalePersistence implements SaleStorage {
             return sales;
         }
 
-        List<Person> people = personPersistence.load();
-        List<Product> products = productPersistence.load();
-        List<Accessory> accessories = accessoryRepository.loadAll();
+        List<Person> people = personStorage.load();
+        List<Product> products = productStorage.load();
+        List<Accessory> accessories = accessoryStorage.loadAll();
 
         try (BufferedReader br = new BufferedReader(new FileReader(file))) {
             String line;

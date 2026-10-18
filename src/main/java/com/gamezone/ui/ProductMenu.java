@@ -11,7 +11,7 @@ import java.util.List;
  * and lists the inventory. Every operation runs through the
  * {@link ErrorHandler}, so its errors are shown as clear messages.
  */
-public class ProductMenu {
+public class ProductMenu implements Menu {
 
     private final ProductService productService;
     private final ConsoleInput input;
@@ -33,9 +33,20 @@ public class ProductMenu {
     }
 
     /**
+     * Returns the title of the option of this submenu in the main menu.
+     *
+     * @return the title of the option
+     */
+    @Override
+    public String getTitle() {
+        return "Gestión de productos";
+    }
+
+    /**
      * Displays the product management submenu and runs the operation chosen
      * by the user until the user goes back to the main menu.
      */
+    @Override
     public void show() {
         boolean back = false;
         while (!back) {

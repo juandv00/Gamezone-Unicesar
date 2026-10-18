@@ -10,7 +10,7 @@ import java.util.List;
  * clients and the sellers. Every operation runs through the
  * {@link ErrorHandler}, so its errors are shown as clear messages.
  */
-public class PersonMenu {
+public class PersonMenu implements Menu {
 
     private final PersonService personService;
     private final ConsoleInput input;
@@ -32,9 +32,20 @@ public class PersonMenu {
     }
 
     /**
+     * Returns the title of the option of this submenu in the main menu.
+     *
+     * @return the title of the option
+     */
+    @Override
+    public String getTitle() {
+        return "Gestión de personas";
+    }
+
+    /**
      * Displays the people management submenu and runs the operation chosen
      * by the user until the user goes back to the main menu.
      */
+    @Override
     public void show() {
         boolean back = false;
         while (!back) {

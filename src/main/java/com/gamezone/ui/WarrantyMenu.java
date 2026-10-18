@@ -3,7 +3,7 @@ package com.gamezone.ui;
 import com.gamezone.model.Product;
 import com.gamezone.model.Sale;
 import com.gamezone.model.Warranty;
-import com.gamezone.service.SaleService;
+import com.gamezone.service.SaleLookup;
 import com.gamezone.service.WarrantyService;
 import com.gamezone.util.CurrencyFormatter;
 import java.time.LocalDate;
@@ -15,10 +15,10 @@ import java.util.List;
  * operation runs through the {@link ErrorHandler}, so its errors are shown
  * as clear messages.
  */
-public class WarrantyMenu {
+public class WarrantyMenu implements Menu {
 
     private final WarrantyService warrantyService;
-    private final SaleService saleService;
+    private final SaleLookup saleLookup;
     private final ConsoleInput input;
     private final ErrorHandler errorHandler;
 
@@ -28,23 +28,34 @@ public class WarrantyMenu {
      *
      * @param warrantyService the service used for warranty operations, or
      *        null if the warranty module is disabled
-     * @param saleService the service used for sale operations
+     * @param saleLookup the role used to find the sales
      * @param input the reader of the user input
      * @param errorHandler the handler that runs each operation and shows its errors
      */
     public WarrantyMenu(WarrantyService warrantyService,
-                        SaleService saleService,
+                        SaleLookup saleLookup,
                         ConsoleInput input, ErrorHandler errorHandler) {
         this.warrantyService = warrantyService;
-        this.saleService = saleService;
+        this.saleLookup = saleLookup;
         this.input = input;
         this.errorHandler = errorHandler;
+    }
+
+    /**
+     * Returns the title of the option of this submenu in the main menu.
+     *
+     * @return the title of the option
+     */
+    @Override
+    public String getTitle() {
+        return "Gestión de garantías";
     }
 
     /**
      * Displays the warranty management submenu and runs the operation chosen
      * by the user until the user goes back to the main menu.
      */
+    @Override
     public void show() {
         if (warrantyService == null) {
             System.out.println("El módulo de garantías no está disponible.");
@@ -79,7 +90,7 @@ public class WarrantyMenu {
      */
     private void viewWarrantyOfProduct() {
         System.out.print("Identificador de la venta (p. ej. SALE-1): ");
-        Sale sale = saleService.getSaleById(input.readLine().trim());
+        Sale sale = saleLookup.getSaleById(input.readLine().trim());
         System.out.print("Identificador del producto: ");
         String productId = input.readLine().trim();
         Product product = null;
@@ -99,7 +110,7 @@ public class WarrantyMenu {
                     + " (solo las consolas reciben garantía).");
             return;
         }
-        System.out.println(warranty.generateWarrantyCertificate());
+        System.out.println(WarrantyCertificateFormatter.format(warranty));
         System.out.println(warranty.isActive(LocalDate.now())
                 ? "Estado: VIGENTE (cubierta hasta el " + warranty.getEndDate() + ")"
                 : "Estado: VENCIDA el " + warranty.getEndDate());

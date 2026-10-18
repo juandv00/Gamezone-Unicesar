@@ -6,9 +6,9 @@ import com.gamezone.model.Product;
 import com.gamezone.model.Sale;
 import com.gamezone.model.Seller;
 import com.gamezone.model.Warranty;
-import com.gamezone.service.AccessoryService;
+import com.gamezone.service.AccessoryInventory;
 import com.gamezone.service.PersonService;
-import com.gamezone.service.ProductService;
+import com.gamezone.service.ProductLookup;
 import com.gamezone.service.SaleService;
 import com.gamezone.service.WarrantyService;
 import com.gamezone.util.CurrencyFormatter;
@@ -21,12 +21,12 @@ import java.util.List;
  * and receipts. Every operation runs through the {@link ErrorHandler}, so
  * its errors are shown as clear messages.
  */
-public class SaleMenu {
+public class SaleMenu implements Menu {
 
     private final SaleService saleService;
     private final PersonService personService;
-    private final ProductService productService;
-    private final AccessoryService accessoryService;
+    private final ProductLookup productLookup;
+    private final AccessoryInventory accessoryInventory;
     private final WarrantyService warrantyService;
     private final ConsoleInput input;
     private final ErrorHandler errorHandler;
@@ -37,9 +37,9 @@ public class SaleMenu {
      *
      * @param saleService the service used for sale operations
      * @param personService the service used for people operations
-     * @param productService the service used for product operations
-     * @param accessoryService the service used for accessory operations,
-     *        or null if the accessory module is disabled
+     * @param productLookup the role used to find the products of a sale
+     * @param accessoryInventory the role used to find the accessories of a
+     *        sale, or null if the accessory module is disabled
      * @param warrantyService the service used for warranty operations, or
      *        null if the warranty module is disabled
      * @param input the reader of the user input
@@ -47,23 +47,34 @@ public class SaleMenu {
      */
     public SaleMenu(SaleService saleService,
                     PersonService personService,
-                    ProductService productService,
-                    AccessoryService accessoryService,
+                    ProductLookup productLookup,
+                    AccessoryInventory accessoryInventory,
                     WarrantyService warrantyService,
                     ConsoleInput input, ErrorHandler errorHandler) {
         this.saleService = saleService;
         this.personService = personService;
-        this.productService = productService;
-        this.accessoryService = accessoryService;
+        this.productLookup = productLookup;
+        this.accessoryInventory = accessoryInventory;
         this.warrantyService = warrantyService;
         this.input = input;
         this.errorHandler = errorHandler;
     }
 
     /**
+     * Returns the title of the option of this submenu in the main menu.
+     *
+     * @return the title of the option
+     */
+    @Override
+    public String getTitle() {
+        return "Gestión de ventas";
+    }
+
+    /**
      * Displays the sales management submenu and runs the operation chosen
      * by the user until the user goes back to the main menu.
      */
+    @Override
     public void show() {
         boolean back = false;
         while (!back) {
@@ -113,14 +124,14 @@ public class SaleMenu {
                 addingItems = false;
                 continue;
             }
-            Product product = productService.findById(itemId);
+            Product product = productLookup.findById(itemId);
             if (product != null) {
                 itemIds.add(product.getId());
                 products.add(product);
                 System.out.println(product.getTitle() + " agregado.");
                 continue;
             }
-            Accessory accessory = accessoryService != null ? accessoryService.findById(itemId) : null;
+            Accessory accessory = accessoryInventory != null ? accessoryInventory.findById(itemId) : null;
             if (accessory != null) {
                 itemIds.add(accessory.getId());
                 System.out.println(accessory.getTitle() + " (accesorio) agregado.");
@@ -132,7 +143,7 @@ public class SaleMenu {
         List<String> extendedIds = warrantyService != null ? askExtendedWarranties(products) : new ArrayList<>();
         Sale sale = saleService.registerSaleByItemIds(client, seller, itemIds, extendedIds);
         System.out.println("Venta registrada correctamente.");
-        System.out.println(sale.generateReceipt());
+        System.out.println(SaleReceiptFormatter.format(sale));
         if (warrantyService != null) {
             printSaleWarranties(sale);
         }
@@ -175,7 +186,7 @@ public class SaleMenu {
     private void printSaleWarranties(Sale sale) {
         for (Warranty warranty : warrantyService.listAllWarranties()) {
             if (warranty.getSale().getId().equals(sale.getId())) {
-                System.out.println(warranty.generateWarrantyCertificate());
+                System.out.println(WarrantyCertificateFormatter.format(warranty));
             }
         }
     }
@@ -208,7 +219,7 @@ public class SaleMenu {
             System.out.println("Número de venta inválido.");
             return;
         }
-        System.out.println(sales.get(number - 1).generateReceipt());
+        System.out.println(SaleReceiptFormatter.format(sales.get(number - 1)));
     }
 
     /**

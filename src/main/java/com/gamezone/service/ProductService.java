@@ -3,7 +3,6 @@ package com.gamezone.service;
 import com.gamezone.exceptions.InvalidDataException;
 import com.gamezone.exceptions.ResourceNotFoundException;
 import com.gamezone.model.Product;
-import com.gamezone.persistence.ProductPersistence;
 import com.gamezone.persistence.ProductStorage;
 import com.gamezone.validation.ProductValidator;
 import java.util.ArrayList;
@@ -21,16 +20,6 @@ public class ProductService implements ProductInventory {
 
     private final ProductStorage productStorage;
     private List<Product> products;
-
-    /**
-     * Creates a new ProductService that stores the products in the file of
-     * {@link ProductPersistence}. Kept only until the composition root
-     * ({@code Main}) injects the storage; use
-     * {@link #ProductService(ProductStorage)} instead.
-     */
-    public ProductService() {
-        this(new ProductPersistence());
-    }
 
     /**
      * Creates a new ProductService that uses the given storage, loading the
