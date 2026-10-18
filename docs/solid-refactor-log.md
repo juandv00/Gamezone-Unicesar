@@ -124,3 +124,7 @@ two developers, which remove the old code once nobody uses it.
 
 | Class | Change | Violation ID | Principle applied | Commit / PR | Responsible |
 |---|---|---|---|---|---|
+| `SaleStorage` (new, `persistence`) | New interface with `save(List<Sale>)` and `load()` | V-06 | Dependency Inversion | `refactor: add the SaleStorage abstraction implemented by SalePersistence (V-06)` / PR of Developer 1 | Technical Leader |
+| `SalePersistence` | Implements `SaleStorage` (`@Override` on `save` and `load`); created before Developer 2 starts, because `WarrantyService` needs it | V-06 | Dependency Inversion | `refactor: add the SaleStorage abstraction implemented by SalePersistence (V-06)` / PR of Developer 1 | Technical Leader |
+| `SaleLookup` (new, `service`) | New role interface with the read-only queries of the sales: `findById`, `getSaleById`, and `listAll` | V-07 | Interface Segregation | `refactor: add the SaleLookup role implemented by SaleService (V-07)` / PR of Developer 1 | Technical Leader |
+| `SaleService` | Implements `SaleLookup` (`@Override` on the three queries, including `getSaleById` of Developer 2, without changing it) | V-07 | Interface Segregation | `refactor: add the SaleLookup role implemented by SaleService (V-07)` / PR of Developer 1 | Technical Leader |
