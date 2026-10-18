@@ -575,3 +575,37 @@ for Requirement 4 before approving them.
 - **Response:** The diagram with the new classes (`ConsoleCompatibleAccessory`, `CurrencyFormatter`, `ConsoleInput`, `ErrorHandler`, and the seven submenus) and a note with the violation of every changed class; a README section with the audit, the corrections, and how to run the verification.
 - **Decision:** I ran the reference again on `develop` and the final version on the same day, and the comparison reported no differences in any scenario. I checked every class of the diagram against the code of the branch and validated the Mermaid syntax.
 - **Related commit:** `docs: keep git messages from stopping the regression script`, `docs: add class diagram after the GRASP corrections`, `docs: add final non-regression result to grasp refactor log`, `docs: describe Requirement 7 in README`, `docs: add Requirement 7 phase 2 entries to leader AI log`
+
+## Requirement 8 — SOLID Audit and Correction
+
+### Phase 1 — Audit
+
+#### Audit of my code against the five SOLID principles
+- **Date:** 2026-10-17
+- **Tool:** Claude (Anthropic)
+- **Phase and branch:** Requirement 8, Phase 1 – `feature/solid-audit`
+- **Objective:** Audit `Sale`, `SalePersistence`, `SaleService`, `ConsoleUI`, the seven submenus, `ConsoleInput`, `ErrorHandler`, `CurrencyFormatter`, `Main`, and `ProductService.restoreStock` against the five SOLID principles, with evidence from commit `75cc180`.
+- **Query:** Went through my classes with Claude principle by principle, asking for each principle where it applies in my code, which fragments could break it, and what concrete consequence each one would have.
+- **Response:** Four findings: the receipt text built inside `Sale` (SRP), the main menu that lists each submenu in a `switch` and creates them (OCP, also DIP), `SaleService` and four menus that depend on complete services of other modules (ISP), and `SalePersistence`/`SaleService` tied to concrete file classes (DIP). LSP was found correct from the side of the client.
+- **Decision:** I opened every cited fragment in the IDE on commit `75cc180` to confirm the line numbers, and counted the constructors of `ConsoleUI` (five, one per module). I kept `Sale.toString` out of the SRP finding, because it is the one-line summary that every model class has, and registered the creation of the submenus inside V-02 instead of a separate DIP finding, because the same change fixes both.
+- **Related commit:** `docs: add scope to leader SOLID audit`, `docs: add single responsibility findings to leader SOLID audit`, `docs: add open/closed findings to leader SOLID audit`, `docs: add Liskov substitution verdict to leader SOLID audit`, `docs: add interface segregation findings to leader SOLID audit`, `docs: add dependency inversion findings to leader SOLID audit`
+
+#### Consolidation of the three reports
+- **Date:** 2026-10-17
+- **Tool:** Claude (Anthropic)
+- **Phase and branch:** Requirement 8, Phase 1 – `feature/solid-audit`
+- **Objective:** Verify coverage, validate evidence, unify boundary findings, assign final IDs and responsible members, and check for new out-of-scope defects.
+- **Query:** Used Claude to cross-check the three reports against the list of classes of the system (including the classes created in the GRASP correction) and to discuss how to merge the findings that involve more than one member.
+- **Response:** All 56 classes covered once. Ten findings of the three reports became seven violations, five of them boundary findings split by ownership. No new functional defect besides the three already registered in Requirement 7.
+- **Decision:** I assigned the classes created in Requirement 7 with `docs/grasp-refactor-log.md`, and each part of a boundary finding by ownership. I defined two rules for Phase 2: the old method or constructor is removed only after every user changed, and the member who makes his class implement an interface adds its `@Override` annotations. I ran the seven non-regression scenarios on `75cc180` and read their output before writing that there are no new defects.
+- **Related commit:** `docs: add coverage and evidence validation to consolidated SOLID audit`, `docs: consolidate SOLID audit findings from the three reports`, `docs: add boundary and out-of-scope findings to consolidated SOLID audit`
+
+#### Guiding questions 1, 2, and 5
+- **Date:** 2026-10-17
+- **Tool:** Claude (Anthropic)
+- **Phase and branch:** Requirement 8, Phase 1 – `feature/solid-audit`
+- **Objective:** Write the team's answers to guiding questions 1, 2, and 5.
+- **Query:** Asked for feedback on the criteria we agreed for each verdict, especially where to draw the line for Dependency Inversion between services, and on the order of the corrections in the shared branch.
+- **Response:** Criteria based on concrete consequences and exact evidence; DIP counted only when a rule depends on a class that does input or output, and the width of the dependencies between services decided by ISP; V-07 as the boundary example; the owner of each new abstraction goes first.
+- **Decision:** I chose V-07 as the boundary example because the three of us reported it, and placed V-03 late in the order because it rewrites `ConsoleUI` and the end of `Main`. I wrote the answers after the team's discussion of the questions.
+- **Related commit:** `docs: answer guiding questions 1, 2 and 5 in solid analysis`
