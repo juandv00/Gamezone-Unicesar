@@ -4,6 +4,7 @@ import com.gamezone.model.Accessory;
 import com.gamezone.model.Product;
 import com.gamezone.model.Return;
 import com.gamezone.model.Sale;
+import com.gamezone.service.BalanceService;
 import com.gamezone.service.ReturnService;
 import com.gamezone.service.SaleLookup;
 import com.gamezone.util.CurrencyFormatter;
@@ -20,6 +21,7 @@ public class ReturnMenu implements Menu {
 
     private final ReturnService returnService;
     private final SaleLookup saleLookup;
+    private final BalanceService balanceService;
     private final ConsoleInput input;
     private final ErrorHandler errorHandler;
 
@@ -30,14 +32,17 @@ public class ReturnMenu implements Menu {
      * @param returnService the service used for return operations, or
      *        null if the return module is disabled
      * @param saleLookup the role used to find the sales
+     * @param balanceService the service that calculates the monthly balance
      * @param input the reader of the user input
      * @param errorHandler the handler that runs each operation and shows its errors
      */
     public ReturnMenu(ReturnService returnService,
                       SaleLookup saleLookup,
+                      BalanceService balanceService,
                       ConsoleInput input, ErrorHandler errorHandler) {
         this.returnService = returnService;
         this.saleLookup = saleLookup;
+        this.balanceService = balanceService;
         this.input = input;
         this.errorHandler = errorHandler;
     }
@@ -169,9 +174,9 @@ public class ReturnMenu implements Menu {
             System.out.println("Año inválido.");
             return;
         }
-        double sales = returnService.calculateMonthlySales(month, year);
-        double refunds = returnService.calculateMonthlyReturns(month, year);
-        double balance = returnService.generateMonthlyBalance(month, year);
+        double sales = balanceService.calculateMonthlySales(month, year);
+        double refunds = balanceService.calculateMonthlyReturns(month, year);
+        double balance = balanceService.generateMonthlyBalance(month, year);
         System.out.println("\n===== Balance mensual " + String.format("%02d/%d", month, year) + " =====");
         System.out.println("Total de ventas:       " + CurrencyFormatter.format(sales));
         System.out.println("Total de devoluciones: " + CurrencyFormatter.format(refunds));
