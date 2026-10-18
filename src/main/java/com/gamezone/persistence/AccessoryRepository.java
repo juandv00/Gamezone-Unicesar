@@ -27,7 +27,7 @@ import java.util.function.Function;
  * look up the registered format instead of checking the type with a chain
  * of conditionals, so a new accessory type only needs a new registration.
  */
-public class AccessoryRepository {
+public class AccessoryRepository implements AccessoryStorage {
 
     private static final String FILE_PATH = "data/accessories.csv";
     private static final String DELIMITER = "\t";
@@ -137,6 +137,7 @@ public class AccessoryRepository {
      *
      * @param accessories the list of accessories to save
      */
+    @Override
     public void saveAll(List<Accessory> accessories) {
         try (BufferedWriter bw = new BufferedWriter(new FileWriter(FILE_PATH))) {
             for (Accessory accessory : accessories) {
@@ -155,6 +156,7 @@ public class AccessoryRepository {
      * @return the list of accessories found, or an empty list if the file does
      * not exist
      */
+    @Override
     public List<Accessory> loadAll() {
         List<Accessory> accessories = new ArrayList<>();
         File file = new File(FILE_PATH);

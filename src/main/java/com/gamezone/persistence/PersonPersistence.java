@@ -22,7 +22,7 @@ import java.util.function.Function;
  * look up the registered format instead of checking the type with a chain
  * of conditionals, so a new person role only needs a new registration.
  */
-public class PersonPersistence {
+public class PersonPersistence implements PersonStorage {
 
     private static final String FILE_PATH = "data/persons.txt";
     private static final String DELIMITER = "\t";
@@ -88,6 +88,7 @@ public class PersonPersistence {
      * @param people the list of people to persist
      * @throws PersistenceException if the file cannot be written
      */
+    @Override
     public void save(List<Person> people) {
         try (BufferedWriter bw = new BufferedWriter(new FileWriter(FILE_PATH))) {
             for (Person p : people) {
@@ -108,6 +109,7 @@ public class PersonPersistence {
      * @throws PersistenceException if the file cannot be read or contains a
      * line with an invalid format
      */
+    @Override
     public List<Person> load() {
         List<Person> people = new ArrayList<>();
         File file = new File(FILE_PATH);

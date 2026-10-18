@@ -33,7 +33,7 @@ import java.util.Map;
  * exceptions of the system when something is not valid; if any validation
  * fails, nothing is changed.
  */
-public class SaleService {
+public class SaleService implements SaleLookup {
 
     private static final String SALE_ID_PREFIX = "SALE-";
 
@@ -317,6 +317,7 @@ public class SaleService {
      *
      * @return the list of all registered sales
      */
+    @Override
     public List<Sale> listAll() {
         return new ArrayList<>(sales);
     }
@@ -327,6 +328,7 @@ public class SaleService {
      * @param saleId the id of the sale to search for
      * @return the sale with the given id, or null if none exists
      */
+    @Override
     public Sale findById(String saleId) {
         for (Sale sale : sales) {
             if (sale.getId() != null && sale.getId().equalsIgnoreCase(saleId)) {
@@ -345,6 +347,7 @@ public class SaleService {
      * @return the sale with the given id
      * @throws ResourceNotFoundException if no sale has the given id
      */
+    @Override
     public Sale getSaleById(String saleId) {
         Sale sale = findById(saleId);
         SaleValidator.validateSaleExists(sale, saleId);

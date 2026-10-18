@@ -27,7 +27,7 @@ import java.util.function.Function;
  * look up the registered format instead of checking the type with a chain
  * of conditionals, so a new promotion type only needs a new registration.
  */
-public class PromotionRepository {
+public class PromotionRepository implements PromotionStorage {
 
     private static final String FILE_PATH = "data/promotions.csv";
     private static final String DELIMITER = ";";
@@ -99,6 +99,7 @@ public class PromotionRepository {
      *
      * @param promotions the list of promotions to save
      */
+    @Override
     public void saveAll(List<Promotion> promotions) {
         try (BufferedWriter bw = new BufferedWriter(new FileWriter(FILE_PATH))) {
             for (Promotion p : promotions) {
@@ -117,6 +118,7 @@ public class PromotionRepository {
      * @return the list of promotions found, or an empty list if the file does
      * not exist
      */
+    @Override
     public List<Promotion> loadAll() {
         List<Promotion> promotions = new ArrayList<>();
         File file = new File(FILE_PATH);

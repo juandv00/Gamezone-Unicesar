@@ -7,6 +7,7 @@ import com.gamezone.model.Client;
 import com.gamezone.model.Person;
 import com.gamezone.model.Seller;
 import com.gamezone.persistence.PersonPersistence;
+import com.gamezone.persistence.PersonStorage;
 import com.gamezone.validation.PersonValidator;
 import java.util.ArrayList;
 import java.util.List;
@@ -21,15 +22,28 @@ import java.util.List;
 public class PersonService {
 
     private List<Person> people;
-    private PersonPersistence personPersistence;
+    private final PersonStorage personStorage;
 
     /**
-     * Creates a new PersonService, loading the currently stored people from the
-     * repository.
+     * Creates a new PersonService that stores the people in the file of
+     * {@link PersonPersistence}. Kept only until the composition root
+     * ({@code Main}) injects the storage; use
+     * {@link #PersonService(PersonStorage)} instead.
      */
     public PersonService() {
-        this.personPersistence = new PersonPersistence();
-        this.people = personPersistence.load();
+        this(new PersonPersistence());
+    }
+
+    /**
+     * Creates a new PersonService that uses the given storage, loading the
+     * currently stored people from it. The service depends only on the
+     * {@link PersonStorage} abstraction, not on a concrete file class.
+     *
+     * @param personStorage the storage of the clients and sellers
+     */
+    public PersonService(PersonStorage personStorage) {
+        this.personStorage = personStorage;
+        this.people = personStorage.load();
     }
 
     /**
@@ -49,7 +63,7 @@ public class PersonService {
 
         Client c = new Client(id, name, phone, email);
         people.add(c);
-        personPersistence.save(people);
+        personStorage.save(people);
     }
 
     /**
@@ -70,7 +84,7 @@ public class PersonService {
 
         Seller s = new Seller(id, name, phone, employeeCode, shift);
         people.add(s);
-        personPersistence.save(people);
+        personStorage.save(people);
     }
 
     /**

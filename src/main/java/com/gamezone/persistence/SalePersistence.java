@@ -35,7 +35,7 @@ import java.util.List;
  * <p>Any error while reading or writing the file is reported as a
  * {@link PersistenceException} that names the file and the operation.</p>
  */
-public class SalePersistence {
+public class SalePersistence implements SaleStorage {
 
     private static final String FILE_PATH = "data/sales.txt";
     private static final String DELIMITER = ";";
@@ -77,6 +77,7 @@ public class SalePersistence {
      * @param sales the list of sales to persist
      * @throws PersistenceException if the file cannot be written
      */
+    @Override
     public void save(List<Sale> sales) {
         try (BufferedWriter bw = new BufferedWriter(new FileWriter(FILE_PATH))) {
             for (Sale sale : sales) {
@@ -99,6 +100,7 @@ public class SalePersistence {
      * @throws PersistenceException if the file cannot be read or contains a
      *                              line with an invalid format
      */
+    @Override
     public List<Sale> load() {
         List<Sale> sales = new ArrayList<>();
         File file = new File(FILE_PATH);

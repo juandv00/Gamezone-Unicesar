@@ -5,9 +5,9 @@ import com.gamezone.model.ExtendedWarranty;
 import com.gamezone.model.Product;
 import com.gamezone.model.Sale;
 import com.gamezone.model.Warranty;
-import com.gamezone.persistence.SalePersistence;
+import com.gamezone.persistence.SaleStorage;
 import com.gamezone.persistence.WarrantyRecord;
-import com.gamezone.persistence.WarrantyRepository;
+import com.gamezone.persistence.WarrantyStorage;
 import java.time.LocalDate;
 import java.util.ArrayList;
 import java.util.List;
@@ -22,25 +22,26 @@ public class WarrantyService {
 
     private static final String WARRANTY_ID_PREFIX = "WAR-";
 
-    private final WarrantyRepository warrantyRepository;
-    private final SalePersistence salePersistence;
-    private final ProductService productService;
+    private final WarrantyStorage warrantyStorage;
+    private final SaleStorage saleStorage;
+    private final ProductLookup productLookup;
     private List<Warranty> warranties;
 
     /**
      * Creates a new WarrantyService, loading the stored warranty records and
      * resolving their sale and product references from the identifiers.
      *
-     * @param warrantyRepository the repository used to persist warranties
-     * @param salePersistence    used to resolve the sale of each record
-     * @param productService     used to resolve the product of each record
+     * @param warrantyStorage the storage of the warranties
+     * @param saleStorage     the storage of the sales, used to resolve the
+     *                        sale of each record
+     * @param productLookup   used to resolve the product of each record
      */
-    public WarrantyService(WarrantyRepository warrantyRepository,
-                           SalePersistence salePersistence, ProductService productService) {
-        this.warrantyRepository = warrantyRepository;
-        this.salePersistence = salePersistence;
-        this.productService = productService;
-        this.warranties = resolveWarranties(warrantyRepository.loadAll());
+    public WarrantyService(WarrantyStorage warrantyStorage,
+                           SaleStorage saleStorage, ProductLookup productLookup) {
+        this.warrantyStorage = warrantyStorage;
+        this.saleStorage = saleStorage;
+        this.productLookup = productLookup;
+        this.warranties = resolveWarranties(warrantyStorage.loadAll());
     }
 
     /**
@@ -51,15 +52,15 @@ public class WarrantyService {
      * @return the warranties that could be fully resolved
      */
     private List<Warranty> resolveWarranties(List<WarrantyRecord> records) {
-        List<Sale> sales = salePersistence.load();
+        List<Sale> sales = saleStorage.load();
         List<Warranty> resolved = new ArrayList<>();
         for (WarrantyRecord record : records) {
             Sale sale = findSaleById(sales, record.saleId());
-            Product product = productService.findById(record.productId());
+            Product product = productLookup.findById(record.productId());
             if (sale == null || product == null) {
                 continue;
             }
-            Warranty warranty = warrantyRepository.toWarranty(record, product, sale);
+            Warranty warranty = warrantyStorage.toWarranty(record, product, sale);
             if (warranty != null) {
                 resolved.add(warranty);
             }
@@ -98,7 +99,7 @@ public class WarrantyService {
         validateWarrantyEligible(product);
         BasicWarranty warranty = new BasicWarranty(nextWarrantyId(), product, sale, startDate);
         warranties.add(warranty);
-        warrantyRepository.saveAll(warranties);
+        warrantyStorage.saveAll(warranties);
         return warranty;
     }
 
@@ -116,7 +117,7 @@ public class WarrantyService {
         validateWarrantyEligible(product);
         ExtendedWarranty warranty = new ExtendedWarranty(nextWarrantyId(), product, sale, startDate);
         warranties.add(warranty);
-        warrantyRepository.saveAll(warranties);
+        warrantyStorage.saveAll(warranties);
         return warranty;
     }
 
@@ -169,7 +170,7 @@ public class WarrantyService {
             if (warranty.getProduct().getId().equalsIgnoreCase(productId)
                     && warranty.getSale().getId().equalsIgnoreCase(saleId)) {
                 warranties.remove(warranty);
-                warrantyRepository.saveAll(warranties);
+                warrantyStorage.saveAll(warranties);
                 return warranty.getAdditionalCost();
             }
         }
