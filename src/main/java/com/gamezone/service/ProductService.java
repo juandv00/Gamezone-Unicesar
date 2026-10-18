@@ -3,7 +3,6 @@ package com.gamezone.service;
 import com.gamezone.exceptions.InvalidDataException;
 import com.gamezone.exceptions.ResourceNotFoundException;
 import com.gamezone.model.Product;
-import com.gamezone.persistence.ProductPersistence;
 import com.gamezone.persistence.ProductStorage;
 import com.gamezone.validation.ProductValidator;
 import java.util.ArrayList;
@@ -17,20 +16,10 @@ import java.util.List;
  * {@link ProductValidator} before each operation, which throws the custom
  * exceptions of the system when something is not valid.
  */
-public class ProductService {
+public class ProductService implements ProductInventory {
 
     private final ProductStorage productStorage;
     private List<Product> products;
-
-    /**
-     * Creates a new ProductService that stores the products in the file of
-     * {@link ProductPersistence}. Kept only until the composition root
-     * ({@code Main}) injects the storage; use
-     * {@link #ProductService(ProductStorage)} instead.
-     */
-    public ProductService() {
-        this(new ProductPersistence());
-    }
 
     /**
      * Creates a new ProductService that uses the given storage, loading the
@@ -73,6 +62,7 @@ public class ProductService {
      * @param productId the id of the product to find
      * @return the matching product, or null if not found
      */
+    @Override
     public Product findById(String productId) {
         for (Product product : products) {
             if (product.getId().equals(productId)) {
@@ -91,6 +81,7 @@ public class ProductService {
      * @return the matching product
      * @throws ResourceNotFoundException if no product has the given id
      */
+    @Override
     public Product getProductById(String productId) {
         Product product = findById(productId);
         ProductValidator.validateProductExists(product, productId);
@@ -109,6 +100,7 @@ public class ProductService {
      * @throws com.gamezone.exceptions.BusinessRuleException if there is not
      *         enough stock available
      */
+    @Override
     public boolean reduceStock(String productId, int amount) {
         Product product = getProductById(productId);
         ProductValidator.validateStockAvailability(product, amount);
@@ -140,6 +132,7 @@ public class ProductService {
      * @throws ResourceNotFoundException if the product does not exist
      * @throws InvalidDataException      if the quantity is not positive
      */
+    @Override
     public boolean restoreStock(String productId, int quantity) {
         Product product = getProductById(productId);
         if (quantity <= 0) {
