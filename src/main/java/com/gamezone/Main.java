@@ -3,6 +3,8 @@ package com.gamezone;
 import com.gamezone.exceptions.GameZoneException;
 import com.gamezone.exceptions.PersistenceException;
 import com.gamezone.persistence.AccessoryRepository;
+import com.gamezone.persistence.PersonPersistence;
+import com.gamezone.persistence.ProductPersistence;
 import com.gamezone.persistence.PromotionRepository;
 import com.gamezone.persistence.ReturnRepository;
 import com.gamezone.persistence.SalePersistence;
@@ -48,14 +50,19 @@ public class Main {
 
     /**
      * Creates every repository and service in dependency order, loading the
-     * stored data, and the console user interface that uses them.
+     * stored data, and the console user interface that uses them. This is the
+     * composition root of the application: it is the only place that knows
+     * the concrete file classes, and it passes them to the services, which
+     * depend only on the storage abstractions.
      *
      * @return the console user interface, ready to run
      * @throws PersistenceException if a data file cannot be read
      */
     private static ConsoleUI createConsoleUI() {
-        ProductService productService = new ProductService();
-        PersonService personService = new PersonService();
+        ProductPersistence productPersistence = new ProductPersistence();
+        ProductService productService = new ProductService(productPersistence);
+        PersonPersistence personPersistence = new PersonPersistence();
+        PersonService personService = new PersonService(personPersistence);
 
         AccessoryRepository accessoryRepository = new AccessoryRepository();
         AccessoryService accessoryService = new AccessoryService(accessoryRepository);
