@@ -90,3 +90,28 @@ Where it is applied correctly:
 | Consequence | Every requirement that added a module (accessories, promotions, returns, warranties) changed `ConsoleUI` and added one more constructor, and the next one will do the same. The number of an option and its text are kept in two separate places (the `case` and the `println`), so they can get out of sync. The main menu cannot be built with other submenus or another source of input. |
 | Proposed solution | Create an interface `Menu` in the `ui` package with `getTitle()` and `show()`, implemented by the seven submenus. `ConsoleUI` receives a `ConsoleInput` and a `List<Menu>`, prints one numbered line per menu from its title, and opens `menus.get(option - 1)`. `Main` creates the `Scanner`, the `ConsoleInput`, the `ErrorHandler`, and the submenus in the current order, so the menu shows exactly the same lines and options. |
 | Other member's code | No. Every class involved is mine. |
+
+## Liskov Substitution Principle (LSP)
+
+**Verdict: correct.**
+
+My classes have no subclasses, but my code is the main client of the
+hierarchies of the other members, so I checked that it uses every
+subclass through the contract of its base class:
+- `Sale.calculateTotal` (lines 194-203) adds `getPrice()` of any
+  `Product` and any `Accessory`, and `SaleService.assignWarranties` asks
+  every product `isWarrantyEligible()`; neither asks for the concrete
+  class.
+- `SaleService.applyBestPromotion` uses any `Promotion` only through
+  `calculateDiscount` and `getName`, and limits the discount to the
+  subtotal (line 419); every subclass returns a valid amount.
+- `ErrorHandler` handles the subclasses of `GameZoneException` by their
+  category, and `Main` (lines 39-45) catches `PersistenceException` and
+  then any `GameZoneException`.
+- The type checks that remain in my code do not compensate for a
+  subclass that breaks its base class: `AccessoryMenu.addCompatibleConsole`
+  asks whether the typed id is a `Console` (line 243) and whether the
+  accessory is a `ConsoleCompatibleAccessory` (line 270), and
+  `SalePersistence` (lines 239 and 242) asks whether a person is a
+  `Client` or a `Seller`. In each case the operation needs a specific role
+  that the base class never promised.
