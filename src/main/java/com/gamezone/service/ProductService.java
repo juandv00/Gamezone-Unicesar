@@ -4,6 +4,7 @@ import com.gamezone.exceptions.InvalidDataException;
 import com.gamezone.exceptions.ResourceNotFoundException;
 import com.gamezone.model.Product;
 import com.gamezone.persistence.ProductPersistence;
+import com.gamezone.persistence.ProductStorage;
 import com.gamezone.validation.ProductValidator;
 import java.util.ArrayList;
 
@@ -18,16 +19,29 @@ import java.util.List;
  */
 public class ProductService {
 
-    private final ProductPersistence productPersistence;
+    private final ProductStorage productStorage;
     private List<Product> products;
 
     /**
-     * Creates a new ProductService, loading the currently stored products
-     * from the repository.
+     * Creates a new ProductService that stores the products in the file of
+     * {@link ProductPersistence}. Kept only until the composition root
+     * ({@code Main}) injects the storage; use
+     * {@link #ProductService(ProductStorage)} instead.
      */
     public ProductService() {
-        this.productPersistence = new ProductPersistence();
-        this.products = productPersistence.load();
+        this(new ProductPersistence());
+    }
+
+    /**
+     * Creates a new ProductService that uses the given storage, loading the
+     * currently stored products from it. The service depends only on the
+     * {@link ProductStorage} abstraction, not on a concrete file class.
+     *
+     * @param productStorage the storage of the products
+     */
+    public ProductService(ProductStorage productStorage) {
+        this.productStorage = productStorage;
+        this.products = productStorage.load();
     }
 
     /**
@@ -41,7 +55,7 @@ public class ProductService {
         ProductValidator.validateProductData(product.getId(), product.getTitle(),
                 product.getPrice(), product.getStock());
         products.add(product);
-        productPersistence.save(products);
+        productStorage.save(products);
     }
 
     /**
@@ -99,7 +113,7 @@ public class ProductService {
         Product product = getProductById(productId);
         ProductValidator.validateStockAvailability(product, amount);
         product.decreaseStock(amount);
-        productPersistence.save(products);
+        productStorage.save(products);
         return true;
     }
 
@@ -132,7 +146,7 @@ public class ProductService {
             throw new InvalidDataException("cantidad", "debe ser mayor que cero.");
         }
         product.increaseStock(quantity);
-        productPersistence.save(products);
+        productStorage.save(products);
         return true;
     }
 }

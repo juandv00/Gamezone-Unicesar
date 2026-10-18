@@ -23,7 +23,7 @@ import java.util.function.Function;
  * look up the registered format instead of checking the type with a chain
  * of conditionals, so a new product type only needs a new registration.
  */
-public class ProductPersistence {
+public class ProductPersistence implements ProductStorage {
 
     private static final String FILE_PATH = "data/products.txt";
     private static final String DELIMITER = ";";
@@ -94,6 +94,7 @@ public class ProductPersistence {
      * @param products the list of products to persist
      * @throws PersistenceException if the file cannot be written
      */
+    @Override
     public void save(List<Product> products) {
         try (BufferedWriter writer = new BufferedWriter(new FileWriter(FILE_PATH))) {
             for (Product product : products) {
@@ -114,6 +115,7 @@ public class ProductPersistence {
      * @throws PersistenceException if the file cannot be read or contains a
      *                              line with an invalid format
      */
+    @Override
     public List<Product> load() {
         List<Product> products = new ArrayList<>();
         File file = new File(FILE_PATH);
