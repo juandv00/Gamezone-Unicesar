@@ -118,3 +118,28 @@ announce.
 - **Exceptions:** each subclass of `GameZoneException` only adds the
   meaning of its category; code that catches `GameZoneException` or
   `RuntimeException` (`Main`, `ErrorHandler`) works with all of them.
+
+## Interface Segregation Principle (ISP)
+
+**Verdict: violation** (V-02).
+
+Where it is applied correctly:
+- The abstract classes of my hierarchies only declare what every subclass
+  uses: `Warranty` declares three abstract methods (lines 52-56) that both
+  warranties implement and that every client reads; `Promotion` declares
+  only `calculateDiscount`.
+- Since Requirement 7, the compatibility operations live in
+  `ConsoleCompatibleAccessory` and not in `Accessory`, so the clients that
+  only sell or list accessories do not see them.
+
+### V-02
+| Field | Content |
+|---|---|
+| ID | V-02 |
+| Principle | Interface Segregation Principle |
+| Module | Products (Workshop 1) |
+| Evidence | `ProductService` (lines 19-137) is used as one single type with seven public operations: `registerProduct` (line 40), `listAll` (52), `findById` (62), `getProductById` (80), `reduceStock` (98), `hasEnoughStock` (113), and `restoreStock` (129). Its clients only use a part: `SaleService` (field line 41) uses `findById`, `getProductById`, and `reduceStock` (lines 226, 271, 298); `ReturnService` (field line 27) uses `findById` and `restoreStock` (lines 106, 214); `WarrantyService` (field line 27) only uses `findById` (line 58); `SaleMenu` (field line 28) and `AccessoryMenu` (field line 24) only use `findById` (lines 116 and 243). |
+| Explanation | Every client depends on the whole service, including the operations that register and list products, even when it only needs to find a product or to change its stock. `ProductService` does not offer smaller roles that its clients could depend on. |
+| Consequence | Any change in the registration or listing operations (a new parameter, a new exception) affects the compilation of classes that never register products, and a client cannot be given a simpler implementation of "find a product" (for example, to test a return) without the whole service. It also hides which operations each module really needs. |
+| Proposed solution | Split the operations of `ProductService` into role interfaces in the `service` package: `ProductLookup` (`findById`, `getProductById`) for the clients that only find products, and `ProductInventory`, which extends `ProductLookup` and adds `reduceStock` and `restoreStock`, for the sale and return flows. `ProductService` implements both, so its behavior does not change; each client declares the role it uses. |
+| Other member's code | Yes. The clients belong to the Technical Leader (`SaleService`, `SaleMenu`, `AccessoryMenu`) and to Developer 2 (`ReturnService`, `WarrantyService`); `restoreStock` is the Technical Leader's method and `getProductById` is Developer 2's. Each one changes the type of their own fields. Reported to the Technical Leader. |
