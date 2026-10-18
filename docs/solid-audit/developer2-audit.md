@@ -130,3 +130,26 @@ Where it is applied correctly:
 | Consequence | A change in an operation that `ReturnService` or `WarrantyService` never call (for example, a new parameter in `registerSale` or `registerProduct`) still affects them, and they cannot be used or tested with a simpler source of sales or products. The dependencies also hide what the returns and warranties really need from the other modules. |
 | Proposed solution | Make every client depend only on the role it uses. `AccessoryService` implements a new interface `AccessoryInventory` (`findById`, `hasEnoughStock`, `reduceStock`, `restoreStock`). `ReturnService` receives a read-only role of the sales, the inventory role of the products, and `AccessoryInventory`; `WarrantyService` receives the read-only role of the products. The behavior does not change, because the same services are passed as those roles. |
 | Other member's code | Yes. The roles of the sales and of the products must be offered by `SaleService` (Technical Leader) and `ProductService` (Developer 1), and `SaleService` must use `AccessoryInventory` (Technical Leader). Reported to the Technical Leader. |
+
+## Dependency Inversion Principle (DIP)
+
+**Verdict: violation** (V-03).
+
+Where it is applied correctly:
+- My services already receive their repository from outside (for
+  example, `AccessoryService(AccessoryRepository)`, line 30), except
+  `PersonService`; they do not create the repositories of other modules.
+- The repositories depend only on the model, the records, and
+  `PersistenceException`; they never call a service.
+
+### V-03
+| Field | Content |
+|---|---|
+| ID | V-03 |
+| Principle | Dependency Inversion Principle |
+| Module | People (Workshop 1), Accessories (Req 1), Promotions (Req 2), Returns (Req 3), and Warranties (Req 4) |
+| Evidence | `PersonService`, line 24: `private PersonPersistence personPersistence;` and lines 30-33: `this.personPersistence = new PersonPersistence();` · the services depend on the concrete file classes: `AccessoryService` lines 21 and 30 (`AccessoryRepository`), `PromotionService` lines 20 and 29 (`PromotionRepository`), `ReturnService` lines 25, 40, 55, and 73 (`ReturnRepository`), and `WarrantyService` lines 25 and 38 (`WarrantyRepository`) · `WarrantyService` lines 8, 26, and 39 depend on `SalePersistence`, and line 54 reads the sales file with `salePersistence.load()` |
+| Explanation | The services are the high-level modules of my code: they contain the rules of people, accessories, promotions, returns, and warranties. They depend on concrete classes that read and write text files. `PersonService` even creates its persistence class. Receiving the repository by the constructor is not enough: the type of the parameter is still the concrete class, so the rule depends on the detail. |
+| Consequence | Changing how any module is stored (another file format, a database, or a list in memory for tests) forces a change in the services. `PersonService` cannot be created without reading `data/persons.txt`, and `WarrantyService` depends on the file class of another member's module, so a change in how sales are stored affects the warranties. |
+| Proposed solution | Create one storage abstraction per module in the `persistence` package, implemented by its repository: `PersonStorage` (`save`, `load`), `AccessoryStorage`, `PromotionStorage`, and `ReturnStorage` (`saveAll`, `loadAll`), and `WarrantyStorage` (`saveAll`, `loadAll`, `toWarranty`). Each service receives its interface. `WarrantyService` receives the storage abstraction of the sales instead of `SalePersistence`. `PersonService` receives a `PersonStorage`; its current constructor is kept until `Main` passes the storage, and then it is removed. |
+| Other member's code | Yes. `Main` (Technical Leader) must create `PersonPersistence` and pass it, and the storage abstraction of the sales must be created by the Technical Leader, who owns `SalePersistence`. Reported to the Technical Leader. |
