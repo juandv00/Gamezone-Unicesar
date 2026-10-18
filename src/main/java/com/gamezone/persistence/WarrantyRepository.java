@@ -29,7 +29,7 @@ import java.util.Map;
  * look up the registered type instead of checking the class or the code with
  * conditionals, so a new warranty type only needs a new registration.
  */
-public class WarrantyRepository {
+public class WarrantyRepository implements WarrantyStorage {
 
     private static final String FILE_PATH = "data/warranties.csv";
     private static final String DELIMITER = ";";
@@ -84,6 +84,7 @@ public class WarrantyRepository {
      *
      * @param warranties the warranties to save
      */
+    @Override
     public void saveAll(List<Warranty> warranties) {
         try (BufferedWriter bw = new BufferedWriter(new FileWriter(FILE_PATH))) {
             for (Warranty w : warranties) {
@@ -101,6 +102,7 @@ public class WarrantyRepository {
      *
      * @return the records found, or an empty list if the file does not exist
      */
+    @Override
     public List<WarrantyRecord> loadAll() {
         List<WarrantyRecord> records = new ArrayList<>();
         File file = new File(FILE_PATH);
@@ -131,6 +133,7 @@ public class WarrantyRepository {
      * @param sale    the sale of the warranty, already resolved
      * @return the warranty, or null if the type code is not registered
      */
+    @Override
     public Warranty toWarranty(WarrantyRecord record, Product product, Sale sale) {
         WarrantyFactory factory = factories.get(record.type());
         if (factory == null) {

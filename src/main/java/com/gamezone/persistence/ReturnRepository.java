@@ -22,7 +22,7 @@ import java.util.List;
  * resolves them. This way the persistence layer does not depend on the
  * service layer.
  */
-public class ReturnRepository {
+public class ReturnRepository implements ReturnStorage {
 
     private static final String FILE_PATH = "data/returns.csv";
     private static final String DELIMITER = ";";
@@ -34,6 +34,7 @@ public class ReturnRepository {
      *
      * @param returns the list of returns to save
      */
+    @Override
     public void saveAll(List<Return> returns) {
         try (BufferedWriter bw = new BufferedWriter(new FileWriter(FILE_PATH))) {
             for (Return r : returns) {
@@ -52,6 +53,7 @@ public class ReturnRepository {
      * @return the list of records found, or an empty list if the file does not
      * exist
      */
+    @Override
     public List<ReturnRecord> loadAll() {
         List<ReturnRecord> returns = new ArrayList<>();
         File file = new File(FILE_PATH);

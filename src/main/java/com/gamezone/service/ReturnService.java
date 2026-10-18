@@ -5,7 +5,7 @@ import com.gamezone.model.Product;
 import com.gamezone.model.Return;
 import com.gamezone.model.Sale;
 import com.gamezone.persistence.ReturnRecord;
-import com.gamezone.persistence.ReturnRepository;
+import com.gamezone.persistence.ReturnStorage;
 import java.time.LocalDate;
 import java.util.ArrayList;
 import java.util.HashMap;
@@ -22,7 +22,7 @@ public class ReturnService {
 
     private static final String RETURN_ID_PREFIX = "RET-";
 
-    private final ReturnRepository returnRepository;
+    private final ReturnStorage returnStorage;
     private final SaleService saleService;
     private final ProductService productService;
     private final AccessoryService accessoryService;
@@ -33,28 +33,28 @@ public class ReturnService {
      * Creates a new ReturnService, loading the currently stored returns from
      * the repository.
      *
-     * @param returnRepository the repository used to persist returns
+     * @param returnStorage the storage of the returns
      * @param saleService the service used to validate the original sale
      * @param productService the service used to restore stock
      */
-    public ReturnService(ReturnRepository returnRepository, SaleService saleService,
+    public ReturnService(ReturnStorage returnStorage, SaleService saleService,
                          ProductService productService) {
-        this(returnRepository, saleService, productService, null);
+        this(returnStorage, saleService, productService, null);
     }
 
     /**
      * Creates a new ReturnService that also supports returning accessories,
      * restoring their stock through the given AccessoryService.
      *
-     * @param returnRepository the repository used to persist returns
+     * @param returnStorage the storage of the returns
      * @param saleService the service used to validate the original sale
      * @param productService the service used to restore product stock
      * @param accessoryService the service used to restore accessory stock, or
      * null if accessories cannot be returned
      */
-    public ReturnService(ReturnRepository returnRepository, SaleService saleService,
+    public ReturnService(ReturnStorage returnStorage, SaleService saleService,
                          ProductService productService, AccessoryService accessoryService) {
-        this(returnRepository, saleService, productService, accessoryService, null);
+        this(returnStorage, saleService, productService, accessoryService, null);
     }
 
     /**
@@ -62,7 +62,7 @@ public class ReturnService {
      * returned console and refunds the cost of the cancelled extended
      * warranties.
      *
-     * @param returnRepository the repository used to persist returns
+     * @param returnStorage the storage of the returns
      * @param saleService the service used to validate the original sale
      * @param productService the service used to restore product stock
      * @param accessoryService the service used to restore accessory stock, or
@@ -70,15 +70,15 @@ public class ReturnService {
      * @param warrantyService the service used to cancel the warranties of
      * returned consoles, or null if warranties are not managed
      */
-    public ReturnService(ReturnRepository returnRepository, SaleService saleService,
+    public ReturnService(ReturnStorage returnStorage, SaleService saleService,
                          ProductService productService, AccessoryService accessoryService,
                          WarrantyService warrantyService) {
-        this.returnRepository = returnRepository;
+        this.returnStorage = returnStorage;
         this.saleService = saleService;
         this.productService = productService;
         this.accessoryService = accessoryService;
         this.warrantyService = warrantyService;
-        this.returns = resolveReturns(returnRepository.loadAll());
+        this.returns = resolveReturns(returnStorage.loadAll());
     }
 
     /**
@@ -218,7 +218,7 @@ public class ReturnService {
         }
 
         returns.add(newReturn);
-        returnRepository.saveAll(returns);
+        returnStorage.saveAll(returns);
         return newReturn;
     }
 
