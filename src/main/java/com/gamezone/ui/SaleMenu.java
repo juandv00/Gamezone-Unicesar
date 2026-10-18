@@ -132,7 +132,7 @@ public class SaleMenu {
         List<String> extendedIds = warrantyService != null ? askExtendedWarranties(products) : new ArrayList<>();
         Sale sale = saleService.registerSaleByItemIds(client, seller, itemIds, extendedIds);
         System.out.println("Venta registrada correctamente.");
-        System.out.println(sale.generateReceipt());
+        System.out.println(SaleReceiptFormatter.format(sale));
         if (warrantyService != null) {
             printSaleWarranties(sale);
         }
@@ -208,7 +208,7 @@ public class SaleMenu {
             System.out.println("Número de venta inválido.");
             return;
         }
-        System.out.println(sales.get(number - 1).generateReceipt());
+        System.out.println(SaleReceiptFormatter.format(sales.get(number - 1)));
     }
 
     /**

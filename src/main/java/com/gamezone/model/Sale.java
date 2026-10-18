@@ -11,7 +11,8 @@ import java.util.List;
  * optionally, a list of accessories purchased in the same transaction.
  * It is responsible for calculating its own subtotal based on both lists,
  * and it keeps the promotion discount applied to it (if any), so it can
- * report its final total and generate a receipt with the full breakdown.
+ * report its final total. The text of its receipt is built by
+ * {@code ui.SaleReceiptFormatter}.
  */
 public class Sale {
 
@@ -273,47 +274,6 @@ public class Sale {
     public boolean canBeReturned() {
         LocalDate deadline = date.plusDays(30);
         return !LocalDate.now().isAfter(deadline);
-    }
-
-    /**
-     * Generates a text receipt for the sale, listing every product and
-     * accessory with its price, followed by the subtotal, the discount
-     * applied (with the name of the promotion), the cost of the extended
-     * warranties (if any) and the final total.
-     *
-     * @return the receipt of the sale as multi-line text
-     */
-    public String generateReceipt() {
-        StringBuilder receipt = new StringBuilder();
-        receipt.append("===== GameZone Unicesar - Recibo =====\n");
-        if (id != null) {
-            receipt.append("Venta: ").append(id).append("\n");
-        }
-        receipt.append("Fecha: ").append(date).append("\n");
-        receipt.append("Cliente: ").append(client.getName()).append("\n");
-        receipt.append("Vendedor: ").append(seller.getName()).append("\n");
-        receipt.append("Ítems:\n");
-        for (Product product : products) {
-            receipt.append("  - ").append(product.getTitle())
-                    .append(": ").append(CurrencyFormatter.format(product.getPrice())).append("\n");
-        }
-        for (Accessory accessory : accessories) {
-            receipt.append("  - ").append(accessory.getTitle())
-                    .append(" (accesorio): ").append(CurrencyFormatter.format(accessory.getPrice())).append("\n");
-        }
-        receipt.append("Subtotal: ").append(CurrencyFormatter.format(calculateTotal())).append("\n");
-        if (hasDiscount()) {
-            receipt.append("Descuento (").append(appliedPromotionName).append("): -")
-                    .append(CurrencyFormatter.format(discountAmount)).append("\n");
-        } else {
-            receipt.append("Descuento: ninguno\n");
-        }
-        if (warrantyCost > 0) {
-            receipt.append("Garantías extendidas: +").append(CurrencyFormatter.format(warrantyCost)).append("\n");
-        }
-        receipt.append("Total: ").append(CurrencyFormatter.format(calculateFinalTotal())).append("\n");
-        receipt.append("=======================================");
-        return receipt.toString();
     }
 
     @Override
