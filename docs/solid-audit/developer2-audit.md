@@ -84,3 +84,26 @@ Where it is applied correctly:
 - A new type of promotion or warranty is offered to the menu with a new
   method (`registerPercentageDiscount`, `assignExtendedWarranty`), which
   adds code without modifying the methods that already work.
+
+## Liskov Substitution Principle (LSP)
+
+**Verdict: correct.**
+
+- `Client` and `Seller` extend `Person` (lines 7 and 8) only by adding
+  their own attributes; their `toString` starts with `super.toString()`
+  (`Client` line 34, `Seller` line 46). Every operation that receives a
+  `Person` works with any subclass: `PersonService.findById` (lines
+  112-120), `PersonValidator.validatePersonExists`, and
+  `PersonPersistence.save`, which looks up the format of the class.
+- The `instanceof` checks in `PersonService.listClient` (line 84),
+  `listSeller` (line 99), `getClientById` (line 131), and `getSellerById`
+  (line 147) do not compensate for a subclass that breaks the base class:
+  they select the role that the operation needs (only a client can buy,
+  only a seller can sell). The base class never promised those roles.
+- `AccessoryService` (lines 131 and 217) treats every
+  `ConsoleCompatibleAccessory` in the same way, whether it is a
+  `Controller` or a `Memory`.
+- `PromotionService` and `WarrantyService` use `Promotion` and `Warranty`
+  only through the methods of the base class (`isActive`,
+  `calculateDiscount`, `getAdditionalCost`), and the result is valid for
+  every subclass.
