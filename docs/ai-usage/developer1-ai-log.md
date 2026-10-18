@@ -215,3 +215,25 @@ and warranties, plus adjustment A1.
 - **Response:** GRASP assigns responsibilities inside the classes, while several SOLID principles look at the dependencies between them; a creation can be correct for Creator and still make a rule depend on a detail.
 - **Decision:** I compared the GRASP refactor log with my findings and with the findings of the team and wrote the answer with three cases of each situation from our own code (`ConsoleUI`, `ProductService`, `Return`/`Warranty`, and the GRASP corrections that closed the hierarchies).
 - **Related commit:** `docs: answer guiding question 3 in solid analysis`
+
+### Phase 2 — Correction
+
+#### Storage abstraction and roles of ProductService (V-04, V-07)
+- **Date:** 2026-10-18
+- **Tool:** Claude (Anthropic)
+- **Phase and branch:** Requirement 8, Phase 2 – `feature/solid-refactor`
+- **Objective:** Make `ProductService` depend on an abstraction of the products file (V-04) and offer role interfaces to its clients (V-07), without changing any result.
+- **Query:** Asked Claude to review `ProductService` and propose the interface for the storage of the products and the smallest roles that cover what `SaleService`, `ReturnService`, `WarrantyService`, and the menus call, keeping every commit compilable while the other members change their code.
+- **Response:** `ProductStorage` with `save` and `load`, implemented by `ProductPersistence`; a constructor that receives it, keeping the old one until `Main` passes the storage; `ProductLookup` (`findById`, `getProductById`) and `ProductInventory`, which extends it with `reduceStock` and `restoreStock`.
+- **Decision:** I left `hasEnoughStock` out of the roles because no client calls it, and checked with the team that adding `@Override` to `restoreStock` (Technical Leader) and `getProductById` (Developer 2) and the renamed field in `restoreStock` do not change what those methods do. I compiled after each commit.
+- **Related commit:** `refactor: make ProductService depend on the ProductStorage abstraction (V-04)`, `refactor: split the lookup and inventory roles of ProductService into interfaces (V-07)`
+
+#### Return receipt and warranty certificate formatters (V-01)
+- **Date:** 2026-10-18
+- **Tool:** Claude (Anthropic)
+- **Phase and branch:** Requirement 8, Phase 2 – `feature/solid-refactor`
+- **Objective:** Move the text of the return receipt and of the warranty certificate out of the model, producing exactly the same text.
+- **Query:** Asked how to move `generateReturnReceipt` and `generateWarrantyCertificate` to classes of the `ui` package without repeating the refund calculation and without the model depending on the interface.
+- **Response:** `ReturnReceiptFormatter` and `WarrantyCertificateFormatter` with a static `format` method that uses the getters; `refundFor` becomes the public `calculateRefundFor` so the receipt asks `Return` for the refund of each item; the old methods stay until the menus use the formatters.
+- **Decision:** I compared the new texts with the old methods line by line (same order, labels, and money format), and ran the regression scenarios before my Pull Request: the comparison reported no differences, including every receipt and certificate of the `main` scenario.
+- **Related commit:** `refactor: move the return receipt text to ReturnReceiptFormatter (V-01)`, `refactor: move the warranty certificate text to WarrantyCertificateFormatter (V-01)`, `docs: log developer 1 corrections in solid refactor log`
