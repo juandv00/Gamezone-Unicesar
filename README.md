@@ -20,6 +20,9 @@ warranties, and the monthly balance.
 The code was audited against the nine GRASP patterns and corrected
 without changing what the user sees (Requirement 7); see
 [GRASP audit and correction](#grasp-audit-and-correction-requirement-7).
+It was then audited against the five SOLID principles and corrected in
+the same way (Requirement 8); see
+[SOLID audit and correction](#solid-audit-and-correction-requirement-8).
 
 ## Requirements
 
@@ -40,15 +43,24 @@ com.gamezone
 │                #   four subclasses), usable from any layer
 ├── validation   # Validators called by the services (ProductValidator,
 │                #   PersonValidator, SaleValidator)
-├── persistence  # File-based read/write for each module (stores ids,
-│                #   not objects, for warranties and returns)
-├── service      # Business rules
-├── ui           # Console-based user interface: ConsoleUI (main menu),
+├── persistence  # File-based read/write for each module, behind one
+│                #   storage interface per module (ProductStorage,
+│                #   PersonStorage, SaleStorage, AccessoryStorage,
+│                #   PromotionStorage, ReturnStorage, WarrantyStorage);
+│                #   stores ids, not objects, for warranties and returns
+├── service      # Business rules, the monthly balance (BalanceService),
+│                #   and the role interfaces that other classes depend on
+│                #   (ProductLookup, ProductInventory, AccessoryInventory,
+│                #   SaleLookup, ReturnLookup)
+├── ui           # Console-based user interface: ConsoleUI (main menu
+│                #   built from a list of Menu objects),
 │                #   one class per submenu (ProductMenu, PersonMenu,
 │                #   SaleMenu, AccessoryMenu, PromotionMenu, ReturnMenu,
-│                #   WarrantyMenu), ConsoleInput, and ErrorHandler
+│                #   WarrantyMenu), ConsoleInput, ErrorHandler, and the
+│                #   formatters of the receipts and the certificates
 ├── util         # Cross-cutting helpers (CurrencyFormatter)
-└── Main.java    # Application entry point
+└── Main.java    # Application entry point and composition root: creates
+                 #   every storage, service, and submenu
 ```
 
 Additional folders:
@@ -62,8 +74,8 @@ Additional folders:
   - `products.txt`, `sales.txt`, `returns.csv`, `warranties.csv` —
     created automatically when the first item of each kind is
     registered.
-- `docs/` — analysis documents, UML diagrams (Mermaid), the GRASP audit
-  and correction documents, the non-regression scripts, and each team
+- `docs/` — analysis documents, UML diagrams (Mermaid), the GRASP and
+  SOLID audit and correction documents, the non-regression scripts, and each team
   member's AI usage log.
 
 ## How to build
@@ -312,6 +324,42 @@ The strategy, every change, and the results are recorded in
 `docs/grasp-refactor-log.md`, and the classes before and after the
 corrections are in `docs/grasp-class-diagram.md`.
 
+## SOLID audit and correction (Requirement 8)
+
+**Audit (Phase 1).** Each member audited the code they developed against
+the five SOLID principles (`docs/solid-audit/`), and the Technical Leader
+consolidated the three reports into one team audit
+(`consolidated-audit.md`): seven violations (V-01 to V-07), five of them
+in the boundary between two members, and no new out-of-scope defects. The
+Liskov Substitution Principle was found correct. The answers to the
+guiding questions are in `docs/solid-analysis.md`.
+
+**Correction (Phase 2).** Every violation was corrected by the owner of
+each part of the code:
+
+| ID | Principle | Design change |
+|---|---|---|
+| V-01 | Single Responsibility | The texts of the receipts and the warranty certificate moved from `Sale`, `Return`, and `Warranty` to `SaleReceiptFormatter`, `ReturnReceiptFormatter`, and `WarrantyCertificateFormatter` (`ui`). |
+| V-02 | Single Responsibility | The monthly balance moved from `ReturnService` to the new `BalanceService`, which reads the sales and returns through `SaleLookup` and `ReturnLookup`. |
+| V-03 | Open/Closed (also Dependency Inversion) | New interface `Menu` (`getTitle()`, `show()`) implemented by the seven submenus; `ConsoleUI` builds the main menu from the list it receives, so a new module does not change it. |
+| V-04, V-05, V-06 | Dependency Inversion | One storage interface per module (`ProductStorage`, `PersonStorage`, `SaleStorage`, `AccessoryStorage`, `PromotionStorage`, `ReturnStorage`, `WarrantyStorage`), implemented by the file classes. The services and `SalePersistence` receive the interfaces, and `Main` creates the concrete classes. |
+| V-07 | Interface Segregation | Role interfaces `ProductLookup`, `ProductInventory`, `AccessoryInventory`, and `SaleLookup`; every client depends only on the operations it uses. |
+
+The menu, the messages, and the data files did not change. The
+non-regression verification runs every menu operation, the error cases,
+and the data file cases before and after the corrections and compares
+the results file by file. From the project root:
+
+```powershell
+powershell -ExecutionPolicy Bypass -File docs/regression/run-regression.ps1 -Label reference -Source 6fcea3a
+powershell -ExecutionPolicy Bypass -File docs/regression/run-regression.ps1 -Label final
+powershell -ExecutionPolicy Bypass -File docs/regression/compare-regression.ps1 -Reference reference -Candidate final
+```
+
+The strategy, every change, and the results are recorded in
+`docs/solid-refactor-log.md`, and the classes before and after the
+corrections are in `docs/solid-class-diagram.md`.
+
 ## Team
 
 See [TEAM.md](TEAM.md) for roles, module distribution, and committed
@@ -355,6 +403,14 @@ See the [docs/](docs) folder for:
   violations before and after the corrections, written in Mermaid.
 - `grasp-refactor-log.md` — the non-regression strategy, every change of
   the correction phase, and the results of the verification.
+- `solid-audit/` — the SOLID audit report of each member and the
+  consolidated audit of the team (Requirement 8).
+- `solid-analysis.md` — the answers to the guiding questions of
+  Requirement 8.
+- `solid-class-diagram.md` — the classes involved in the SOLID violations
+  before and after the corrections, written in Mermaid.
+- `solid-refactor-log.md` — the non-regression strategy, every change of
+  the SOLID correction phase, and the results of the verification.
 - `regression/` — the input scenarios and the PowerShell scripts of the
   non-regression verification.
 - `ai-usage/` — each team member's AI usage log.
