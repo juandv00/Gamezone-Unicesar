@@ -16,7 +16,19 @@ import com.gamezone.service.PromotionService;
 import com.gamezone.service.ReturnService;
 import com.gamezone.service.SaleService;
 import com.gamezone.service.WarrantyService;
+import com.gamezone.ui.AccessoryMenu;
+import com.gamezone.ui.ConsoleInput;
 import com.gamezone.ui.ConsoleUI;
+import com.gamezone.ui.ErrorHandler;
+import com.gamezone.ui.Menu;
+import com.gamezone.ui.PersonMenu;
+import com.gamezone.ui.ProductMenu;
+import com.gamezone.ui.PromotionMenu;
+import com.gamezone.ui.ReturnMenu;
+import com.gamezone.ui.SaleMenu;
+import com.gamezone.ui.WarrantyMenu;
+import java.util.List;
+import java.util.Scanner;
 
 /**
  * Entry point of the GameZone Unicesar application. Wires together the services
@@ -50,10 +62,11 @@ public class Main {
 
     /**
      * Creates every repository and service in dependency order, loading the
-     * stored data, and the console user interface that uses them. This is the
-     * composition root of the application: it is the only place that knows
-     * the concrete file classes, and it passes them to the services, which
-     * depend only on the storage abstractions.
+     * stored data, and the console user interface that uses them, with the
+     * reader of the user input, the error handler, and the seven submenus.
+     * This is the composition root of the application: it is the only place
+     * that knows the concrete file classes and submenus, and it passes them to
+     * the classes that use them, which depend only on abstractions.
      *
      * @return the console user interface, ready to run
      * @throws PersistenceException if a data file cannot be read
@@ -82,7 +95,17 @@ public class Main {
         ReturnService returnService = new ReturnService(returnRepository, saleService, productService,
                 accessoryService, warrantyService);
 
-        return new ConsoleUI(productService, personService, saleService,
-                accessoryService, promotionService, returnService, warrantyService);
+        ConsoleInput input = new ConsoleInput(new Scanner(System.in));
+        ErrorHandler errorHandler = new ErrorHandler();
+        List<Menu> menus = List.of(
+                new ProductMenu(productService, input, errorHandler),
+                new PersonMenu(personService, input, errorHandler),
+                new SaleMenu(saleService, personService, productService, accessoryService,
+                        warrantyService, input, errorHandler),
+                new AccessoryMenu(accessoryService, productService, input, errorHandler),
+                new PromotionMenu(promotionService, input, errorHandler),
+                new ReturnMenu(returnService, saleService, input, errorHandler),
+                new WarrantyMenu(warrantyService, saleService, input, errorHandler));
+        return new ConsoleUI(input, menus);
     }
 }
