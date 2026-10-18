@@ -70,7 +70,8 @@ public class Main {
         PromotionRepository promotionRepository = new PromotionRepository();
         PromotionService promotionService = new PromotionService(promotionRepository);
 
-        SalePersistence salePersistence = new SalePersistence(accessoryRepository);
+        SalePersistence salePersistence = new SalePersistence(productPersistence, personPersistence,
+                accessoryRepository);
         WarrantyRepository warrantyRepository = new WarrantyRepository();
         WarrantyService warrantyService = new WarrantyService(warrantyRepository, salePersistence,
                 productService);

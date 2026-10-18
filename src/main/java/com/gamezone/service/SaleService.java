@@ -11,7 +11,7 @@ import com.gamezone.model.Product;
 import com.gamezone.model.Promotion;
 import com.gamezone.model.Sale;
 import com.gamezone.model.Seller;
-import com.gamezone.persistence.SalePersistence;
+import com.gamezone.persistence.SaleStorage;
 import com.gamezone.validation.ProductValidator;
 import com.gamezone.validation.SaleValidator;
 import java.io.IOException;
@@ -37,7 +37,7 @@ public class SaleService implements SaleLookup {
 
     private static final String SALE_ID_PREFIX = "SALE-";
 
-    private final SalePersistence salePersistence;
+    private final SaleStorage saleStorage;
     private final ProductService productService;
     private final AccessoryService accessoryService;
     private final PromotionService promotionService;
@@ -45,29 +45,17 @@ public class SaleService implements SaleLookup {
     private List<Sale> sales;
 
     /**
-     * Creates a new SaleService, loading the currently stored sales and
-     * using the given ProductService to validate and update stock when
-     * a new sale is registered. A SaleService created with this constructor
-     * does not support accessories.
-     *
-     * @param productService the service used to validate and reduce stock
-     */
-    public SaleService(ProductService productService) {
-        this(productService, null, new SalePersistence());
-    }
-
-    /**
      * Creates a new SaleService that supports selling products and
-     * accessories together. The sale persistence is injected so it can be
-     * configured to resolve accessories when loading stored sales.
+     * accessories together. The storage of the sales is injected, so the
+     * service depends only on the {@link SaleStorage} abstraction.
      *
      * @param productService   the service used to validate and reduce product stock
      * @param accessoryService the service used to validate and reduce accessory stock
-     * @param salePersistence  the persistence used to load and save sales
+     * @param saleStorage      the storage used to load and save sales
      */
     public SaleService(ProductService productService, AccessoryService accessoryService,
-                       SalePersistence salePersistence) {
-        this(productService, accessoryService, salePersistence, null);
+                       SaleStorage saleStorage) {
+        this(productService, accessoryService, saleStorage, null);
     }
 
     /**
@@ -76,13 +64,13 @@ public class SaleService implements SaleLookup {
      *
      * @param productService   the service used to validate and reduce product stock
      * @param accessoryService the service used to validate and reduce accessory stock
-     * @param salePersistence  the persistence used to load and save sales
+     * @param saleStorage      the storage used to load and save sales
      * @param promotionService the service used to find the best promotion for a
      *                         sale, or null to register sales without discounts
      */
     public SaleService(ProductService productService, AccessoryService accessoryService,
-                       SalePersistence salePersistence, PromotionService promotionService) {
-        this(productService, accessoryService, salePersistence, promotionService, null);
+                       SaleStorage saleStorage, PromotionService promotionService) {
+        this(productService, accessoryService, saleStorage, promotionService, null);
     }
 
     /**
@@ -92,21 +80,21 @@ public class SaleService implements SaleLookup {
      *
      * @param productService   the service used to validate and reduce product stock
      * @param accessoryService the service used to validate and reduce accessory stock
-     * @param salePersistence  the persistence used to load and save sales
+     * @param saleStorage      the storage used to load and save sales
      * @param promotionService the service used to find the best promotion for a
      *                         sale, or null to register sales without discounts
      * @param warrantyService  the service used to assign warranties to consoles,
      *                         or null to register sales without warranties
      */
     public SaleService(ProductService productService, AccessoryService accessoryService,
-                       SalePersistence salePersistence, PromotionService promotionService,
+                       SaleStorage saleStorage, PromotionService promotionService,
                        WarrantyService warrantyService) {
         this.productService = productService;
         this.accessoryService = accessoryService;
-        this.salePersistence = salePersistence;
+        this.saleStorage = saleStorage;
         this.promotionService = promotionService;
         this.warrantyService = warrantyService;
-        this.sales = salePersistence.load();
+        this.sales = saleStorage.load();
         assignMissingIds();
     }
 
@@ -308,7 +296,7 @@ public class SaleService implements SaleLookup {
 
         // 8. Persist the sale.
         sales.add(sale);
-        salePersistence.save(sales);
+        saleStorage.save(sales);
         return sale;
     }
 
@@ -459,7 +447,7 @@ public class SaleService implements SaleLookup {
             }
         }
         if (assigned) {
-            salePersistence.save(sales);
+            saleStorage.save(sales);
         }
     }
 
