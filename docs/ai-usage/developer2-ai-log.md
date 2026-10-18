@@ -441,3 +441,27 @@ modules.
 - **Response:** One registration per type in the constructor of each repository; in warranties, the repository registers the code and the constructor of each type and creates the warranty of a record (`toWarranty`) after the service resolves the sale and the product.
 - **Decision:** I checked that every repository keeps its behavior with invalid lines (the promotion and warranty repositories still print "Se omitió una línea inválida…", and a line of an unknown type is still ignored) and when a file cannot be written (the accessory repository still prints the error, out-of-scope finding O-03). I ran the regression scenarios that reload the data and read files with unknown types and invalid lines, and the comparison reported no differences.
 - **Related commit:** `refactor: register a file format per person type in PersonPersistence (V-07)`, `refactor: register a file format per accessory type in AccessoryRepository (V-07)`, `refactor: register a file format per promotion type in PromotionRepository (V-07)`, `refactor: register the warranty types in WarrantyRepository (V-07)`, `docs: log developer 2 corrections in grasp refactor log`
+
+## Requirement 8 — SOLID Audit and Correction
+
+### Phase 1 — Audit
+
+#### Audit of my code against the five SOLID principles
+- **Date:** 2026-10-17
+- **Tool:** Claude (Anthropic)
+- **Phase and branch:** Requirement 8, Phase 1 – `feature/solid-audit`
+- **Objective:** Audit the people module, the repositories and services of accessories, promotions, returns (including the monthly balance), and warranties, and my use of exceptions and validators, against the five SOLID principles, with evidence from commit `75cc180`.
+- **Query:** Went through my classes with Claude principle by principle, asking for each principle where it applies in my code, which fragments could break it, and what concrete consequence each one would have.
+- **Response:** Three findings: the monthly balance inside `ReturnService` (SRP), `ReturnService` and `WarrantyService` depending on complete services of other modules and `AccessoryService` without a role for its inventory (ISP), and the services depending on concrete repositories, with `PersonService` creating its own (DIP). OCP and LSP were found correct, with examples.
+- **Decision:** I opened every cited fragment in the IDE on commit `75cc180` to confirm the line numbers, and counted which operations of each service my classes really call. I classified the `instanceof Client`/`Seller` checks of `PersonService` as correct for LSP, because they select the role that each operation needs. I marked the findings whose fix needs code of other members, including `WarrantyService` depending on `SalePersistence`, and reported them to the Technical Leader.
+- **Related commit:** `docs: add scope to developer2 SOLID audit`, `docs: add single responsibility findings to developer2 SOLID audit`, `docs: add open/closed verdict to developer2 SOLID audit`, `docs: add Liskov substitution verdict to developer2 SOLID audit`, `docs: add interface segregation findings to developer2 SOLID audit`, `docs: add dependency inversion findings to developer2 SOLID audit`
+
+#### Guiding question 4
+- **Date:** 2026-10-17
+- **Tool:** Claude (Anthropic)
+- **Phase and branch:** Requirement 8, Phase 1 – `feature/solid-audit`
+- **Objective:** Write the team's answer to guiding question 4 (strategy to preserve the external behavior).
+- **Query:** Asked which of our non-regression scenarios are most affected by moving the creation of objects to `Main` and the receipts to new classes.
+- **Response:** The scenarios that start the application with files that cannot be read or are corrupted, because the order in which the files are loaded decides the message, and the main scenario, because it prints every receipt and certificate.
+- **Decision:** I kept the method of Requirement 7 (the seven scenarios in `docs/regression/`, compared line by line and byte by byte) and wrote the answer explaining why each group of scenarios matters for these corrections, with the commands for the reference commit `75cc180`.
+- **Related commit:** `docs: answer guiding question 4 in solid analysis`
