@@ -16,7 +16,7 @@ import java.util.List;
  * inventory, querying compatibility with consoles, and validating/reducing
  * stock when a sale is registered.
  */
-public class AccessoryService {
+public class AccessoryService implements AccessoryInventory {
 
     private final AccessoryStorage accessoryStorage;
     private List<Accessory> accessories;
@@ -143,6 +143,7 @@ public class AccessoryService {
      * @param id the id of the accessory to find
      * @return the matching accessory, or null if not found
      */
+    @Override
     public Accessory findById(String id) {
         for (Accessory accessory : accessories) {
             if (accessory.getId().equals(id)) {
@@ -178,6 +179,7 @@ public class AccessoryService {
      * @param amount the quantity requested
      * @return true if there is enough stock, false otherwise
      */
+    @Override
     public boolean hasEnoughStock(String accessoryId, int amount) {
         Accessory accessory = findById(accessoryId);
         return accessory != null && accessory.hasEnoughStock(amount);
@@ -192,6 +194,7 @@ public class AccessoryService {
      * @return true if the stock was successfully reduced, false if there is not
      * enough stock available or the accessory does not exist
      */
+    @Override
     public boolean reduceStock(String accessoryId, int amount) throws IOException {
         Accessory accessory = findById(accessoryId);
         if (accessory == null || !accessory.hasEnoughStock(amount)) {
@@ -234,6 +237,7 @@ public class AccessoryService {
      * @return true if the stock was restored, false if the accessory does not
      * exist or the quantity is not positive
      */
+    @Override
     public boolean restoreStock(String accessoryId, int quantity) {
         Accessory accessory = findById(accessoryId);
         if (accessory == null || quantity <= 0) {

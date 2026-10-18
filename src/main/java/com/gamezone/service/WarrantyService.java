@@ -24,7 +24,7 @@ public class WarrantyService {
 
     private final WarrantyStorage warrantyStorage;
     private final SaleStorage saleStorage;
-    private final ProductService productService;
+    private final ProductLookup productLookup;
     private List<Warranty> warranties;
 
     /**
@@ -34,13 +34,13 @@ public class WarrantyService {
      * @param warrantyStorage the storage of the warranties
      * @param saleStorage     the storage of the sales, used to resolve the
      *                        sale of each record
-     * @param productService  used to resolve the product of each record
+     * @param productLookup   used to resolve the product of each record
      */
     public WarrantyService(WarrantyStorage warrantyStorage,
-                           SaleStorage saleStorage, ProductService productService) {
+                           SaleStorage saleStorage, ProductLookup productLookup) {
         this.warrantyStorage = warrantyStorage;
         this.saleStorage = saleStorage;
-        this.productService = productService;
+        this.productLookup = productLookup;
         this.warranties = resolveWarranties(warrantyStorage.loadAll());
     }
 
@@ -56,7 +56,7 @@ public class WarrantyService {
         List<Warranty> resolved = new ArrayList<>();
         for (WarrantyRecord record : records) {
             Sale sale = findSaleById(sales, record.saleId());
-            Product product = productService.findById(record.productId());
+            Product product = productLookup.findById(record.productId());
             if (sale == null || product == null) {
                 continue;
             }
