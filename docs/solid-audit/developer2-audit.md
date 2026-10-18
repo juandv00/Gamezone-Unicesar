@@ -107,3 +107,26 @@ Where it is applied correctly:
   only through the methods of the base class (`isActive`,
   `calculateDiscount`, `getAdditionalCost`), and the result is valid for
   every subclass.
+
+## Interface Segregation Principle (ISP)
+
+**Verdict: violation** (V-02).
+
+Where it is applied correctly:
+- The menus of my modules use most of the operations of their service
+  (`AccessoryMenu` uses nine of the twelve public operations of
+  `AccessoryService`), so a smaller role would not help them.
+- The record classes (`ReturnRecord`, `WarrantyRecord`) expose only the
+  data that the services read.
+
+### V-02
+| Field | Content |
+|---|---|
+| ID | V-02 |
+| Principle | Interface Segregation Principle |
+| Module | Returns (Req 3), Warranties (Req 4), and Accessories (Req 1) |
+| Evidence | `ReturnService`, lines 26-28: `private final SaleService saleService; private final ProductService productService; private final AccessoryService accessoryService;` — it only uses `saleService.findById` and `listAll` (lines 97, 151, 351), `productService.findById` and `restoreStock` (lines 106, 214), and `accessoryService.restoreStock` (line 217) · `WarrantyService`, line 27: `private final ProductService productService;` — it only uses `findById` (line 58) · `AccessoryService` (lines 19-244) offers twelve public operations, but `SaleService` (Technical Leader, field line 42) only uses `findById`, `hasEnoughStock`, and `reduceStock` (lines 231, 275-276, 302) |
+| Explanation | My services depend on complete services of other modules while they use one or two operations of each: they also depend on the registration of sales and products, the sale history, and the listing operations. In the other direction, `AccessoryService` does not offer a smaller role for the classes that only need its inventory. |
+| Consequence | A change in an operation that `ReturnService` or `WarrantyService` never call (for example, a new parameter in `registerSale` or `registerProduct`) still affects them, and they cannot be used or tested with a simpler source of sales or products. The dependencies also hide what the returns and warranties really need from the other modules. |
+| Proposed solution | Make every client depend only on the role it uses. `AccessoryService` implements a new interface `AccessoryInventory` (`findById`, `hasEnoughStock`, `reduceStock`, `restoreStock`). `ReturnService` receives a read-only role of the sales, the inventory role of the products, and `AccessoryInventory`; `WarrantyService` receives the read-only role of the products. The behavior does not change, because the same services are passed as those roles. |
+| Other member's code | Yes. The roles of the sales and of the products must be offered by `SaleService` (Technical Leader) and `ProductService` (Developer 1), and `SaleService` must use `AccessoryInventory` (Technical Leader). Reported to the Technical Leader. |
