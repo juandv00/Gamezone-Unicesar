@@ -166,3 +166,72 @@ cleanup of Developer 2 and the closure of the phase.
 | `Warranty` | `generateWarrantyCertificate` and the import of `CurrencyFormatter` are removed (the menus use `WarrantyCertificateFormatter`) | V-01 | Single Responsibility | `refactor: remove the certificate text from Warranty (V-01)` / PR of Developer 1 | Developer 1 |
 | `PersonService` | The constructor without parameters, which created a `PersonPersistence`, is removed | V-05 | Dependency Inversion | `refactor: remove the PersonService constructor that created its own persistence (V-05)` / PR of Technical Leader | Developer 2 |
 | `ReturnService` | `calculateMonthlySales`, `calculateMonthlyReturns`, `generateMonthlyBalance`, and `validateMonth` are removed (the menu uses `BalanceService`); the class description no longer mentions the balance | V-02 | Single Responsibility | `refactor: remove the monthly balance methods from ReturnService (V-02)` / PR of Technical Leader | Developer 2 |
+
+## Principle trade-offs
+
+- **Static formatters (V-01).** `SaleMenu`, `ReturnMenu`, and
+  `WarrantyMenu` call `SaleReceiptFormatter.format`,
+  `ReturnReceiptFormatter.format`, and `WarrantyCertificateFormatter.format`
+  directly, without an interface. The formatters only build text from the
+  getters of the model; they do no input or output and there is no second
+  format to choose from, so an abstraction would add a type without
+  protecting any variation. Following the criterion of guiding question 1,
+  this is not a Dependency Inversion violation. If the store asks for a
+  second format, the formatter becomes the place to add an interface.
+- **`Main` creates every object (V-03 to V-06).** Under GRASP Creator, the
+  class that uses an object closely usually creates it; now `Main` creates
+  the storages, `BalanceService`, the input, and the submenus, and passes
+  them to the classes that use them. `Main` is the composition root, a
+  Pure Fabrication whose only responsibility is to connect the system, so
+  the services keep High Cohesion and depend only on interfaces (lower
+  coupling). The objects are created in the same order as before, so the
+  data files are loaded in the same order.
+- **Old constructors and methods kept for a while.** `ProductService()`,
+  `PersonService()`, the texts of `Return` and `Warranty`, and the balance
+  of `ReturnService` stayed in the code while the other members changed
+  their classes, so every commit compiled and passed the non-regression
+  scenarios. They are removed in the cleanup commits; the final code has
+  none of them.
+- **Changes that reach a method of another member.** Implementing a new
+  interface adds `@Override` to `ProductService.restoreStock` (Technical
+  Leader), `getProductById` (Developer 2), and `SaleService.getSaleById`
+  (Developer 2), as the consolidated audit agreed. Renaming the field of
+  `ProductService` to `productStorage` (V-04) also changes the line of
+  `restoreStock` that saves the products. None of these changes what the
+  method does, and each one is visible in the Pull Request that contains
+  it.
+- **Dependencies between services that remain.** `SaleMenu` still depends
+  on `SaleService`, `PersonService`, and `WarrantyService`, and
+  `SaleService` and `ReturnService` on `PromotionService` and
+  `WarrantyService`, because they use most of their operations and both
+  sides are business rules (guiding question 1). `ProductMenu`,
+  `PersonMenu`, `PromotionMenu`, and `AccessoryMenu` keep their own
+  service for the same reason.
+- **No GRASP violation reintroduced.** The formatters use `CurrencyFormatter`
+  (V-09 of Requirement 7), each submenu keeps its own class (V-08), and
+  the formats registered per type in the repositories (V-06, V-07) did not
+  change.
+- No correction moved a violation to the out-of-scope findings: the seven
+  violations were corrected without changing the external behavior.
+
+## Final non-regression result
+
+Commit: last correction of `feature/solid-refactor`
+(`refactor: remove the monthly balance methods from ReturnService (V-02)`),
+with the corrections and the cleanup of the three members — 2026-10-18 —
+result: **no differences**. The seven scenarios were run on the final
+version and compared with the reference run of `develop` before the
+corrections (`6fcea3a`): `compare-regression.ps1 -Reference reference
+-Candidate final` reported the same screen output and the same content in
+every data file of every scenario (the 33 menu operations, the error
+cases, and the five data file scenarios). The project compiles with
+`mvn clean compile`.
+
+Verifications made in each Pull Request, on the operations affected by
+its corrections:
+
+| Pull Request | Commits | Violations corrected | Scenarios compared | Result |
+|---|---|---|---|---|
+| Developer 2 | Preparation of the Technical Leader, corrections of Developer 1 and Developer 2 | V-01, V-02, V-04, V-05, V-06, V-07 (the parts of the two developers and the new abstractions of the Technical Leader) | All seven (receipts and certificates, people, products, accessories, promotions, sales, returns with the balance, warranties, and the start with every data file) | No differences |
+| Developer 1 | Corrections of the Technical Leader and cleanup of Developer 1 | V-01, V-02, V-03, V-04, V-05, V-06, V-07 (the parts of the Technical Leader and the removal of the old code of Developer 1) | All seven (every operation, since the main menu and `Main` changed) | No differences |
+| Technical Leader | Cleanup of Developer 2 and closure of the phase | V-02, V-05 (removal of the old code of Developer 2) | All seven | No differences |
