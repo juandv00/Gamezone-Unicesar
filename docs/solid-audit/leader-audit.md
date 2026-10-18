@@ -60,3 +60,33 @@ Where it is applied correctly:
 | Consequence | Changing only how the receipt looks (a new line, a label, the order of the totals) forces a change in the class that calculates the totals, which every other module uses; a mistake there affects returns, balances, and promotions. Every requirement that added data to the sale (promotions, warranties) also had to edit the receipt inside the model. |
 | Proposed solution | Move the text to a presentation class `SaleReceiptFormatter` in the `ui` package, with a static `format(Sale)` method that builds exactly the same text from the getters of the sale. `SaleMenu` prints its result, and `generateReceipt` is removed from `Sale`. |
 | Other member's code | Yes. Developer 1 reported the same problem in `Return.generateReturnReceipt` and `Warranty.generateWarrantyCertificate`, which are printed by my menus (`ReturnMenu` line 126, `SaleMenu` line 178, `WarrantyMenu` line 102). It is a boundary finding. |
+
+## Open/Closed Principle (OCP)
+
+**Verdict: violation** (V-02).
+
+Where it is applied correctly:
+- `SaleService.applyBestPromotion` (lines 411-422) works with any
+  `Promotion` through `findBestPromotionFor` and `calculateDiscount`, so a
+  new type of promotion does not change the sale.
+- `SaleService.assignWarranties` (line 478) and
+  `containsWarrantyEligibleProduct` (line 501) ask
+  `product.isWarrantyEligible()`, and `SaleMenu` does the same (line 153),
+  so a new type of product with a warranty does not change them.
+- `ErrorHandler.executeOperation` (lines 28-44) has one message per
+  category of error; a new exception that belongs to an existing category
+  (a subclass of `BusinessRuleException`, for example) is shown without
+  changes, and any other error falls in the last `catch (RuntimeException e)`
+  (line 41).
+
+### V-02
+| Field | Content |
+|---|---|
+| ID | V-02 |
+| Principle | Open/Closed Principle (also Dependency Inversion) |
+| Module | Interface and start (Workshop 1, extended in every requirement, divided in Req 7) |
+| Evidence | `ConsoleUI.run`, lines 143-151: `case 1 -> productMenu.show(); case 2 -> personMenu.show(); ... case 7 -> warrantyMenu.show();` · `ConsoleUI.showMainMenu`, lines 163-169: one `System.out.println` per module (`"1. Gestión de productos"` ... `"7. Gestión de garantías"`) · seven fields, one per submenu (lines 25-31) · five constructors (lines 41, 55, 72, 93, and 117), one more parameter for each module added by a requirement · the last constructor creates the input and every submenu (lines 121-130: `new ConsoleInput(new Scanner(System.in))`, `new ProductMenu(...)`, ... `new WarrantyMenu(...)`) |
+| Explanation | The main menu is not closed for modification: it knows each submenu by name. Adding a module means editing `ConsoleUI` in five places (a field, a constructor parameter, the creation of the submenu, a `case`, and a line of the menu). It also breaks Dependency Inversion: `ConsoleUI` creates the concrete submenus and the `Scanner` of the console, instead of receiving them. |
+| Consequence | Every requirement that added a module (accessories, promotions, returns, warranties) changed `ConsoleUI` and added one more constructor, and the next one will do the same. The number of an option and its text are kept in two separate places (the `case` and the `println`), so they can get out of sync. The main menu cannot be built with other submenus or another source of input. |
+| Proposed solution | Create an interface `Menu` in the `ui` package with `getTitle()` and `show()`, implemented by the seven submenus. `ConsoleUI` receives a `ConsoleInput` and a `List<Menu>`, prints one numbered line per menu from its title, and opens `menus.get(option - 1)`. `Main` creates the `Scanner`, the `ConsoleInput`, the `ErrorHandler`, and the submenus in the current order, so the menu shows exactly the same lines and options. |
+| Other member's code | No. Every class involved is mine. |
