@@ -123,7 +123,7 @@ public class ReturnMenu {
 
         Return registeredReturn = returnService.registerReturn(sale.getId(), itemIds, reason);
         System.out.println("Devolución registrada correctamente.");
-        System.out.println(registeredReturn.generateReturnReceipt());
+        System.out.println(ReturnReceiptFormatter.format(registeredReturn));
     }
 
     /**

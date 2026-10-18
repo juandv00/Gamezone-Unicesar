@@ -175,7 +175,7 @@ public class SaleMenu {
     private void printSaleWarranties(Sale sale) {
         for (Warranty warranty : warrantyService.listAllWarranties()) {
             if (warranty.getSale().getId().equals(sale.getId())) {
-                System.out.println(warranty.generateWarrantyCertificate());
+                System.out.println(WarrantyCertificateFormatter.format(warranty));
             }
         }
     }

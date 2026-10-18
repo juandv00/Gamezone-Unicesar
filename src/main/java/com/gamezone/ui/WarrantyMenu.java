@@ -99,7 +99,7 @@ public class WarrantyMenu {
                     + " (solo las consolas reciben garantía).");
             return;
         }
-        System.out.println(warranty.generateWarrantyCertificate());
+        System.out.println(WarrantyCertificateFormatter.format(warranty));
         System.out.println(warranty.isActive(LocalDate.now())
                 ? "Estado: VIGENTE (cubierta hasta el " + warranty.getEndDate() + ")"
                 : "Estado: VENCIDA el " + warranty.getEndDate());
