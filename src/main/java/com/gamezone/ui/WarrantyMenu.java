@@ -3,7 +3,7 @@ package com.gamezone.ui;
 import com.gamezone.model.Product;
 import com.gamezone.model.Sale;
 import com.gamezone.model.Warranty;
-import com.gamezone.service.SaleService;
+import com.gamezone.service.SaleLookup;
 import com.gamezone.service.WarrantyService;
 import com.gamezone.util.CurrencyFormatter;
 import java.time.LocalDate;
@@ -18,7 +18,7 @@ import java.util.List;
 public class WarrantyMenu {
 
     private final WarrantyService warrantyService;
-    private final SaleService saleService;
+    private final SaleLookup saleLookup;
     private final ConsoleInput input;
     private final ErrorHandler errorHandler;
 
@@ -28,15 +28,15 @@ public class WarrantyMenu {
      *
      * @param warrantyService the service used for warranty operations, or
      *        null if the warranty module is disabled
-     * @param saleService the service used for sale operations
+     * @param saleLookup the role used to find the sales
      * @param input the reader of the user input
      * @param errorHandler the handler that runs each operation and shows its errors
      */
     public WarrantyMenu(WarrantyService warrantyService,
-                        SaleService saleService,
+                        SaleLookup saleLookup,
                         ConsoleInput input, ErrorHandler errorHandler) {
         this.warrantyService = warrantyService;
-        this.saleService = saleService;
+        this.saleLookup = saleLookup;
         this.input = input;
         this.errorHandler = errorHandler;
     }
@@ -79,7 +79,7 @@ public class WarrantyMenu {
      */
     private void viewWarrantyOfProduct() {
         System.out.print("Identificador de la venta (p. ej. SALE-1): ");
-        Sale sale = saleService.getSaleById(input.readLine().trim());
+        Sale sale = saleLookup.getSaleById(input.readLine().trim());
         System.out.print("Identificador del producto: ");
         String productId = input.readLine().trim();
         Product product = null;

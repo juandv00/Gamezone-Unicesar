@@ -5,7 +5,7 @@ import com.gamezone.model.Product;
 import com.gamezone.model.Return;
 import com.gamezone.model.Sale;
 import com.gamezone.service.ReturnService;
-import com.gamezone.service.SaleService;
+import com.gamezone.service.SaleLookup;
 import com.gamezone.util.CurrencyFormatter;
 import java.util.ArrayList;
 import java.util.List;
@@ -19,7 +19,7 @@ import java.util.List;
 public class ReturnMenu {
 
     private final ReturnService returnService;
-    private final SaleService saleService;
+    private final SaleLookup saleLookup;
     private final ConsoleInput input;
     private final ErrorHandler errorHandler;
 
@@ -29,15 +29,15 @@ public class ReturnMenu {
      *
      * @param returnService the service used for return operations, or
      *        null if the return module is disabled
-     * @param saleService the service used for sale operations
+     * @param saleLookup the role used to find the sales
      * @param input the reader of the user input
      * @param errorHandler the handler that runs each operation and shows its errors
      */
     public ReturnMenu(ReturnService returnService,
-                      SaleService saleService,
+                      SaleLookup saleLookup,
                       ConsoleInput input, ErrorHandler errorHandler) {
         this.returnService = returnService;
-        this.saleService = saleService;
+        this.saleLookup = saleLookup;
         this.input = input;
         this.errorHandler = errorHandler;
     }
@@ -85,7 +85,7 @@ public class ReturnMenu {
     private void registerReturn() {
         System.out.print("Identificador de la venta (p. ej. SALE-1): ");
         String saleId = input.readLine().trim();
-        Sale sale = saleService.getSaleById(saleId);
+        Sale sale = saleLookup.getSaleById(saleId);
         if (!sale.canBeReturned()) {
             System.out.println("Esta venta ya no admite devoluciones: pasaron más de 30 días desde el "
                     + sale.getDate() + ".");

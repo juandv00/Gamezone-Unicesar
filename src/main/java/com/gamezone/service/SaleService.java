@@ -38,8 +38,8 @@ public class SaleService implements SaleLookup {
     private static final String SALE_ID_PREFIX = "SALE-";
 
     private final SaleStorage saleStorage;
-    private final ProductService productService;
-    private final AccessoryService accessoryService;
+    private final ProductInventory productInventory;
+    private final AccessoryInventory accessoryInventory;
     private final PromotionService promotionService;
     private final WarrantyService warrantyService;
     private List<Sale> sales;
@@ -49,28 +49,28 @@ public class SaleService implements SaleLookup {
      * accessories together. The storage of the sales is injected, so the
      * service depends only on the {@link SaleStorage} abstraction.
      *
-     * @param productService   the service used to validate and reduce product stock
-     * @param accessoryService the service used to validate and reduce accessory stock
-     * @param saleStorage      the storage used to load and save sales
+     * @param productInventory   the inventory role used to validate and reduce product stock
+     * @param accessoryInventory the inventory role used to validate and reduce accessory stock
+     * @param saleStorage        the storage used to load and save sales
      */
-    public SaleService(ProductService productService, AccessoryService accessoryService,
+    public SaleService(ProductInventory productInventory, AccessoryInventory accessoryInventory,
                        SaleStorage saleStorage) {
-        this(productService, accessoryService, saleStorage, null);
+        this(productInventory, accessoryInventory, saleStorage, null);
     }
 
     /**
      * Creates a new SaleService that supports accessories and applies the
      * best active promotion to every sale it registers.
      *
-     * @param productService   the service used to validate and reduce product stock
-     * @param accessoryService the service used to validate and reduce accessory stock
-     * @param saleStorage      the storage used to load and save sales
-     * @param promotionService the service used to find the best promotion for a
-     *                         sale, or null to register sales without discounts
+     * @param productInventory   the inventory role used to validate and reduce product stock
+     * @param accessoryInventory the inventory role used to validate and reduce accessory stock
+     * @param saleStorage        the storage used to load and save sales
+     * @param promotionService   the service used to find the best promotion for a
+     *                           sale, or null to register sales without discounts
      */
-    public SaleService(ProductService productService, AccessoryService accessoryService,
+    public SaleService(ProductInventory productInventory, AccessoryInventory accessoryInventory,
                        SaleStorage saleStorage, PromotionService promotionService) {
-        this(productService, accessoryService, saleStorage, promotionService, null);
+        this(productInventory, accessoryInventory, saleStorage, promotionService, null);
     }
 
     /**
@@ -78,19 +78,19 @@ public class SaleService implements SaleLookup {
      * active promotion, and assigns warranties to the consoles of every sale
      * it registers.
      *
-     * @param productService   the service used to validate and reduce product stock
-     * @param accessoryService the service used to validate and reduce accessory stock
-     * @param saleStorage      the storage used to load and save sales
-     * @param promotionService the service used to find the best promotion for a
-     *                         sale, or null to register sales without discounts
-     * @param warrantyService  the service used to assign warranties to consoles,
-     *                         or null to register sales without warranties
+     * @param productInventory   the inventory role used to validate and reduce product stock
+     * @param accessoryInventory the inventory role used to validate and reduce accessory stock
+     * @param saleStorage        the storage used to load and save sales
+     * @param promotionService   the service used to find the best promotion for a
+     *                           sale, or null to register sales without discounts
+     * @param warrantyService    the service used to assign warranties to consoles,
+     *                           or null to register sales without warranties
      */
-    public SaleService(ProductService productService, AccessoryService accessoryService,
+    public SaleService(ProductInventory productInventory, AccessoryInventory accessoryInventory,
                        SaleStorage saleStorage, PromotionService promotionService,
                        WarrantyService warrantyService) {
-        this.productService = productService;
-        this.accessoryService = accessoryService;
+        this.productInventory = productInventory;
+        this.accessoryInventory = accessoryInventory;
         this.saleStorage = saleStorage;
         this.promotionService = promotionService;
         this.warrantyService = warrantyService;
@@ -133,7 +133,7 @@ public class SaleService implements SaleLookup {
      *                               not have enough stock
      * @throws PersistenceException  if the sale or the stock cannot be saved
      * @throws IllegalStateException if accessories are given but this service
-     *                               was created without an AccessoryService
+     *                               was created without an AccessoryInventory
      */
     public Sale registerSale(Client client, Seller seller, List<Product> products,
                              List<Accessory> accessories) {
@@ -154,8 +154,8 @@ public class SaleService implements SaleLookup {
      *       basic otherwise, adding up the cost of the extended ones.</li>
      *   <li>The final total is subtotal - discount + extended warranty cost
      *       ({@link Sale#calculateFinalTotal()}).</li>
-     *   <li>Update the inventory through ProductService or AccessoryService,
-     *       depending on the type of each item.</li>
+     *   <li>Update the inventory through {@link ProductInventory} or
+     *       {@link AccessoryInventory}, depending on the type of each item.</li>
      *   <li>Persist the sale (the warranties are persisted by WarrantyService
      *       when they are assigned).</li>
      * </ol>
@@ -211,12 +211,12 @@ public class SaleService implements SaleLookup {
         List<Accessory> accessories = new ArrayList<>();
         if (itemIds != null) {
             for (String itemId : itemIds) {
-                Product product = productService.findById(itemId);
+                Product product = productInventory.findById(itemId);
                 if (product != null) {
                     products.add(product);
                     continue;
                 }
-                Accessory accessory = accessoryService != null ? accessoryService.findById(itemId) : null;
+                Accessory accessory = accessoryInventory != null ? accessoryInventory.findById(itemId) : null;
                 if (accessory == null) {
                     throw new ResourceNotFoundException("Producto o accesorio", itemId);
                 }
@@ -239,7 +239,7 @@ public class SaleService implements SaleLookup {
 
         // 1. The sale must have a client, a seller, and at least one item.
         SaleValidator.validateSaleData(client, seller, saleProducts, saleAccessories);
-        if (!saleAccessories.isEmpty() && accessoryService == null) {
+        if (!saleAccessories.isEmpty() && accessoryInventory == null) {
             throw new IllegalStateException("This SaleService was created without accessory support.");
         }
         if (!extendedIds.isEmpty() && warrantyService == null) {
@@ -256,12 +256,12 @@ public class SaleService implements SaleLookup {
         Map<String, Integer> productUnits = countProductUnits(saleProducts);
         Map<String, Integer> accessoryUnits = countAccessoryUnits(saleAccessories);
         for (Map.Entry<String, Integer> entry : productUnits.entrySet()) {
-            Product product = productService.getProductById(entry.getKey());
+            Product product = productInventory.getProductById(entry.getKey());
             ProductValidator.validateStockAvailability(product, entry.getValue());
         }
         for (Map.Entry<String, Integer> entry : accessoryUnits.entrySet()) {
-            if (!accessoryService.hasEnoughStock(entry.getKey(), entry.getValue())) {
-                Accessory accessory = accessoryService.findById(entry.getKey());
+            if (!accessoryInventory.hasEnoughStock(entry.getKey(), entry.getValue())) {
+                Accessory accessory = accessoryInventory.findById(entry.getKey());
                 String name = accessory != null ? accessory.getTitle() : entry.getKey();
                 throw new BusinessRuleException("Stock insuficiente para el accesorio " + name
                         + ": solicitadas " + entry.getValue() + ".");
@@ -283,11 +283,11 @@ public class SaleService implements SaleLookup {
 
         // 7. Update the inventory through the service of each item type.
         for (Map.Entry<String, Integer> entry : productUnits.entrySet()) {
-            productService.reduceStock(entry.getKey(), entry.getValue());
+            productInventory.reduceStock(entry.getKey(), entry.getValue());
         }
         try {
             for (Map.Entry<String, Integer> entry : accessoryUnits.entrySet()) {
-                accessoryService.reduceStock(entry.getKey(), entry.getValue());
+                accessoryInventory.reduceStock(entry.getKey(), entry.getValue());
             }
         } catch (IOException e) {
             throw new PersistenceException("Error de escritura al guardar el stock de los accesorios"

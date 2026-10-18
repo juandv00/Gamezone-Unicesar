@@ -6,9 +6,9 @@ import com.gamezone.model.Product;
 import com.gamezone.model.Sale;
 import com.gamezone.model.Seller;
 import com.gamezone.model.Warranty;
-import com.gamezone.service.AccessoryService;
+import com.gamezone.service.AccessoryInventory;
 import com.gamezone.service.PersonService;
-import com.gamezone.service.ProductService;
+import com.gamezone.service.ProductLookup;
 import com.gamezone.service.SaleService;
 import com.gamezone.service.WarrantyService;
 import com.gamezone.util.CurrencyFormatter;
@@ -25,8 +25,8 @@ public class SaleMenu {
 
     private final SaleService saleService;
     private final PersonService personService;
-    private final ProductService productService;
-    private final AccessoryService accessoryService;
+    private final ProductLookup productLookup;
+    private final AccessoryInventory accessoryInventory;
     private final WarrantyService warrantyService;
     private final ConsoleInput input;
     private final ErrorHandler errorHandler;
@@ -37,9 +37,9 @@ public class SaleMenu {
      *
      * @param saleService the service used for sale operations
      * @param personService the service used for people operations
-     * @param productService the service used for product operations
-     * @param accessoryService the service used for accessory operations,
-     *        or null if the accessory module is disabled
+     * @param productLookup the role used to find the products of a sale
+     * @param accessoryInventory the role used to find the accessories of a
+     *        sale, or null if the accessory module is disabled
      * @param warrantyService the service used for warranty operations, or
      *        null if the warranty module is disabled
      * @param input the reader of the user input
@@ -47,14 +47,14 @@ public class SaleMenu {
      */
     public SaleMenu(SaleService saleService,
                     PersonService personService,
-                    ProductService productService,
-                    AccessoryService accessoryService,
+                    ProductLookup productLookup,
+                    AccessoryInventory accessoryInventory,
                     WarrantyService warrantyService,
                     ConsoleInput input, ErrorHandler errorHandler) {
         this.saleService = saleService;
         this.personService = personService;
-        this.productService = productService;
-        this.accessoryService = accessoryService;
+        this.productLookup = productLookup;
+        this.accessoryInventory = accessoryInventory;
         this.warrantyService = warrantyService;
         this.input = input;
         this.errorHandler = errorHandler;
@@ -113,14 +113,14 @@ public class SaleMenu {
                 addingItems = false;
                 continue;
             }
-            Product product = productService.findById(itemId);
+            Product product = productLookup.findById(itemId);
             if (product != null) {
                 itemIds.add(product.getId());
                 products.add(product);
                 System.out.println(product.getTitle() + " agregado.");
                 continue;
             }
-            Accessory accessory = accessoryService != null ? accessoryService.findById(itemId) : null;
+            Accessory accessory = accessoryInventory != null ? accessoryInventory.findById(itemId) : null;
             if (accessory != null) {
                 itemIds.add(accessory.getId());
                 System.out.println(accessory.getTitle() + " (accesorio) agregado.");
