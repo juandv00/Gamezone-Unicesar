@@ -167,3 +167,72 @@ No finding had to be returned to its author.
 | Agreed solution | Role interfaces in the `service` package, implemented by the existing services: `ProductLookup` (`findById`, `getProductById`) and `ProductInventory extends ProductLookup` (adds `reduceStock`, `restoreStock`) by `ProductService`; `AccessoryInventory` (`findById`, `hasEnoughStock`, `reduceStock`, `restoreStock`) by `AccessoryService`; `SaleLookup` (`findById`, `getSaleById`, `listAll`) by `SaleService`. Clients: `SaleService` uses `ProductInventory` and `AccessoryInventory`; `ReturnService` uses `SaleLookup`, `ProductInventory`, and `AccessoryInventory`; `WarrantyService` uses `ProductLookup`; `SaleMenu` uses `ProductLookup` and `AccessoryInventory`; `AccessoryMenu` uses `ProductLookup`; `ReturnMenu` and `WarrantyMenu` use `SaleLookup`. `ProductMenu` and `SaleMenu` keep their own service, whose operations they use. |
 | Source reports | leader-audit V-03, developer1-audit V-02, developer2-audit V-02 |
 | Responsible | **Developer 1**: `ProductLookup`, `ProductInventory`, and `ProductService`. **Developer 2**: `AccessoryInventory`, `AccessoryService`, `ReturnService`, and `WarrantyService`. **Technical Leader**: `SaleLookup` (created before the developers start), `SaleService`, `SaleMenu`, `AccessoryMenu`, `ReturnMenu`, and `WarrantyMenu`. |
+
+## Boundary findings
+
+Five of the seven violations involve the code of more than one member.
+In each case the members reported the problem from their own side (or one
+member reported it and the other's code was checked during the
+consolidation), it was registered once, and the correction was split by
+ownership:
+
+| Violation | Origin of the problem | Correction split |
+|---|---|---|
+| V-01 | `Sale` (Technical Leader), `Return` and `Warranty` (Developer 1) build their texts, which the menus of the Technical Leader print | Developer 1 creates his two formatters and keeps the old methods; the Technical Leader creates `SaleReceiptFormatter` and changes the menus; then Developer 1 removes the old methods |
+| V-02 | `ReturnService` (Developer 2) contains the balance that `ReturnMenu` (Technical Leader) shows | Developer 2 creates `ReturnLookup` and `BalanceService` and keeps the old methods; the Technical Leader changes `ReturnMenu` and `Main`; then Developer 2 removes the balance from `ReturnService` |
+| V-04 | `ProductService` (Developer 1) creates its file class, which `Main` (Technical Leader) does not pass | Developer 1 adds `ProductStorage` and the new constructor; the Technical Leader passes the storage from `Main`; then Developer 1 removes the old constructor |
+| V-05 | The services of Developer 2 depend on concrete repositories, `WarrantyService` depends on `SalePersistence` (Technical Leader), and `Main` does not pass `PersonPersistence` | The Technical Leader creates `SaleStorage` first; Developer 2 adds the five interfaces and changes his services; the Technical Leader passes the storage from `Main`; then Developer 2 removes the old constructor |
+| V-07 | `ProductService` (Developer 1), `AccessoryService` (Developer 2), and `SaleService` (Technical Leader) offer no roles, and the clients of the three members depend on the whole services | Each member creates the role of his own service (the Technical Leader first, then Developer 1 and Developer 2), and then each member changes the fields of his own clients |
+
+Rules applied:
+- The member who owns the class that must offer a new abstraction goes
+  first, and the members who use it go after. Each member changes only
+  his own code.
+- The old way of doing something (a method or a constructor) is removed
+  only after every user has changed, so every commit compiles even when
+  the parts of a boundary finding are made by different members.
+- When a member makes his class implement a new interface, he adds the
+  `implements` clause and the `@Override` annotations to every method of
+  the interface, including methods written by other members
+  (`ProductService.restoreStock`, `getProductById`, and
+  `SaleService.getSaleById`): the annotation does not change what the
+  method does.
+- V-06 is not a boundary finding, because no class of another member
+  changes, but it depends on `ProductStorage` (Developer 1) and on
+  `PersonStorage` and `AccessoryStorage` (Developer 2), so it is corrected
+  after them.
+
+## Out-of-scope findings
+
+No new functional defect was found in this audit. While auditing, each
+member checked the operations of his module against what the user
+expects, and the Technical Leader ran the seven scenarios of
+`docs/regression/` on `75cc180` and read their output. The only defects
+found were the three already registered in Requirement 7 (O-01, products with a duplicated id; O-02, product ids
+compared with case in returns; O-03, errors of the accessory, promotion,
+return, and warranty files). As section 2.2 requires, they are not
+registered again, and the corrections of Phase 2 must keep them exactly as
+they are.
+
+## Order of the corrections (Phase 2)
+
+1. **Technical Leader (preparation):** the "before" diagram, the
+   non-regression strategy with the reference result, `SaleStorage`
+   implemented by `SalePersistence` (needed by Developer 2 for V-05), and
+   `SaleLookup` implemented by `SaleService` (needed by Developer 2 for
+   V-07).
+2. **Developer 1:** V-04 (`ProductStorage` and the new constructor), V-07
+   (`ProductLookup` and `ProductInventory`), and his part of V-01 (the two
+   formatters and `Return.calculateRefundFor`).
+3. **Developer 2:** V-05 (the five storage interfaces), his part of V-07
+   (`AccessoryInventory`, `ReturnService`, `WarrantyService`), and V-02
+   (`ReturnLookup` and `BalanceService`).
+4. **Technical Leader:** `Main` passes the product and person storages
+   (V-04, V-05), V-06, his part of V-07, his part of V-01, V-03, and his
+   part of V-02 (`ReturnMenu` and `Main`).
+5. **Developer 1 and Developer 2 (cleanup):** they remove what is no
+   longer used: the constructors without parameters of `ProductService`
+   and `PersonService` (V-04, V-05), the texts of `Return` and `Warranty`
+   (V-01), and the balance of `ReturnService` (V-02).
+6. **Technical Leader:** the "after" diagram, the final non-regression
+   verification, and the README.
