@@ -61,3 +61,26 @@ Where it is applied correctly:
 | Consequence | Any change in the balance forces a change in the class that registers returns and puts that flow at risk; the balance cannot be reused or tested without creating the whole return service with its repository, sales, products, and accessories. The class also depends on all the sales only because of the report (`saleService.listAll()`, line 351). |
 | Proposed solution | Move the balance to a new class `BalanceService` in the `service` package, which receives the read-only queries of the sales and of the returns. To give it the returns without the registration operation, `ReturnService` implements a small interface `ReturnLookup` (`viewAllReturns`, `viewReturnsByCustomer`, `viewReturnsBySale`). The texts and results of the balance do not change, including the message "El mes debe estar entre 1 y 12.". After the menu uses `BalanceService`, the balance methods and `validateMonth` are removed from `ReturnService`. |
 | Other member's code | Yes. `ReturnMenu.showMonthlyBalance` (lines 161-163) calls the balance in `ReturnService`, and `Main` creates the services; both belong to the Technical Leader. The sales are read through the queries of `SaleService` (Technical Leader). Reported to the Technical Leader. |
+
+## Open/Closed Principle (OCP)
+
+**Verdict: correct.**
+
+- **File formats:** since Requirement 7, each repository registers the
+  format of each type once in its constructor and saving and loading look
+  it up: `PersonPersistence` (lines 55-62), `AccessoryRepository` (lines
+  61-84), `PromotionRepository` (lines 61-74), and `WarrantyRepository`
+  (lines 63-66). A new type adds one registration; the existing reading
+  and writing code is not modified.
+- **Best promotion:** `PromotionService.findBestPromotionFor` (lines
+  138-153) calls `promotion.calculateDiscount(sale)` for any promotion, so
+  a new type of promotion does not change the selection.
+- **Warranty eligibility and compatibility:** `WarrantyService.validateWarrantyEligible`
+  (lines 130-134) asks `product.isWarrantyEligible()`, and
+  `AccessoryService.findAccessoriesCompatibleWith` and
+  `addCompatibleConsole` (lines 131 and 217) ask only for
+  `ConsoleCompatibleAccessory`, so a new product or accessory type does not
+  change these services.
+- A new type of promotion or warranty is offered to the menu with a new
+  method (`registerPercentageDiscount`, `assignExtendedWarranty`), which
+  adds code without modifying the methods that already work.
