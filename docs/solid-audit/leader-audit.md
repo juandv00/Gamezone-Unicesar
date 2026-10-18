@@ -137,3 +137,30 @@ Where it is applied correctly:
 | Consequence | A change in an operation that these classes never call still affects them (for example, a new parameter in `registerProduct` or in `registerSale`). They cannot be used with a simpler source of sales or products, and their dependencies do not show what each one really needs. |
 | Proposed solution | Make each class depend only on the role it uses. `SaleService` implements a new interface `SaleLookup` (`findById`, `getSaleById`, `listAll`) in the `service` package. `SaleService` uses the inventory roles of the products and the accessories; `ReturnMenu` and `WarrantyMenu` use `SaleLookup`; `SaleMenu` and `AccessoryMenu` use the read-only role of the products. The same services are passed as those roles, so the behavior does not change. |
 | Other member's code | Yes. The roles of the products and the accessories must be offered by `ProductService` (Developer 1) and `AccessoryService` (Developer 2). Developer 1 and Developer 2 reported the same problem from their side. It is a boundary finding. |
+
+## Dependency Inversion Principle (DIP)
+
+**Verdict: violation** (V-04; the creation of the submenus and the
+`Scanner` in `ConsoleUI` is registered with V-02).
+
+Where it is applied correctly:
+- `Main` is the composition root of the application: it is the only place
+  where creating the concrete repositories and services is expected
+  (lines 56-78).
+- `SaleService` receives every collaborator through its constructor
+  (lines 101-111), so it does not create other services.
+- `ProductService.restoreStock` (lines 129-136) depends only on `Product`
+  and on the persistence that its class already has; it does not create
+  any object.
+
+### V-04
+| Field | Content |
+|---|---|
+| ID | V-04 |
+| Principle | Dependency Inversion Principle |
+| Module | Sales (Workshop 1, Req 1) |
+| Evidence | `SalePersistence`, lines 44-46: `private final ProductPersistence productPersistence; private final PersonPersistence personPersistence; private final AccessoryRepository accessoryRepository;` · line 54: `this(new AccessoryRepository());` · lines 68-69: `this.productPersistence = new ProductPersistence(); this.personPersistence = new PersonPersistence();` · `SaleService`, line 40: `private final SalePersistence salePersistence;`, the constructor of lines 55-57: `this(productService, null, new SalePersistence());`, and the parameter of type `SalePersistence` in the other constructors (lines 69, 84, and 102) |
+| Explanation | `SaleService` contains the rules of the sales and depends on the concrete class that writes `data/sales.txt`; one of its constructors even creates it. `SalePersistence`, in turn, creates the file classes of the products and the people and depends on the concrete accessory repository. The rules and the reading of the sales depend on details instead of abstractions, and part of the composition of the system is hidden inside these classes. |
+| Consequence | The sales cannot be stored in another way without modifying `SaleService`. The file of the sales is tied to how products, people, and accessories are stored: if Developer 1 or Developer 2 changed their storage, `SalePersistence` would still read the old files with its own objects. `Main` cannot decide which implementations are used. |
+| Proposed solution | Create the abstraction `SaleStorage` (`save`, `load`) in the `persistence` package, implemented by `SalePersistence`. `SalePersistence` receives the storage abstractions of the products, the people, and the accessories in its constructor instead of creating them, and its constructors without them are removed. `SaleService` depends on `SaleStorage`, and its constructor that creates a `SalePersistence` is removed. `Main` creates every storage once, in the same loading order as today, and passes it to the classes that use it. |
+| Other member's code | Yes, indirectly. The storage abstractions of the products, the people, and the accessories must exist first; they are created by Developer 1 and Developer 2 in their own corrections. No class of another member has to change for this finding. |
