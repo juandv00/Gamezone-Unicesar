@@ -5,7 +5,7 @@ import com.gamezone.model.Cable;
 import com.gamezone.model.ConsoleCompatibleAccessory;
 import com.gamezone.model.Controller;
 import com.gamezone.model.Memory;
-import com.gamezone.persistence.AccessoryRepository;
+import com.gamezone.persistence.AccessoryStorage;
 import java.io.IOException;
 import java.util.ArrayList;
 import java.util.List;
@@ -18,18 +18,19 @@ import java.util.List;
  */
 public class AccessoryService {
 
-    private final AccessoryRepository accessoryRepository;
+    private final AccessoryStorage accessoryStorage;
     private List<Accessory> accessories;
 
     /**
      * Creates a new AccessoryService, loading the currently stored accessories
-     * from the repository.
+     * from the given storage. The service depends only on the
+     * {@link AccessoryStorage} abstraction, not on a concrete file class.
      *
-     * @param accessoryRepository the repository used to persist accessories
+     * @param accessoryStorage the storage of the accessories
      */
-    public AccessoryService(AccessoryRepository accessoryRepository) {
-        this.accessoryRepository = accessoryRepository;
-        this.accessories = accessoryRepository.loadAll();
+    public AccessoryService(AccessoryStorage accessoryStorage) {
+        this.accessoryStorage = accessoryStorage;
+        this.accessories = accessoryStorage.loadAll();
     }
 
     /**
@@ -47,7 +48,7 @@ public class AccessoryService {
                                          int stock, Controller.ConnectionType connectionType) throws IOException {
         Controller controller = new Controller(id, title, price, stock, connectionType);
         accessories.add(controller);
-        accessoryRepository.saveAll(accessories);
+        accessoryStorage.saveAll(accessories);
         return controller;
     }
 
@@ -66,7 +67,7 @@ public class AccessoryService {
                                double lengthInMeters, String connectorType) throws IOException {
         Cable cable = new Cable(id, title, price, stock, lengthInMeters, connectorType);
         accessories.add(cable);
-        accessoryRepository.saveAll(accessories);
+        accessoryStorage.saveAll(accessories);
         return cable;
     }
 
@@ -85,7 +86,7 @@ public class AccessoryService {
                                  int capacityInGB, Memory.MemoryType memoryType) throws IOException {
         Memory memory = new Memory(id, title, price, stock, capacityInGB, memoryType);
         accessories.add(memory);
-        accessoryRepository.saveAll(accessories);
+        accessoryStorage.saveAll(accessories);
         return memory;
     }
 
@@ -165,7 +166,7 @@ public class AccessoryService {
             return false;
         }
         accessory.setStock(quantity);
-        accessoryRepository.saveAll(accessories);
+        accessoryStorage.saveAll(accessories);
         return true;
     }
 
@@ -197,7 +198,7 @@ public class AccessoryService {
             return false;
         }
         accessory.decreaseStock(amount);
-        accessoryRepository.saveAll(accessories);
+        accessoryStorage.saveAll(accessories);
         return true;
     }
 
@@ -218,7 +219,7 @@ public class AccessoryService {
             return false;
         }
         compatible.addCompatibleConsole(consoleId);
-        accessoryRepository.saveAll(accessories);
+        accessoryStorage.saveAll(accessories);
         return true;
     }
 
@@ -239,7 +240,7 @@ public class AccessoryService {
             return false;
         }
         accessory.increaseStock(quantity);
-        accessoryRepository.saveAll(accessories);
+        accessoryStorage.saveAll(accessories);
         return true;
     }
 }
