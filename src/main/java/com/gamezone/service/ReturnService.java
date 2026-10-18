@@ -18,7 +18,7 @@ import java.util.Map;
  * and ownership validation, restoring the stock of each item through its own
  * service, and generating the monthly balance report.
  */
-public class ReturnService {
+public class ReturnService implements ReturnLookup {
 
     private static final String RETURN_ID_PREFIX = "RET-";
 
@@ -299,6 +299,7 @@ public class ReturnService {
      *
      * @return the list of all registered returns
      */
+    @Override
     public List<Return> viewAllReturns() {
         return new ArrayList<>(returns);
     }
@@ -309,6 +310,7 @@ public class ReturnService {
      * @param customerId the id of the customer to filter by
      * @return the list of returns associated with that customer
      */
+    @Override
     public List<Return> viewReturnsByCustomer(String customerId) {
         List<Return> result = new ArrayList<>();
         for (Return r : returns) {
@@ -325,6 +327,7 @@ public class ReturnService {
      * @param saleId the id of the sale to filter by
      * @return the list of returns associated with that sale
      */
+    @Override
     public List<Return> viewReturnsBySale(String saleId) {
         List<Return> result = new ArrayList<>();
         for (Return r : returns) {
