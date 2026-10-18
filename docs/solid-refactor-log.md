@@ -116,26 +116,29 @@ behavior and are part of the reference.
 ## Changes
 
 One row per change. The Commit / PR column names the commit and the Pull
-Request that contains it. Each member opened a Pull Request from
-`feature/solid-refactor` to `develop`: the Pull Request of Developer 1
-also contains the preparation of the Technical Leader, and the last Pull
-Request of the Technical Leader also contains the cleanup commits of the
-two developers, which remove the old code once nobody uses it.
+Request that contains it. Each member opened one Pull Request from
+`feature/solid-refactor` to `develop`, and each Pull Request contains every
+commit pushed to the branch since the previous one: the Pull Request of
+Developer 2 contains the preparation of the Technical Leader and the
+corrections of the two developers; the Pull Request of Developer 1
+contains the corrections of the Technical Leader and the cleanup of
+Developer 1; and the Pull Request of the Technical Leader contains the
+cleanup of Developer 2 and the closure of the phase.
 
 | Class | Change | Violation ID | Principle applied | Commit / PR | Responsible |
 |---|---|---|---|---|---|
-| `SaleStorage` (new, `persistence`) | New interface with `save(List<Sale>)` and `load()` | V-06 | Dependency Inversion | `refactor: add the SaleStorage abstraction implemented by SalePersistence (V-06)` / PR of Developer 1 | Technical Leader |
-| `SalePersistence` | Implements `SaleStorage` (`@Override` on `save` and `load`); created before Developer 2 starts, because `WarrantyService` needs it | V-06 | Dependency Inversion | `refactor: add the SaleStorage abstraction implemented by SalePersistence (V-06)` / PR of Developer 1 | Technical Leader |
-| `SaleLookup` (new, `service`) | New role interface with the read-only queries of the sales: `findById`, `getSaleById`, and `listAll` | V-07 | Interface Segregation | `refactor: add the SaleLookup role implemented by SaleService (V-07)` / PR of Developer 1 | Technical Leader |
-| `SaleService` | Implements `SaleLookup` (`@Override` on the three queries, including `getSaleById` of Developer 2, without changing it) | V-07 | Interface Segregation | `refactor: add the SaleLookup role implemented by SaleService (V-07)` / PR of Developer 1 | Technical Leader |
-| `ProductStorage` (new, `persistence`) | New interface with `save(List<Product>)` and `load()` | V-04 | Dependency Inversion | `refactor: make ProductService depend on the ProductStorage abstraction (V-04)` / PR of Developer 1 | Developer 1 |
-| `ProductPersistence` | Implements `ProductStorage` | V-04 | Dependency Inversion | `refactor: make ProductService depend on the ProductStorage abstraction (V-04)` / PR of Developer 1 | Developer 1 |
-| `ProductService` | The field is a `ProductStorage`; new constructor `ProductService(ProductStorage)`. The constructor without parameters is kept for now and passes a new `ProductPersistence` to the new one, until `Main` passes the storage. The renamed field also appears in the line of `restoreStock` that saves the products | V-04 | Dependency Inversion | `refactor: make ProductService depend on the ProductStorage abstraction (V-04)` / PR of Developer 1 | Developer 1 |
-| `ProductLookup`, `ProductInventory` (new, `service`) | `ProductLookup` with `findById` and `getProductById`; `ProductInventory` extends it with `reduceStock` and `restoreStock` | V-07 | Interface Segregation | `refactor: split the lookup and inventory roles of ProductService into interfaces (V-07)` / PR of Developer 1 | Developer 1 |
-| `ProductService` | Implements `ProductInventory` (`@Override` on the four methods, including `restoreStock` of the Technical Leader and `getProductById` of Developer 2, without changing them) | V-07 | Interface Segregation | `refactor: split the lookup and inventory roles of ProductService into interfaces (V-07)` / PR of Developer 1 | Developer 1 |
-| `ReturnReceiptFormatter` (new, `ui`) | Static method `format(Return)` that builds exactly the same text as `Return.generateReturnReceipt` | V-01 | Single Responsibility | `refactor: move the return receipt text to ReturnReceiptFormatter (V-01)` / PR of Developer 1 | Developer 1 |
-| `Return` | The private `refundFor` becomes the public `calculateRefundFor(double)`, used by the formatter; the old receipt is kept until the menu uses the formatter | V-01 | Single Responsibility | `refactor: move the return receipt text to ReturnReceiptFormatter (V-01)` / PR of Developer 1 | Developer 1 |
-| `WarrantyCertificateFormatter` (new, `ui`) | Static method `format(Warranty)` that builds exactly the same text as `Warranty.generateWarrantyCertificate` | V-01 | Single Responsibility | `refactor: move the warranty certificate text to WarrantyCertificateFormatter (V-01)` / PR of Developer 1 | Developer 1 |
+| `SaleStorage` (new, `persistence`) | New interface with `save(List<Sale>)` and `load()` | V-06 | Dependency Inversion | `refactor: add the SaleStorage abstraction implemented by SalePersistence (V-06)` / PR of Developer 2 | Technical Leader |
+| `SalePersistence` | Implements `SaleStorage` (`@Override` on `save` and `load`); created before Developer 2 starts, because `WarrantyService` needs it | V-06 | Dependency Inversion | `refactor: add the SaleStorage abstraction implemented by SalePersistence (V-06)` / PR of Developer 2 | Technical Leader |
+| `SaleLookup` (new, `service`) | New role interface with the read-only queries of the sales: `findById`, `getSaleById`, and `listAll` | V-07 | Interface Segregation | `refactor: add the SaleLookup role implemented by SaleService (V-07)` / PR of Developer 2 | Technical Leader |
+| `SaleService` | Implements `SaleLookup` (`@Override` on the three queries, including `getSaleById` of Developer 2, without changing it) | V-07 | Interface Segregation | `refactor: add the SaleLookup role implemented by SaleService (V-07)` / PR of Developer 2 | Technical Leader |
+| `ProductStorage` (new, `persistence`) | New interface with `save(List<Product>)` and `load()` | V-04 | Dependency Inversion | `refactor: make ProductService depend on the ProductStorage abstraction (V-04)` / PR of Developer 2 | Developer 1 |
+| `ProductPersistence` | Implements `ProductStorage` | V-04 | Dependency Inversion | `refactor: make ProductService depend on the ProductStorage abstraction (V-04)` / PR of Developer 2 | Developer 1 |
+| `ProductService` | The field is a `ProductStorage`; new constructor `ProductService(ProductStorage)`. The constructor without parameters is kept for now and passes a new `ProductPersistence` to the new one, until `Main` passes the storage. The renamed field also appears in the line of `restoreStock` that saves the products | V-04 | Dependency Inversion | `refactor: make ProductService depend on the ProductStorage abstraction (V-04)` / PR of Developer 2 | Developer 1 |
+| `ProductLookup`, `ProductInventory` (new, `service`) | `ProductLookup` with `findById` and `getProductById`; `ProductInventory` extends it with `reduceStock` and `restoreStock` | V-07 | Interface Segregation | `refactor: split the lookup and inventory roles of ProductService into interfaces (V-07)` / PR of Developer 2 | Developer 1 |
+| `ProductService` | Implements `ProductInventory` (`@Override` on the four methods, including `restoreStock` of the Technical Leader and `getProductById` of Developer 2, without changing them) | V-07 | Interface Segregation | `refactor: split the lookup and inventory roles of ProductService into interfaces (V-07)` / PR of Developer 2 | Developer 1 |
+| `ReturnReceiptFormatter` (new, `ui`) | Static method `format(Return)` that builds exactly the same text as `Return.generateReturnReceipt` | V-01 | Single Responsibility | `refactor: move the return receipt text to ReturnReceiptFormatter (V-01)` / PR of Developer 2 | Developer 1 |
+| `Return` | The private `refundFor` becomes the public `calculateRefundFor(double)`, used by the formatter; the old receipt is kept until the menu uses the formatter | V-01 | Single Responsibility | `refactor: move the return receipt text to ReturnReceiptFormatter (V-01)` / PR of Developer 2 | Developer 1 |
+| `WarrantyCertificateFormatter` (new, `ui`) | Static method `format(Warranty)` that builds exactly the same text as `Warranty.generateWarrantyCertificate` | V-01 | Single Responsibility | `refactor: move the warranty certificate text to WarrantyCertificateFormatter (V-01)` / PR of Developer 2 | Developer 1 |
 | `PersonStorage` (new, `persistence`) | New interface with `save(List<Person>)` and `load()`, implemented by `PersonPersistence` | V-05 | Dependency Inversion | `refactor: make PersonService depend on the PersonStorage abstraction (V-05)` / PR of Developer 2 | Developer 2 |
 | `PersonService` | The field is a `PersonStorage`; new constructor `PersonService(PersonStorage)`; the constructor without parameters is kept for now and passes a new `PersonPersistence` | V-05 | Dependency Inversion | `refactor: make PersonService depend on the PersonStorage abstraction (V-05)` / PR of Developer 2 | Developer 2 |
 | `AccessoryStorage`, `PromotionStorage` (new, `persistence`) | New interfaces with `saveAll` and `loadAll`, implemented by `AccessoryRepository` and `PromotionRepository` | V-05 | Dependency Inversion | `refactor: make AccessoryService and PromotionService depend on storage abstractions (V-05)` / PR of Developer 2 | Developer 2 |
