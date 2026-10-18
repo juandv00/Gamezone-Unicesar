@@ -1,6 +1,5 @@
 package com.gamezone.model;
 
-import com.gamezone.util.CurrencyFormatter;
 import java.time.LocalDate;
 
 /**
@@ -64,28 +63,6 @@ public abstract class Warranty {
      */
     public boolean isActive(LocalDate date) {
         return !date.isBefore(startDate) && !date.isAfter(endDate);
-    }
-
-    /**
-     * Generates a text certificate describing this warranty: its id, type,
-     * covered product (id and title), the id of the sale it belongs to,
-     * coverage dates and additional cost.
-     *
-     * @return the certificate of the warranty as multi-line text
-     */
-    public String generateWarrantyCertificate() {
-        StringBuilder sb = new StringBuilder();
-        sb.append("===== GameZone Unicesar - Certificado de garantía =====\n");
-        sb.append("Garantía: ").append(id).append("\n");
-        sb.append("Tipo: ").append(getWarrantyType()).append("\n");
-        sb.append("Producto: ").append(product.getId())
-                .append(" - ").append(product.getTitle()).append("\n");
-        sb.append("Venta: ").append(sale.getId()).append("\n");
-        sb.append("Fecha de inicio: ").append(startDate).append("\n");
-        sb.append("Fecha de fin: ").append(endDate).append("\n");
-        sb.append("Costo adicional: ").append(CurrencyFormatter.format(getAdditionalCost())).append("\n");
-        sb.append("========================================================");
-        return sb.toString();
     }
 
     public String getId() {
