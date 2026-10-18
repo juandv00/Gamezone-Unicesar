@@ -191,3 +191,27 @@ and warranties, plus adjustment A1.
 - **Response:** A map from class to writer and a map from type code to reader, filled in the constructor; `toLine` and `fromLine` look them up. The regression scenarios compare the data files byte by byte.
 - **Decision:** I kept the validations and the order of `fromLine` (the price and the stock are read before the type), so a corrupted line still produces the same `PersistenceException`. I ran the regression scripts on my branch and the comparison reported no differences in the output or in `products.txt`.
 - **Related commit:** `refactor: register a file format per product type in ProductPersistence (V-06)`, `refactor: format amounts with CurrencyFormatter in Return and Warranty (V-09)`, `docs: log developer 1 corrections in grasp refactor log`
+
+## Requirement 8 — SOLID Audit and Correction
+
+### Phase 1 — Audit
+
+#### Audit of my code against the five SOLID principles
+- **Date:** 2026-10-17
+- **Tool:** Claude (Anthropic)
+- **Phase and branch:** Requirement 8, Phase 1 – `feature/solid-audit`
+- **Objective:** Audit the product module, the accessory, promotion, and warranty hierarchies, `Return` with `Sale.canBeReturned`, the `exceptions` and `validation` packages, and `ConsoleCompatibleAccessory` against the five SOLID principles, with evidence from commit `75cc180`.
+- **Query:** Went through my classes with Claude principle by principle, asking for each principle where it applies in my code, which fragments could break it, and what concrete consequence each one would have.
+- **Response:** Three findings: the receipt and certificate texts built inside `Return` and `Warranty` (SRP), `ProductService` used as one type with seven operations by clients that need one to three (ISP), and `ProductService` creating `ProductPersistence` (DIP). OCP and LSP were found correct in my hierarchies, with examples.
+- **Decision:** I opened every cited fragment in the IDE on commit `75cc180` to confirm the line numbers, and checked each subclass of my hierarchies against its base class for LSP. I kept the DIP finding even though the same creation was correct under Creator in Requirement 7, because the two principles look at different things. I did not count `CategoryDiscount.isSupportedCategory` as an OCP violation, because it is the single list of categories and not a conditional. I marked the findings whose fix needs code of other members and reported them to the Technical Leader.
+- **Related commit:** `docs: add scope to developer1 SOLID audit`, `docs: add single responsibility findings to developer1 SOLID audit`, `docs: add open/closed verdict to developer1 SOLID audit`, `docs: add Liskov substitution verdict to developer1 SOLID audit`, `docs: add interface segregation findings to developer1 SOLID audit`, `docs: add dependency inversion findings to developer1 SOLID audit`
+
+#### Guiding question 3
+- **Date:** 2026-10-17
+- **Tool:** Claude (Anthropic)
+- **Phase and branch:** Requirement 8, Phase 1 – `feature/solid-audit`
+- **Objective:** Write the team's answer to guiding question 3 (relation between this audit and the GRASP audit of Requirement 7).
+- **Query:** Asked how a correction of a GRASP pattern can leave a SOLID problem in the same class, and how to tell the difference between Creator and Dependency Inversion.
+- **Response:** GRASP assigns responsibilities inside the classes, while several SOLID principles look at the dependencies between them; a creation can be correct for Creator and still make a rule depend on a detail.
+- **Decision:** I compared the GRASP refactor log with my findings and with the findings of the team and wrote the answer with three cases of each situation from our own code (`ConsoleUI`, `ProductService`, `Return`/`Warranty`, and the GRASP corrections that closed the hierarchies).
+- **Related commit:** `docs: answer guiding question 3 in solid analysis`
