@@ -163,10 +163,10 @@ public class Return {
     public double calculateRefundAmount() {
         double total = 0.0;
         for (Product product : returnedProducts) {
-            total += refundFor(product.getPrice());
+            total += calculateRefundFor(product.getPrice());
         }
         for (Accessory accessory : returnedAccessories) {
-            total += refundFor(accessory.getPrice());
+            total += calculateRefundFor(accessory.getPrice());
         }
         total += warrantyRefund;
         this.refundAmount = total;
@@ -176,12 +176,13 @@ public class Return {
     /**
      * Calculates the refund of one item from its list price, applying the
      * proportional discount of the original sale. The original sale, which
-     * owns the subtotal and the discount, calculates the paid ratio.
+     * owns the subtotal and the discount, calculates the paid ratio. It is
+     * public so the receipt of the return can show the refund of each item.
      *
      * @param listPrice the list price of the item
      * @return the amount to refund for that item
      */
-    private double refundFor(double listPrice) {
+    public double calculateRefundFor(double listPrice) {
         return listPrice * originalSale.calculatePaidRatio();
     }
 
@@ -226,7 +227,7 @@ public class Return {
      * @param listPrice the list price of the item
      */
     private void appendItemLine(StringBuilder sb, String title, double listPrice) {
-        double refund = refundFor(listPrice);
+        double refund = calculateRefundFor(listPrice);
         sb.append("  - ").append(title)
                 .append(": precio de lista ").append(CurrencyFormatter.format(listPrice))
                 .append(", descuento -").append(CurrencyFormatter.format(listPrice - refund))
