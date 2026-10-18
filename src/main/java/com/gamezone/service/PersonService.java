@@ -6,7 +6,6 @@ import com.gamezone.exceptions.ResourceNotFoundException;
 import com.gamezone.model.Client;
 import com.gamezone.model.Person;
 import com.gamezone.model.Seller;
-import com.gamezone.persistence.PersonPersistence;
 import com.gamezone.persistence.PersonStorage;
 import com.gamezone.validation.PersonValidator;
 import java.util.ArrayList;
@@ -23,16 +22,6 @@ public class PersonService {
 
     private List<Person> people;
     private final PersonStorage personStorage;
-
-    /**
-     * Creates a new PersonService that stores the people in the file of
-     * {@link PersonPersistence}. Kept only until the composition root
-     * ({@code Main}) injects the storage; use
-     * {@link #PersonService(PersonStorage)} instead.
-     */
-    public PersonService() {
-        this(new PersonPersistence());
-    }
 
     /**
      * Creates a new PersonService that uses the given storage, loading the
