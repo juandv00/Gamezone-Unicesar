@@ -609,3 +609,55 @@ for Requirement 4 before approving them.
 - **Response:** Criteria based on concrete consequences and exact evidence; DIP counted only when a rule depends on a class that does input or output, and the width of the dependencies between services decided by ISP; V-07 as the boundary example; the owner of each new abstraction goes first.
 - **Decision:** I chose V-07 as the boundary example because the three of us reported it, and placed V-03 late in the order because it rewrites `ConsoleUI` and the end of `Main`. I wrote the answers after the team's discussion of the questions.
 - **Related commit:** `docs: answer guiding questions 1, 2 and 5 in solid analysis`
+
+### Phase 2 — Correction
+
+#### Preparation: diagram "before", strategy, and the abstractions of the sales (V-06, V-07)
+- **Date:** 2026-10-18
+- **Tool:** Claude (Anthropic)
+- **Phase and branch:** Requirement 8, Phase 2 – `feature/solid-refactor`
+- **Objective:** Draw the classes involved in the seven violations, document the non-regression strategy with the reference result, and create `SaleStorage` and `SaleLookup`, which Developer 2 needs.
+- **Query:** Asked for feedback on the "before" diagram and on how to reuse the scenarios of Requirement 7 for corrections that move the creation of objects to `Main`.
+- **Response:** The diagram should show the objects created with `new` and the dependencies on concrete types; the start scenarios (`noread`, `corrupt`, `corruptproducts`, `reload`) protect the loading order.
+- **Decision:** I drew the diagram from the code of `6fcea3a` and validated it in a Mermaid previewer, ran the seven scenarios on that commit as the reference, and created the two interfaces first so Developer 2 could use them.
+- **Related commit:** `docs: add class diagram before the SOLID corrections`, `docs: add non-regression strategy and reference result to solid refactor log`, `refactor: add the SaleStorage abstraction implemented by SalePersistence (V-06)`, `refactor: add the SaleLookup role implemented by SaleService (V-07)`, `docs: log technical leader preparation in solid refactor log`
+
+#### Storages created in Main and the sale persistence (V-04, V-05, V-06)
+- **Date:** 2026-10-18
+- **Tool:** Claude (Anthropic)
+- **Phase and branch:** Requirement 8, Phase 2 – `feature/solid-refactor`
+- **Objective:** Make `Main` create every storage and make `SalePersistence` and `SaleService` depend only on abstractions.
+- **Query:** Asked Claude to review `Main`, `SalePersistence`, and `SaleService` and how to pass the same storages to every class without changing the order in which the files are loaded.
+- **Response:** Create `ProductPersistence` and `PersonPersistence` once in `Main`, pass them to the services and to `SalePersistence` with the accessory repository, remove the constructors that created them, and keep the order products, people, accessories, promotions, warranties, sales, returns.
+- **Decision:** I kept the order of creation of `Main` as it was and checked it with the `noread` and `corruptproducts` scenarios, which show the first file that fails.
+- **Related commit:** `refactor: inject the product and person storages from Main (V-04, V-05)`, `refactor: inject the storages of SalePersistence and depend on SaleStorage in SaleService (V-06)`
+
+#### Roles and receipts in my classes (V-07, V-01)
+- **Date:** 2026-10-18
+- **Tool:** Claude (Anthropic)
+- **Phase and branch:** Requirement 8, Phase 2 – `feature/solid-refactor`
+- **Objective:** Make `SaleService` and the menus depend on the roles, and move the text of the sale receipt to the `ui` package.
+- **Query:** Asked which role each menu should receive and how to move `Sale.generateReceipt` to a formatter with the same text.
+- **Response:** `SaleService` uses `ProductInventory` and `AccessoryInventory`; `SaleMenu` and `AccessoryMenu` use `ProductLookup`; `ReturnMenu` and `WarrantyMenu` use `SaleLookup`; `SaleReceiptFormatter.format(Sale)` builds the receipt with the getters, and the menus print the three formatters.
+- **Decision:** I kept `SaleService` in `SaleMenu`, because the menu registers sales and uses most of its operations, and compared the new receipt with the old method line by line before removing it.
+- **Related commit:** `refactor: make SaleService and the menus depend on the lookup and inventory roles (V-07)`, `refactor: move the sale receipt text to SaleReceiptFormatter (V-01)`, `refactor: print the return receipts and warranty certificates with their formatters (V-01)`
+
+#### Main menu built from the submenus and balance in ReturnMenu (V-03, V-02)
+- **Date:** 2026-10-18
+- **Tool:** Claude (Anthropic)
+- **Phase and branch:** Requirement 8, Phase 2 – `feature/solid-refactor`
+- **Objective:** Close `ConsoleUI` for new modules and show the balance through `BalanceService`.
+- **Query:** Asked how to replace the `switch` of the main menu with a list of submenus keeping exactly the same lines, numbers, and messages, including the invalid option.
+- **Response:** An interface `Menu` with `getTitle()` and `show()`; `ConsoleUI` prints `(i + 1) + ". " + title` for each menu, `0` exits, and any other number shows "Opción inválida. Intente de nuevo."; `Main` creates the input, the error handler, and the submenus in the same order.
+- **Decision:** I kept the titles exactly as the old lines and the order of the list as the old numbers, so the main menu prints the same text, and checked it with the comparison of every scenario. `Main` creates `BalanceService` with `SaleService` and `ReturnService` as their read-only roles.
+- **Related commit:** `refactor: add the Menu interface implemented by the seven submenus (V-03)`, `refactor: build the main menu from the injected Menu list in ConsoleUI (V-03)`, `refactor: show the monthly balance through BalanceService in ReturnMenu (V-02)`, `docs: log technical leader corrections in solid refactor log`
+
+#### Diagram "after", final verification, and README
+- **Date:** 2026-10-18
+- **Tool:** Claude (Anthropic)
+- **Phase and branch:** Requirement 8, Phase 2 – `feature/solid-refactor`
+- **Objective:** Close the phase after the cleanup commits of Developer 1 and Developer 2.
+- **Query:** Asked for feedback on the "after" diagram and on the trade-offs that the refactor log should justify.
+- **Response:** Mark the new interfaces and classes and the removed methods in notes; justify the static formatters, `Main` as composition root, and the changes that reach methods of other members.
+- **Decision:** I corrected the Pull Request column of the refactor log, because the first Pull Request of the phase was opened by Developer 2 and included the commits of Developer 1; I drew the "after" diagram from the final code, ran the seven scenarios on the last commit and compared them with the reference (no differences), checked that the project compiles, and described the requirement in the README.
+- **Related commit:** `docs: add class diagram after the SOLID corrections`, `docs: record the pull request of each change in solid refactor log`, `docs: add principle trade-offs and final non-regression result to solid refactor log`, `docs: describe Requirement 8 in README`
