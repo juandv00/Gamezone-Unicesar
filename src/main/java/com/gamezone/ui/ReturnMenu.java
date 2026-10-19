@@ -4,8 +4,9 @@ import com.gamezone.model.Accessory;
 import com.gamezone.model.Product;
 import com.gamezone.model.Return;
 import com.gamezone.model.Sale;
+import com.gamezone.service.BalanceService;
 import com.gamezone.service.ReturnService;
-import com.gamezone.service.SaleService;
+import com.gamezone.service.SaleLookup;
 import com.gamezone.util.CurrencyFormatter;
 import java.util.ArrayList;
 import java.util.List;
@@ -16,10 +17,11 @@ import java.util.List;
  * through the {@link ErrorHandler}, so its errors are shown as clear
  * messages.
  */
-public class ReturnMenu {
+public class ReturnMenu implements Menu {
 
     private final ReturnService returnService;
-    private final SaleService saleService;
+    private final SaleLookup saleLookup;
+    private final BalanceService balanceService;
     private final ConsoleInput input;
     private final ErrorHandler errorHandler;
 
@@ -29,23 +31,37 @@ public class ReturnMenu {
      *
      * @param returnService the service used for return operations, or
      *        null if the return module is disabled
-     * @param saleService the service used for sale operations
+     * @param saleLookup the role used to find the sales
+     * @param balanceService the service that calculates the monthly balance
      * @param input the reader of the user input
      * @param errorHandler the handler that runs each operation and shows its errors
      */
     public ReturnMenu(ReturnService returnService,
-                      SaleService saleService,
+                      SaleLookup saleLookup,
+                      BalanceService balanceService,
                       ConsoleInput input, ErrorHandler errorHandler) {
         this.returnService = returnService;
-        this.saleService = saleService;
+        this.saleLookup = saleLookup;
+        this.balanceService = balanceService;
         this.input = input;
         this.errorHandler = errorHandler;
+    }
+
+    /**
+     * Returns the title of the option of this submenu in the main menu.
+     *
+     * @return the title of the option
+     */
+    @Override
+    public String getTitle() {
+        return "Gestión de devoluciones";
     }
 
     /**
      * Displays the return management submenu and runs the operation chosen
      * by the user until the user goes back to the main menu.
      */
+    @Override
     public void show() {
         if (returnService == null) {
             System.out.println("El módulo de devoluciones no está disponible.");
@@ -85,7 +101,7 @@ public class ReturnMenu {
     private void registerReturn() {
         System.out.print("Identificador de la venta (p. ej. SALE-1): ");
         String saleId = input.readLine().trim();
-        Sale sale = saleService.getSaleById(saleId);
+        Sale sale = saleLookup.getSaleById(saleId);
         if (!sale.canBeReturned()) {
             System.out.println("Esta venta ya no admite devoluciones: pasaron más de 30 días desde el "
                     + sale.getDate() + ".");
@@ -123,7 +139,7 @@ public class ReturnMenu {
 
         Return registeredReturn = returnService.registerReturn(sale.getId(), itemIds, reason);
         System.out.println("Devolución registrada correctamente.");
-        System.out.println(registeredReturn.generateReturnReceipt());
+        System.out.println(ReturnReceiptFormatter.format(registeredReturn));
     }
 
     /**
@@ -158,9 +174,9 @@ public class ReturnMenu {
             System.out.println("Año inválido.");
             return;
         }
-        double sales = returnService.calculateMonthlySales(month, year);
-        double refunds = returnService.calculateMonthlyReturns(month, year);
-        double balance = returnService.generateMonthlyBalance(month, year);
+        double sales = balanceService.calculateMonthlySales(month, year);
+        double refunds = balanceService.calculateMonthlyReturns(month, year);
+        double balance = balanceService.generateMonthlyBalance(month, year);
         System.out.println("\n===== Balance mensual " + String.format("%02d/%d", month, year) + " =====");
         System.out.println("Total de ventas:       " + CurrencyFormatter.format(sales));
         System.out.println("Total de devoluciones: " + CurrencyFormatter.format(refunds));

@@ -5,7 +5,7 @@ import com.gamezone.model.CategoryDiscount;
 import com.gamezone.model.PercentageDiscount;
 import com.gamezone.model.Promotion;
 import com.gamezone.model.Sale;
-import com.gamezone.persistence.PromotionRepository;
+import com.gamezone.persistence.PromotionStorage;
 import java.time.LocalDate;
 import java.util.ArrayList;
 import java.util.List;
@@ -17,18 +17,19 @@ import java.util.List;
  */
 public class PromotionService {
 
-    private final PromotionRepository promotionRepository;
+    private final PromotionStorage promotionStorage;
     private List<Promotion> promotions;
 
     /**
      * Creates a new PromotionService, loading the currently stored promotions
-     * from the repository.
+     * from the given storage. The service depends only on the
+     * {@link PromotionStorage} abstraction, not on a concrete file class.
      *
-     * @param promotionRepository the repository used to persist promotions
+     * @param promotionStorage the storage of the promotions
      */
-    public PromotionService(PromotionRepository promotionRepository) {
-        this.promotionRepository = promotionRepository;
-        this.promotions = promotionRepository.loadAll();
+    public PromotionService(PromotionStorage promotionStorage) {
+        this.promotionStorage = promotionStorage;
+        this.promotions = promotionStorage.loadAll();
     }
 
     /**
@@ -48,7 +49,7 @@ public class PromotionService {
         ensureIdIsAvailable(id);
         PercentageDiscount promotion = new PercentageDiscount(id, name, startDate, endDate, percentage);
         promotions.add(promotion);
-        promotionRepository.saveAll(promotions);
+        promotionStorage.saveAll(promotions);
         return promotion;
     }
 
@@ -75,7 +76,7 @@ public class PromotionService {
         ensureIdIsAvailable(id);
         CategoryDiscount promotion = new CategoryDiscount(id, name, startDate, endDate, percentage, targetCategory);
         promotions.add(promotion);
-        promotionRepository.saveAll(promotions);
+        promotionStorage.saveAll(promotions);
         return promotion;
     }
 
@@ -98,7 +99,7 @@ public class PromotionService {
         BulkPurchaseDiscount promotion
                 = new BulkPurchaseDiscount(id, name, startDate, endDate, minimumQuantity, percentage);
         promotions.add(promotion);
-        promotionRepository.saveAll(promotions);
+        promotionStorage.saveAll(promotions);
         return promotion;
     }
 

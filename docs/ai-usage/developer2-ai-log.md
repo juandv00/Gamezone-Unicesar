@@ -465,3 +465,45 @@ modules.
 - **Response:** The scenarios that start the application with files that cannot be read or are corrupted, because the order in which the files are loaded decides the message, and the main scenario, because it prints every receipt and certificate.
 - **Decision:** I kept the method of Requirement 7 (the seven scenarios in `docs/regression/`, compared line by line and byte by byte) and wrote the answer explaining why each group of scenarios matters for these corrections, with the commands for the reference commit `75cc180`.
 - **Related commit:** `docs: answer guiding question 4 in solid analysis`
+
+### Phase 2 — Correction
+
+#### Storage abstractions of my services (V-05)
+- **Date:** 2026-10-18
+- **Tool:** Claude (Anthropic)
+- **Phase and branch:** Requirement 8, Phase 2 – `feature/solid-refactor`
+- **Objective:** Make `PersonService`, `AccessoryService`, `PromotionService`, `ReturnService`, and `WarrantyService` depend on interfaces instead of the concrete file classes.
+- **Query:** Asked Claude to review my services and repositories and propose one interface per module with only the operations that each service calls.
+- **Response:** `PersonStorage` (`save`, `load`), `AccessoryStorage`, `PromotionStorage`, and `ReturnStorage` (`saveAll`, `loadAll`), and `WarrantyStorage`, which also has `toWarranty`; `WarrantyService` receives the `SaleStorage` of the Technical Leader instead of `SalePersistence`; `PersonService` keeps its old constructor until `Main` passes the storage.
+- **Decision:** I kept the method names of each repository (`save`/`load` in `PersonPersistence`, `saveAll`/`loadAll` in the others) so the repositories only add `implements` and `@Override`. I compiled after each commit.
+- **Related commit:** `refactor: make PersonService depend on the PersonStorage abstraction (V-05)`, `refactor: make AccessoryService and PromotionService depend on storage abstractions (V-05)`, `refactor: make ReturnService and WarrantyService depend on storage abstractions (V-05)`
+
+#### Roles of the sales, products, and accessories (V-07)
+- **Date:** 2026-10-18
+- **Tool:** Claude (Anthropic)
+- **Phase and branch:** Requirement 8, Phase 2 – `feature/solid-refactor`
+- **Objective:** Make `ReturnService` and `WarrantyService` depend only on the operations they use, and offer an inventory role of the accessories.
+- **Query:** Asked which role interfaces my services should receive, using `SaleLookup` and the roles of the products already in the branch, and which operations of `AccessoryService` the sales and returns need.
+- **Response:** `AccessoryInventory` (`findById`, `hasEnoughStock`, `reduceStock`, `restoreStock`) implemented by `AccessoryService`; `ReturnService` receives `SaleLookup`, `ProductInventory`, and `AccessoryInventory`; `WarrantyService` receives `ProductLookup`.
+- **Decision:** I counted the calls of each service again in the code before choosing the roles, kept `reduceStock` with its `throws IOException` so `SaleService` does not change its behavior, and compiled.
+- **Related commit:** `refactor: make ReturnService and WarrantyService depend on lookup and inventory roles (V-07)`
+
+#### Monthly balance in BalanceService (V-02)
+- **Date:** 2026-10-18
+- **Tool:** Claude (Anthropic)
+- **Phase and branch:** Requirement 8, Phase 2 – `feature/solid-refactor`
+- **Objective:** Move the monthly balance out of `ReturnService` with the same results and messages.
+- **Query:** Asked how to move the three balance methods to a new class that does not need the whole return service.
+- **Response:** `BalanceService` with the same three methods and the same check of the month, depending on `SaleLookup` and a new interface `ReturnLookup` (the three queries of the returns) implemented by `ReturnService`; the old methods stay until `ReturnMenu` uses the new class.
+- **Decision:** I kept the same loops and the same message "El mes debe estar entre 1 y 12." so the balance gives the same values, and ran the regression scenarios before my Pull Request: the comparison reported no differences, including the balance of the `main` and `reload` scenarios.
+- **Related commit:** `refactor: add the ReturnLookup role implemented by ReturnService (V-02)`, `refactor: move the monthly balance to BalanceService (V-02)`, `docs: log developer 2 corrections in solid refactor log`
+
+#### Removal of the old code (V-02, V-05)
+- **Date:** 2026-10-18
+- **Tool:** Claude (Anthropic)
+- **Phase and branch:** Requirement 8, Phase 2 – `feature/solid-refactor`
+- **Objective:** Remove the constructor of `PersonService` and the balance of `ReturnService`, which nobody uses after the corrections of the Technical Leader.
+- **Query:** Asked how to confirm that `PersonService()` and the balance methods of `ReturnService` have no callers before removing them.
+- **Response:** Search for every use in the project and compile after each removal; update the description of `ReturnService`, which still mentioned the balance.
+- **Decision:** I checked with Find Usages in NetBeans that they had no callers, removed them in two commits, and compiled after each one.
+- **Related commit:** `refactor: remove the PersonService constructor that created its own persistence (V-05)`, `refactor: remove the monthly balance methods from ReturnService (V-02)`, `docs: log developer 2 cleanup in solid refactor log`

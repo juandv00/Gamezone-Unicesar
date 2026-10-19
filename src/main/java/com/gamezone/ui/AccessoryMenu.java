@@ -7,7 +7,7 @@ import com.gamezone.model.ConsoleCompatibleAccessory;
 import com.gamezone.model.Controller;
 import com.gamezone.model.Memory;
 import com.gamezone.service.AccessoryService;
-import com.gamezone.service.ProductService;
+import com.gamezone.service.ProductLookup;
 import java.io.IOException;
 import java.util.List;
 import java.util.Locale;
@@ -18,10 +18,10 @@ import java.util.Locale;
  * them. Every operation runs through the {@link ErrorHandler}, so its errors
  * are shown as clear messages.
  */
-public class AccessoryMenu {
+public class AccessoryMenu implements Menu {
 
     private final AccessoryService accessoryService;
-    private final ProductService productService;
+    private final ProductLookup productLookup;
     private final ConsoleInput input;
     private final ErrorHandler errorHandler;
 
@@ -31,23 +31,34 @@ public class AccessoryMenu {
      *
      * @param accessoryService the service used for accessory operations,
      *        or null if the accessory module is disabled
-     * @param productService the service used for product operations
+     * @param productLookup the role used to find the consoles of the products
      * @param input the reader of the user input
      * @param errorHandler the handler that runs each operation and shows its errors
      */
     public AccessoryMenu(AccessoryService accessoryService,
-                         ProductService productService,
+                         ProductLookup productLookup,
                          ConsoleInput input, ErrorHandler errorHandler) {
         this.accessoryService = accessoryService;
-        this.productService = productService;
+        this.productLookup = productLookup;
         this.input = input;
         this.errorHandler = errorHandler;
+    }
+
+    /**
+     * Returns the title of the option of this submenu in the main menu.
+     *
+     * @return the title of the option
+     */
+    @Override
+    public String getTitle() {
+        return "Gestión de accesorios";
     }
 
     /**
      * Displays the accessory management submenu and runs the operation chosen
      * by the user until the user goes back to the main menu.
      */
+    @Override
     public void show() {
         if (accessoryService == null) {
             System.out.println("El módulo de accesorios no está disponible.");
@@ -240,7 +251,7 @@ public class AccessoryMenu {
      * @param consoleId   the id of the console to register
      */
     private void registerCompatibility(String accessoryId, String consoleId) {
-        if (!(productService.findById(consoleId) instanceof Console console)) {
+        if (!(productLookup.findById(consoleId) instanceof Console console)) {
             System.out.println("No se encontró una consola con ese identificador.");
             return;
         }

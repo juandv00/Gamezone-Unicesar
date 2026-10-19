@@ -5,7 +5,7 @@ import com.gamezone.model.Cable;
 import com.gamezone.model.ConsoleCompatibleAccessory;
 import com.gamezone.model.Controller;
 import com.gamezone.model.Memory;
-import com.gamezone.persistence.AccessoryRepository;
+import com.gamezone.persistence.AccessoryStorage;
 import java.io.IOException;
 import java.util.ArrayList;
 import java.util.List;
@@ -16,20 +16,21 @@ import java.util.List;
  * inventory, querying compatibility with consoles, and validating/reducing
  * stock when a sale is registered.
  */
-public class AccessoryService {
+public class AccessoryService implements AccessoryInventory {
 
-    private final AccessoryRepository accessoryRepository;
+    private final AccessoryStorage accessoryStorage;
     private List<Accessory> accessories;
 
     /**
      * Creates a new AccessoryService, loading the currently stored accessories
-     * from the repository.
+     * from the given storage. The service depends only on the
+     * {@link AccessoryStorage} abstraction, not on a concrete file class.
      *
-     * @param accessoryRepository the repository used to persist accessories
+     * @param accessoryStorage the storage of the accessories
      */
-    public AccessoryService(AccessoryRepository accessoryRepository) {
-        this.accessoryRepository = accessoryRepository;
-        this.accessories = accessoryRepository.loadAll();
+    public AccessoryService(AccessoryStorage accessoryStorage) {
+        this.accessoryStorage = accessoryStorage;
+        this.accessories = accessoryStorage.loadAll();
     }
 
     /**
@@ -47,7 +48,7 @@ public class AccessoryService {
                                          int stock, Controller.ConnectionType connectionType) throws IOException {
         Controller controller = new Controller(id, title, price, stock, connectionType);
         accessories.add(controller);
-        accessoryRepository.saveAll(accessories);
+        accessoryStorage.saveAll(accessories);
         return controller;
     }
 
@@ -66,7 +67,7 @@ public class AccessoryService {
                                double lengthInMeters, String connectorType) throws IOException {
         Cable cable = new Cable(id, title, price, stock, lengthInMeters, connectorType);
         accessories.add(cable);
-        accessoryRepository.saveAll(accessories);
+        accessoryStorage.saveAll(accessories);
         return cable;
     }
 
@@ -85,7 +86,7 @@ public class AccessoryService {
                                  int capacityInGB, Memory.MemoryType memoryType) throws IOException {
         Memory memory = new Memory(id, title, price, stock, capacityInGB, memoryType);
         accessories.add(memory);
-        accessoryRepository.saveAll(accessories);
+        accessoryStorage.saveAll(accessories);
         return memory;
     }
 
@@ -142,6 +143,7 @@ public class AccessoryService {
      * @param id the id of the accessory to find
      * @return the matching accessory, or null if not found
      */
+    @Override
     public Accessory findById(String id) {
         for (Accessory accessory : accessories) {
             if (accessory.getId().equals(id)) {
@@ -165,7 +167,7 @@ public class AccessoryService {
             return false;
         }
         accessory.setStock(quantity);
-        accessoryRepository.saveAll(accessories);
+        accessoryStorage.saveAll(accessories);
         return true;
     }
 
@@ -177,6 +179,7 @@ public class AccessoryService {
      * @param amount the quantity requested
      * @return true if there is enough stock, false otherwise
      */
+    @Override
     public boolean hasEnoughStock(String accessoryId, int amount) {
         Accessory accessory = findById(accessoryId);
         return accessory != null && accessory.hasEnoughStock(amount);
@@ -191,13 +194,14 @@ public class AccessoryService {
      * @return true if the stock was successfully reduced, false if there is not
      * enough stock available or the accessory does not exist
      */
+    @Override
     public boolean reduceStock(String accessoryId, int amount) throws IOException {
         Accessory accessory = findById(accessoryId);
         if (accessory == null || !accessory.hasEnoughStock(amount)) {
             return false;
         }
         accessory.decreaseStock(amount);
-        accessoryRepository.saveAll(accessories);
+        accessoryStorage.saveAll(accessories);
         return true;
     }
 
@@ -218,7 +222,7 @@ public class AccessoryService {
             return false;
         }
         compatible.addCompatibleConsole(consoleId);
-        accessoryRepository.saveAll(accessories);
+        accessoryStorage.saveAll(accessories);
         return true;
     }
 
@@ -233,13 +237,14 @@ public class AccessoryService {
      * @return true if the stock was restored, false if the accessory does not
      * exist or the quantity is not positive
      */
+    @Override
     public boolean restoreStock(String accessoryId, int quantity) {
         Accessory accessory = findById(accessoryId);
         if (accessory == null || quantity <= 0) {
             return false;
         }
         accessory.increaseStock(quantity);
-        accessoryRepository.saveAll(accessories);
+        accessoryStorage.saveAll(accessories);
         return true;
     }
 }

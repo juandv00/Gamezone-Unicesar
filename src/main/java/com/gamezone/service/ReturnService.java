@@ -5,7 +5,7 @@ import com.gamezone.model.Product;
 import com.gamezone.model.Return;
 import com.gamezone.model.Sale;
 import com.gamezone.persistence.ReturnRecord;
-import com.gamezone.persistence.ReturnRepository;
+import com.gamezone.persistence.ReturnStorage;
 import java.time.LocalDate;
 import java.util.ArrayList;
 import java.util.HashMap;
@@ -16,16 +16,17 @@ import java.util.Map;
  * Contains the business rules for managing returns at GameZone Unicesar,
  * such as registering new returns of products and accessories with deadline
  * and ownership validation, restoring the stock of each item through its own
- * service, and generating the monthly balance report.
+ * service. The monthly balance report is calculated by
+ * {@link BalanceService}.
  */
-public class ReturnService {
+public class ReturnService implements ReturnLookup {
 
     private static final String RETURN_ID_PREFIX = "RET-";
 
-    private final ReturnRepository returnRepository;
-    private final SaleService saleService;
-    private final ProductService productService;
-    private final AccessoryService accessoryService;
+    private final ReturnStorage returnStorage;
+    private final SaleLookup saleLookup;
+    private final ProductInventory productInventory;
+    private final AccessoryInventory accessoryInventory;
     private final WarrantyService warrantyService;
     private List<Return> returns;
 
@@ -33,28 +34,28 @@ public class ReturnService {
      * Creates a new ReturnService, loading the currently stored returns from
      * the repository.
      *
-     * @param returnRepository the repository used to persist returns
-     * @param saleService the service used to validate the original sale
-     * @param productService the service used to restore stock
+     * @param returnStorage the storage of the returns
+     * @param saleLookup the queries of the sales, used to validate the original sale
+     * @param productInventory the inventory of the products, used to restore stock
      */
-    public ReturnService(ReturnRepository returnRepository, SaleService saleService,
-                         ProductService productService) {
-        this(returnRepository, saleService, productService, null);
+    public ReturnService(ReturnStorage returnStorage, SaleLookup saleLookup,
+                         ProductInventory productInventory) {
+        this(returnStorage, saleLookup, productInventory, null);
     }
 
     /**
      * Creates a new ReturnService that also supports returning accessories,
      * restoring their stock through the given AccessoryService.
      *
-     * @param returnRepository the repository used to persist returns
-     * @param saleService the service used to validate the original sale
-     * @param productService the service used to restore product stock
-     * @param accessoryService the service used to restore accessory stock, or
+     * @param returnStorage the storage of the returns
+     * @param saleLookup the queries of the sales, used to validate the original sale
+     * @param productInventory the inventory of the products, used to restore stock
+     * @param accessoryInventory the inventory of the accessories, used to restore stock, or
      * null if accessories cannot be returned
      */
-    public ReturnService(ReturnRepository returnRepository, SaleService saleService,
-                         ProductService productService, AccessoryService accessoryService) {
-        this(returnRepository, saleService, productService, accessoryService, null);
+    public ReturnService(ReturnStorage returnStorage, SaleLookup saleLookup,
+                         ProductInventory productInventory, AccessoryInventory accessoryInventory) {
+        this(returnStorage, saleLookup, productInventory, accessoryInventory, null);
     }
 
     /**
@@ -62,23 +63,23 @@ public class ReturnService {
      * returned console and refunds the cost of the cancelled extended
      * warranties.
      *
-     * @param returnRepository the repository used to persist returns
-     * @param saleService the service used to validate the original sale
-     * @param productService the service used to restore product stock
-     * @param accessoryService the service used to restore accessory stock, or
+     * @param returnStorage the storage of the returns
+     * @param saleLookup the queries of the sales, used to validate the original sale
+     * @param productInventory the inventory of the products, used to restore stock
+     * @param accessoryInventory the inventory of the accessories, used to restore stock, or
      * null if accessories cannot be returned
      * @param warrantyService the service used to cancel the warranties of
      * returned consoles, or null if warranties are not managed
      */
-    public ReturnService(ReturnRepository returnRepository, SaleService saleService,
-                         ProductService productService, AccessoryService accessoryService,
+    public ReturnService(ReturnStorage returnStorage, SaleLookup saleLookup,
+                         ProductInventory productInventory, AccessoryInventory accessoryInventory,
                          WarrantyService warrantyService) {
-        this.returnRepository = returnRepository;
-        this.saleService = saleService;
-        this.productService = productService;
-        this.accessoryService = accessoryService;
+        this.returnStorage = returnStorage;
+        this.saleLookup = saleLookup;
+        this.productInventory = productInventory;
+        this.accessoryInventory = accessoryInventory;
         this.warrantyService = warrantyService;
-        this.returns = resolveReturns(returnRepository.loadAll());
+        this.returns = resolveReturns(returnStorage.loadAll());
     }
 
     /**
@@ -94,7 +95,7 @@ public class ReturnService {
     private List<Return> resolveReturns(List<ReturnRecord> records) {
         List<Return> resolved = new ArrayList<>();
         for (ReturnRecord record : records) {
-            Sale sale = saleService.findById(record.saleId());
+            Sale sale = saleLookup.findById(record.saleId());
             if (sale == null) {
                 continue;
             }
@@ -103,7 +104,7 @@ public class ReturnService {
             for (String itemId : record.itemIds()) {
                 Product product = findProductById(sale.getProducts(), itemId);
                 if (product == null) {
-                    product = productService.findById(itemId);
+                    product = productInventory.findById(itemId);
                 }
                 if (product != null) {
                     returnedProducts.add(product);
@@ -148,7 +149,7 @@ public class ReturnService {
      * sale, or more units of an item are requested than remain returnable
      */
     public Return registerReturn(String saleId, List<String> productIds, String reason) {
-        Sale sale = saleService.findById(saleId);
+        Sale sale = saleLookup.findById(saleId);
         if (sale == null) {
             throw new IllegalArgumentException("La venta " + saleId + " no existe.");
         }
@@ -173,7 +174,7 @@ public class ReturnService {
                 throw new IllegalArgumentException(
                         "El ítem " + itemId + " no pertenece a la venta " + sale.getId() + ".");
             }
-            if (accessory != null && accessoryService == null) {
+            if (accessory != null && accessoryInventory == null) {
                 throw new IllegalStateException("This ReturnService was created without accessory support.");
             }
             String key = product != null ? productKey(product.getId()) : accessoryKey(accessory.getId());
@@ -211,14 +212,14 @@ public class ReturnService {
         );
 
         for (Product product : returnedProducts) {
-            productService.restoreStock(product.getId(), 1);
+            productInventory.restoreStock(product.getId(), 1);
         }
         for (Accessory accessory : returnedAccessories) {
-            accessoryService.restoreStock(accessory.getId(), 1);
+            accessoryInventory.restoreStock(accessory.getId(), 1);
         }
 
         returns.add(newReturn);
-        returnRepository.saveAll(returns);
+        returnStorage.saveAll(returns);
         return newReturn;
     }
 
@@ -299,6 +300,7 @@ public class ReturnService {
      *
      * @return the list of all registered returns
      */
+    @Override
     public List<Return> viewAllReturns() {
         return new ArrayList<>(returns);
     }
@@ -309,6 +311,7 @@ public class ReturnService {
      * @param customerId the id of the customer to filter by
      * @return the list of returns associated with that customer
      */
+    @Override
     public List<Return> viewReturnsByCustomer(String customerId) {
         List<Return> result = new ArrayList<>();
         for (Return r : returns) {
@@ -325,6 +328,7 @@ public class ReturnService {
      * @param saleId the id of the sale to filter by
      * @return the list of returns associated with that sale
      */
+    @Override
     public List<Return> viewReturnsBySale(String saleId) {
         List<Return> result = new ArrayList<>();
         for (Return r : returns) {
@@ -333,62 +337,6 @@ public class ReturnService {
             }
         }
         return result;
-    }
-
-    /**
-     * Calculates the total income from the sales registered in the given month
-     * and year, using the final total of each sale: subtotal minus the
-     * promotion discount plus the cost of the extended warranties.
-     *
-     * @param month the month to evaluate (1-12)
-     * @param year the year to evaluate
-     * @return the total of the sales of that period
-     * @throws IllegalArgumentException if the month is not between 1 and 12
-     */
-    public double calculateMonthlySales(int month, int year) {
-        validateMonth(month);
-        double totalSales = 0.0;
-        for (Sale sale : saleService.listAll()) {
-            if (sale.getDate().getMonthValue() == month && sale.getDate().getYear() == year) {
-                totalSales += sale.calculateFinalTotal();
-            }
-        }
-        return totalSales;
-    }
-
-    /**
-     * Calculates the total amount refunded by the returns registered in the
-     * given month and year.
-     *
-     * @param month the month to evaluate (1-12)
-     * @param year the year to evaluate
-     * @return the total refunded in that period
-     * @throws IllegalArgumentException if the month is not between 1 and 12
-     */
-    public double calculateMonthlyReturns(int month, int year) {
-        validateMonth(month);
-        double totalReturns = 0.0;
-        for (Return r : returns) {
-            if (r.getDate().getMonthValue() == month && r.getDate().getYear() == year) {
-                totalReturns += r.getRefundAmount();
-            }
-        }
-        return totalReturns;
-    }
-
-    /**
-     * Generates the monthly balance for the given month and year: the total
-     * sales of the period minus the total refunded by returns in the same
-     * period.
-     *
-     * @param month the month to evaluate (1-12)
-     * @param year the year to evaluate
-     * @return the net balance (total sales minus total returns) for the given
-     * period
-     * @throws IllegalArgumentException if the month is not between 1 and 12
-     */
-    public double generateMonthlyBalance(int month, int year) {
-        return calculateMonthlySales(month, year) - calculateMonthlyReturns(month, year);
     }
 
     /**
@@ -410,11 +358,5 @@ public class ReturnService {
             }
         }
         return RETURN_ID_PREFIX + (highest + 1);
-    }
-
-    private void validateMonth(int month) {
-        if (month < 1 || month > 12) {
-            throw new IllegalArgumentException("El mes debe estar entre 1 y 12.");
-        }
     }
 }
