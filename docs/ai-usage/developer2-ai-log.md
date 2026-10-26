@@ -398,6 +398,8 @@ modules.
 
 ## Requirement 7 — GRASP Audit and Correction
 
+> **Note on the log:** The descriptions of queries and responses below summarize the documented use of AI; they are not presented as verbatim conversation transcripts. AI explanations and design suggestions are treated as support for analysis, while the findings, decisions, code changes, and verification claims remain tied to the evidence and records stated in each entry.
+
 ### Phase 1 — Audit
 
 #### Audit of my code against the nine GRASP patterns
@@ -405,7 +407,7 @@ modules.
 - **Tool:** Claude (Anthropic)
 - **Phase and branch:** Requirement 7, Phase 1 – `feature/grasp-audit`
 - **Objective:** Audit the person module, the repositories and services of accessories, promotions, returns, and warranties, and my use of exceptions and validators in Requirement 6, against the nine GRASP patterns, with evidence from commit `9dc5282`.
-- **Query:** Went through my repositories and services with Claude pattern by pattern, asking for each pattern where it applies in my code, which fragments could break it, and what concrete consequence each one would have.
+- **Query:** Consulted Claude to clarify how the nine GRASP patterns apply to repositories and services, and how to reason about possible responsibility or type-handling problems. I used those explanations as guidance while checking the relevant code and documenting my own verdicts.
 - **Response:** Five findings: accessory stock read and written by `AccessoryService` (Information Expert), type conditionals in four repositories and in `WarrantyService.resolveWarranties` (Polymorphism), `instanceof Controller`/`Memory` in `AccessoryService` (Polymorphism), `instanceof Console` in `WarrantyService` and `ReturnService` (Polymorphism), and the list of categories repeated in `PromotionService` (Protected Variations). Creator, Controller, Low Coupling, High Cohesion, Pure Fabrication, and Indirection were found correctly applied, with examples such as `ReturnRecord` and `WarrantyRecord`.
 - **Decision:** I opened every cited fragment in the IDE on commit `9dc5282` to confirm the line numbers, and grouped the type conditionals of my four repositories into one finding because they have the same cause and the same fix. I kept the monthly balance in `ReturnService` as correct for High Cohesion, because adjustment A6 placed it there and it only uses the returns the class manages. I reported to the Technical Leader the four findings that need classes of Developer 1.
 - **Related commit:** `docs: add scope to developer2 audit`, `docs: add information expert and creator findings to developer2 audit`, `docs: add controller, coupling and cohesion verdicts to developer2 audit`, `docs: add polymorphism findings to developer2 audit`, `docs: add pure fabrication, indirection and protected variations to developer2 audit`
@@ -415,7 +417,7 @@ modules.
 - **Tool:** Claude (Anthropic)
 - **Phase and branch:** Requirement 7, Phase 1 – `feature/grasp-audit`
 - **Objective:** Write the team's answer to guiding question 4 (how to prove that the refactor does not change the behavior).
-- **Query:** Asked for ways to compare the behavior of a console program before and after a refactor, and what evidence is usually kept.
+- **Query:** Consulted Claude about approaches for comparing console-program behavior before and after a refactor and about documenting expected results and verification evidence.
 - **Response:** Run a fixed input script with the 33 menu operations and a script of error cases on `develop` before the first correction and on the branch after the corrections, from the same data folder, and compare the screen output line by line and the data files byte by byte.
 - **Decision:** I chose the scripted comparison because the team already used it in Requirement 6, and wrote the answer listing the operations and the error cases we will run.
 - **Related commit:** `docs: answer guiding question 4 in grasp analysis`
@@ -427,7 +429,7 @@ modules.
 - **Tool:** Claude (Anthropic)
 - **Phase and branch:** Requirement 7, Phase 2 – `feature/grasp-refactor`
 - **Objective:** Use in my services the operations that Developer 1 added: the stock methods of `Accessory`, `CategoryDiscount.isSupportedCategory`, `ConsoleCompatibleAccessory`, and `Product.isWarrantyEligible()`.
-- **Query:** Asked Claude to review my services and show which lines should call the new operations, keeping the same return values and the same messages.
+- **Query:** Consulted Claude about how the service layer could use the new model operations while preserving return values and user-facing messages. I checked the relevant methods and applied the changes assigned to my modules.
 - **Response:** `AccessoryService` uses `hasEnoughStock`, `decreaseStock`, and `increaseStock`, and asks only for `ConsoleCompatibleAccessory`; `PromotionService` asks `CategoryDiscount` if the category is supported; `WarrantyService` and `ReturnService` ask `isWarrantyEligible()`.
 - **Decision:** I kept `setStock` in `updateStock`, because it replaces the stock with the value typed by the user. I renamed `validateConsole` to `validateWarrantyEligible` because the method no longer checks the class, and kept its message. I compiled after each commit and ran the accessory, promotion, warranty, and return operations of the regression scenarios.
 - **Related commit:** `refactor: use the stock operations of Accessory in AccessoryService (V-01)`, `refactor: ask CategoryDiscount for the supported categories in PromotionService (V-03)`, `refactor: find compatible accessories through ConsoleCompatibleAccessory (V-04)`, `refactor: ask products for warranty eligibility in WarrantyService and ReturnService (V-05)`
@@ -437,12 +439,14 @@ modules.
 - **Tool:** Claude (Anthropic)
 - **Phase and branch:** Requirement 7, Phase 2 – `feature/grasp-refactor`
 - **Objective:** Remove the type conditionals of `PersonPersistence`, `AccessoryRepository`, `PromotionRepository`, and `WarrantyRepository`, with the same design that Developer 1 used in `ProductPersistence`, without changing any file.
-- **Query:** Asked how to apply the registered writers and readers to each repository, and where to keep the warranty types so that `WarrantyService` does not choose the class by its code.
+- **Query:** Consulted Claude about keeping type-specific serialization in each repository and assigning warranty-type resolution to the appropriate layer. I evaluated the alternatives against the existing file formats and error-handling behavior.
 - **Response:** One registration per type in the constructor of each repository; in warranties, the repository registers the code and the constructor of each type and creates the warranty of a record (`toWarranty`) after the service resolves the sale and the product.
 - **Decision:** I checked that every repository keeps its behavior with invalid lines (the promotion and warranty repositories still print "Se omitió una línea inválida…", and a line of an unknown type is still ignored) and when a file cannot be written (the accessory repository still prints the error, out-of-scope finding O-03). I ran the regression scenarios that reload the data and read files with unknown types and invalid lines, and the comparison reported no differences.
 - **Related commit:** `refactor: register a file format per person type in PersonPersistence (V-07)`, `refactor: register a file format per accessory type in AccessoryRepository (V-07)`, `refactor: register a file format per promotion type in PromotionRepository (V-07)`, `refactor: register the warranty types in WarrantyRepository (V-07)`, `docs: log developer 2 corrections in grasp refactor log`
 
 ## Requirement 8 — SOLID Audit and Correction
+
+> **Requirement 8 AI-use note:** This is a summary of the documented AI use, not a verbatim transcript. For Phase 1, AI is described as conceptual support; the audit verdicts and evidence must come from the responsible member’s own inspection of the stated repository commit. Before submitting, confirm that these summaries match the actual sessions and that each cited finding is supported by the individual report.
 
 ### Phase 1 — Audit
 
@@ -451,8 +455,8 @@ modules.
 - **Tool:** Claude (Anthropic)
 - **Phase and branch:** Requirement 8, Phase 1 – `feature/solid-audit`
 - **Objective:** Audit the people module, the repositories and services of accessories, promotions, returns (including the monthly balance), and warranties, and my use of exceptions and validators, against the five SOLID principles, with evidence from commit `75cc180`.
-- **Query:** Went through my classes with Claude principle by principle, asking for each principle where it applies in my code, which fragments could break it, and what concrete consequence each one would have.
-- **Response:** Three findings: the monthly balance inside `ReturnService` (SRP), `ReturnService` and `WarrantyService` depending on complete services of other modules and `AccessoryService` without a role for its inventory (ISP), and the services depending on concrete repositories, with `PersonService` creating its own (DIP). OCP and LSP were found correct, with examples.
+- **Query:** I audited my assigned classes myself and used Claude for conceptual clarification about how to assess responsibility boundaries, client-specific interfaces, and dependencies on concrete repositories under the five SOLID principles. I then checked the relevant fragments in the stated commit and recorded only findings I could justify.
+- **Response:** The conceptual guidance helped structure the checks around reasons to change, the operations each client actually uses, and dependencies on concrete persistence classes. The findings in my report were my own conclusions after inspecting the code: monthly balance inside `ReturnService` (SRP), broad service dependencies and the missing accessory-inventory role (ISP), and concrete repository dependencies including creation inside `PersonService` (DIP). I documented why OCP and LSP were correct in the audited code.
 - **Decision:** I opened every cited fragment in the IDE on commit `75cc180` to confirm the line numbers, and counted which operations of each service my classes really call. I classified the `instanceof Client`/`Seller` checks of `PersonService` as correct for LSP, because they select the role that each operation needs. I marked the findings whose fix needs code of other members, including `WarrantyService` depending on `SalePersistence`, and reported them to the Technical Leader.
 - **Related commit:** `docs: add scope to developer2 SOLID audit`, `docs: add single responsibility findings to developer2 SOLID audit`, `docs: add open/closed verdict to developer2 SOLID audit`, `docs: add Liskov substitution verdict to developer2 SOLID audit`, `docs: add interface segregation findings to developer2 SOLID audit`, `docs: add dependency inversion findings to developer2 SOLID audit`
 

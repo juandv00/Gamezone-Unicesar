@@ -137,6 +137,8 @@ and warranties, plus adjustment A1.
 
 ## Requirement 7 — GRASP Audit and Correction
 
+> **Note on the log:** The descriptions of queries and responses below summarize the documented use of AI; they are not presented as verbatim conversation transcripts. AI explanations and design suggestions are treated as support for analysis, while the findings, decisions, code changes, and verification claims remain tied to the evidence and records stated in each entry.
+
 ### Phase 1 — Audit
 
 #### Audit of my code against the nine GRASP patterns
@@ -144,7 +146,7 @@ and warranties, plus adjustment A1.
 - **Tool:** Claude (Anthropic)
 - **Phase and branch:** Requirement 7, Phase 1 – `feature/grasp-audit`
 - **Objective:** Audit the product module, the accessory, promotion, and warranty hierarchies, `Return` with `Sale.canBeReturned`, and the `exceptions` and `validation` packages against the nine GRASP patterns, with evidence from commit `9dc5282`.
-- **Query:** Went through my classes with Claude pattern by pattern, asking for each pattern where it applies in my code, which fragments could break it, and what concrete consequence each one would have.
+- **Query:** Consulted Claude to clarify the nine GRASP patterns and the kinds of evidence and consequences that can support an audit verdict. I then checked the relevant fragments in the specified commit and documented the findings I could justify.
 - **Response:** Six findings: stock read and written outside `Product` (Information Expert), the paid ratio calculated by `Return` with `Sale` data (Information Expert), categories decided with `instanceof` in `CategoryDiscount` (Polymorphism), compatibility duplicated in `Controller` and `Memory` (Polymorphism), type conditionals in `ProductPersistence` (Polymorphism), and the money format copied in `Return` and `Warranty` (Pure Fabrication). Creator, Controller, Low Coupling, High Cohesion, and Indirection were found correctly applied, with examples.
 - **Decision:** I opened every cited fragment in the IDE on commit `9dc5282` to confirm the line numbers and that the problem is real, and kept only the findings I can explain with their consequence. I classified `ProductService` creating its own `ProductPersistence` as correct (Creator: it is the only class that uses it closely). I marked the findings whose fix needs code of other members and reported them to the Technical Leader.
 - **Related commit:** `docs: add scope to developer1 audit`, `docs: add information expert and creator findings to developer1 audit`, `docs: add controller, coupling and cohesion verdicts to developer1 audit`, `docs: add polymorphism findings to developer1 audit`, `docs: add pure fabrication, indirection and protected variations to developer1 audit`
@@ -154,7 +156,7 @@ and warranties, plus adjustment A1.
 - **Tool:** Claude (Anthropic)
 - **Phase and branch:** Requirement 7, Phase 1 – `feature/grasp-audit`
 - **Objective:** Write the team's answer to guiding question 3 (code that breaks more than one pattern).
-- **Query:** Asked how other teams usually register a fragment that breaks Polymorphism and Protected Variations at the same time, and how to choose the pattern that guides the correction.
+- **Query:** Consulted Claude about how to document one finding that relates to more than one GRASP pattern and how to justify the pattern selected to guide its correction.
 - **Response:** Register it once under the pattern that describes the fix (replacing a type conditional with an operation per type is Polymorphism) and mention the other pattern next to it; the other section points to the same ID.
 - **Decision:** I applied the rule to my own findings (V-03 and V-05) and wrote the answer with those examples; it matches how the consolidation registered them.
 - **Related commit:** `docs: answer guiding question 3 in grasp analysis`
@@ -167,7 +169,7 @@ and warranties, plus adjustment A1.
 - **Tool:** Claude (Anthropic)
 - **Phase and branch:** Requirement 7, Phase 2 – `feature/grasp-refactor`
 - **Objective:** Move the stock logic into `Product` and `Accessory` (V-01) and make `Return` use the paid ratio calculated by `Sale` (V-02), without changing any result.
-- **Query:** Asked Claude to review my stock code and propose the methods that `Product` and `Accessory` should offer, and how `Return` should use `Sale.calculatePaidRatio()` keeping the same refund for every item.
+- **Query:** Consulted Claude about placing stock-related responsibilities in the classes that own the stock data and about the design implications of moving the paid-ratio calculation from `Return` to `Sale`. I evaluated the alternatives against the consolidated finding and the existing calculation.
 - **Response:** `hasEnoughStock(int)`, `decreaseStock(int)`, and `increaseStock(int)` in both classes, used by `ProductService` and `ProductValidator`; in `Return`, `paidFactor` is removed and `refundFor` asks the sale for the ratio, which is the same calculation (1 when the subtotal is 0).
 - **Decision:** I kept `setStock` for `updateStock`, as the consolidated audit says, because it replaces the stock with a typed value. I compared `calculatePaidRatio()` with the old `paidFactor` line by line before removing it, compiled after each commit, and ran the regression scenarios to check that the refunds of the return receipts were the same.
 - **Related commit:** `refactor: move stock operations into Product and Accessory (V-01)`, `refactor: use the paid ratio of Sale in Return refunds (V-02)`
@@ -177,7 +179,7 @@ and warranties, plus adjustment A1.
 - **Tool:** Claude (Anthropic)
 - **Phase and branch:** Requirement 7, Phase 2 – `feature/grasp-refactor`
 - **Objective:** Replace the type checks of my hierarchies with polymorphic operations that Developer 2 and the Technical Leader will use.
-- **Query:** Asked how to implement `getCategory()`, the abstract class `ConsoleCompatibleAccessory`, and `isWarrantyEligible()` so that the discount of `CategoryDiscount` keeps exactly the same value.
+- **Query:** Consulted Claude about possible polymorphic operations for categories, accessory compatibility, and warranty eligibility, including what should be checked to preserve the existing discount behavior.
 - **Response:** `getCategory()` abstract in `Product` and implemented in `VideoGame`, `Console`, and `Accessory`; `calculateDiscount` sums the products and then the accessories whose category matches, in the same order as before; `ConsoleCompatibleAccessory` holds the list and the three methods that were duplicated in `Controller` and `Memory`; `isWarrantyEligible()` is false in `Product` and true in `Console`.
 - **Decision:** I checked that the order of the sums in `calculateDiscount` is the same as before, so the double values do not change, and that the scenario with the 25 % accessories promotion gives the same discount. I left the list of supported categories in one place (`CategoryDiscount.isSupportedCategory`) for Developer 2 to use.
 - **Related commit:** `refactor: let each product and accessory report its category (V-03)`, `refactor: add ConsoleCompatibleAccessory for controllers and memories (V-04)`, `refactor: let products report whether they receive a warranty (V-05)`
@@ -187,12 +189,14 @@ and warranties, plus adjustment A1.
 - **Tool:** Claude (Anthropic)
 - **Phase and branch:** Requirement 7, Phase 2 – `feature/grasp-refactor`
 - **Objective:** Remove the type conditionals of `ProductPersistence` without changing the file, and use `CurrencyFormatter` in `Return` and `Warranty`.
-- **Query:** Asked how to register a writer per class and a reader per type code in `ProductPersistence` keeping the model free of file logic, and how to check that the file stays byte-identical.
+- **Query:** Consulted Claude about registering type-specific readers and writers in the persistence layer while keeping file-handling responsibilities out of the model, and about ways to compare serialized output before and after a refactor.
 - **Response:** A map from class to writer and a map from type code to reader, filled in the constructor; `toLine` and `fromLine` look them up. The regression scenarios compare the data files byte by byte.
 - **Decision:** I kept the validations and the order of `fromLine` (the price and the stock are read before the type), so a corrupted line still produces the same `PersistenceException`. I ran the regression scripts on my branch and the comparison reported no differences in the output or in `products.txt`.
 - **Related commit:** `refactor: register a file format per product type in ProductPersistence (V-06)`, `refactor: format amounts with CurrencyFormatter in Return and Warranty (V-09)`, `docs: log developer 1 corrections in grasp refactor log`
 
 ## Requirement 8 — SOLID Audit and Correction
+
+> **Requirement 8 AI-use note:** This is a summary of the documented AI use, not a verbatim transcript. For Phase 1, AI is described as conceptual support; the audit verdicts and evidence must come from the responsible member’s own inspection of the stated repository commit. Before submitting, confirm that these summaries match the actual sessions and that each cited finding is supported by the individual report.
 
 ### Phase 1 — Audit
 
@@ -201,8 +205,8 @@ and warranties, plus adjustment A1.
 - **Tool:** Claude (Anthropic)
 - **Phase and branch:** Requirement 8, Phase 1 – `feature/solid-audit`
 - **Objective:** Audit the product module, the accessory, promotion, and warranty hierarchies, `Return` with `Sale.canBeReturned`, the `exceptions` and `validation` packages, and `ConsoleCompatibleAccessory` against the five SOLID principles, with evidence from commit `75cc180`.
-- **Query:** Went through my classes with Claude principle by principle, asking for each principle where it applies in my code, which fragments could break it, and what concrete consequence each one would have.
-- **Response:** Three findings: the receipt and certificate texts built inside `Return` and `Warranty` (SRP), `ProductService` used as one type with seven operations by clients that need one to three (ISP), and `ProductService` creating `ProductPersistence` (DIP). OCP and LSP were found correct in my hierarchies, with examples.
+- **Query:** After reviewing my assigned classes myself, I used Claude to clarify how to distinguish SRP, ISP, and DIP concerns and what kind of concrete consequence is needed to justify a SOLID finding. I then checked the candidate fragments in the stated commit and wrote the audit verdicts from that evidence.
+- **Response:** The conceptual guidance was used to frame the checks around reasons to change, client-specific interfaces, and dependence on concrete details. The three findings recorded in my report were my own conclusions after checking the code: receipt/certificate text inside `Return` and `Warranty` (SRP), broad `ProductService` dependencies (ISP), and `ProductService` creating `ProductPersistence` (DIP). I also documented why OCP and LSP were correct in the audited hierarchies.
 - **Decision:** I opened every cited fragment in the IDE on commit `75cc180` to confirm the line numbers, and checked each subclass of my hierarchies against its base class for LSP. I kept the DIP finding even though the same creation was correct under Creator in Requirement 7, because the two principles look at different things. I did not count `CategoryDiscount.isSupportedCategory` as an OCP violation, because it is the single list of categories and not a conditional. I marked the findings whose fix needs code of other members and reported them to the Technical Leader.
 - **Related commit:** `docs: add scope to developer1 SOLID audit`, `docs: add single responsibility findings to developer1 SOLID audit`, `docs: add open/closed verdict to developer1 SOLID audit`, `docs: add Liskov substitution verdict to developer1 SOLID audit`, `docs: add interface segregation findings to developer1 SOLID audit`, `docs: add dependency inversion findings to developer1 SOLID audit`
 
